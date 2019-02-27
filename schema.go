@@ -53,7 +53,7 @@ var schemaConfig = frozenSchemaConfig{}
 // Schemas is a slice of Schemas.
 type Schemas []Schema
 
-// getSchemaFromCache gets a schema and position by type or name if it is a named schema.
+// Get gets a schema and position by type or name if it is a named schema.
 func (s Schemas) Get(name string) (Schema, int) {
 	for i, schema := range s {
 		if string(schema.Type()) == name {

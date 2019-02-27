@@ -119,6 +119,7 @@ func (d *Decoder) readBlock() (int64, error) {
 	return count, d.reader.Error
 }
 
+// Encoder writes Avro container file to an output stream.
 type Encoder struct {
 	writer  *avro.Writer
 	buf     *bytes.Buffer
@@ -129,6 +130,7 @@ type Encoder struct {
 	count       int
 }
 
+// NewEncoder returns a new encoder that writes to w using schema s.
 func NewEncoder(s string, w io.Writer) (*Encoder, error) {
 	schema, err := avro.Parse(s)
 	if err != nil {
@@ -164,6 +166,7 @@ func NewEncoder(s string, w io.Writer) (*Encoder, error) {
 	}, nil
 }
 
+// Encode writes the Avro encoding of v to the stream.
 func (e *Encoder) Encode(v interface{}) error {
 	if err := e.encoder.Encode(v); err != nil {
 		return err
@@ -179,6 +182,7 @@ func (e *Encoder) Encode(v interface{}) error {
 	return e.writer.Error
 }
 
+// Close closes the encoder, flushing the writer.
 func (e *Encoder) Close() error {
 	if e.count == 0 {
 		return nil
