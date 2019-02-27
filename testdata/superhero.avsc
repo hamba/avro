@@ -1,0 +1,27 @@
+{
+    "type": "record",
+    "name": "Superhero",
+    "namespace": "com.model",
+    "fields": [
+        {"name": "id", "type": "int"},
+        {"name": "affiliation_id", "type": "int"},
+        {"name": "name", "type": "string"},
+        {"name": "life", "type": "float"},
+        {"name": "energy", "type": "float"},
+        {"name": "powers", "type": {
+                "type": "array",
+                "items": {
+                    "type": "record",
+                    "name": "Superpower",
+                    "fields": [
+                        {"name": "id", "type": "int"},
+                        {"name": "name", "type": "string"},
+                        {"name": "damage", "type": "float"},
+                        {"name": "energy", "type": "float"},
+                        {"name": "passive", "type": "boolean"}
+                    ]
+                }
+            }
+        }
+    ]
+}

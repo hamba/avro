@@ -1,0 +1,25 @@
+sudo: false
+
+language: go
+go:
+  - "1.11.x"
+  - "1.12.x"
+  - "1.x"
+env:
+  - GO111MODULE=on
+
+before_install:
+  - go mod download
+  - go get -u golang.org/x/lint/golint
+  - go get github.com/mattn/goveralls
+
+script:
+  - golint ./...
+  - go vet ./...
+  - go test -covermode=count -coverprofile=profile.cov ./...
+  - goveralls -coverprofile=profile.cov -service=travis-ci
+
+notifications:
+  email:
+    on_success: never
+    on_failure: always
