@@ -1,3 +1,9 @@
+/*
+Package container implements encoding and decoding of Avro Object Container Files as defined by the Avro specification.
+
+See the Avro specification for an understanding of Avro: http://avro.apache.org/docs/current/
+
+ */
 package container
 
 import (
@@ -79,15 +85,19 @@ func NewDecoder(r io.Reader) (*Decoder, error) {
 	}, nil
 }
 
+func (d *Decoder) HasNext() bool {
+	if d.count <= 0 {
+		count, _ := d.readBlock() // err handled in Error function
+		d.count = count
+	}
+
+	return d.count > 0
+}
+
 // Decode reads the next Avro encoded value from its input and stores it in the value pointed to by v.
 func (d *Decoder) Decode(v interface{}) error {
 	if d.count <= 0 {
-		count, err := d.readBlock()
-		if err != nil {
-			return err
-		}
-
-		d.count = count
+		return errors.New("decoder: no data found, call HasNext first")
 	}
 
 	d.count--
@@ -97,6 +107,15 @@ func (d *Decoder) Decode(v interface{}) error {
 		return nil
 	}
 	return err
+}
+
+// Error returns the last reader error.
+func (d *Decoder) Error() error {
+	if d.reader.Error == io.EOF {
+		return nil
+	}
+
+	return d.reader.Error
 }
 
 func (d *Decoder) readBlock() (int64, error) {
@@ -109,7 +128,7 @@ func (d *Decoder) readBlock() (int64, error) {
 
 	var sync [16]byte
 	d.reader.Read(sync[:])
-	if d.sync != sync {
+	if d.sync != sync && d.reader.Error != io.EOF {
 		return count, errors.New("file: invalid block")
 	}
 

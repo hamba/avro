@@ -92,11 +92,18 @@ func TestDecoder(t *testing.T) {
 		return
 	}
 
-	var got FullRecord
-	err = dec.Decode(&got)
+	var count int
+	for dec.HasNext() {
+		count++
+		var got FullRecord
+		err = dec.Decode(&got)
 
-	assert.NoError(t, err)
-	assert.Equal(t, want, got)
+		assert.NoError(t, err)
+		assert.Equal(t, want, got)
+	}
+
+	assert.NoError(t, dec.Error())
+	assert.Equal(t, 1, count)
 }
 
 func TestEncoder(t *testing.T) {
