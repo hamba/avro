@@ -1,4 +1,4 @@
-![Logo](http://svg.wiersma.co.za/hamba/project?title=avro&tag=Go%20avro%20codec)
+![Logo](http://svg.wiersma.co.za/hamba/project?title=avro&tag=A%20fast%20Go%20avro%20codec)
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/hamba/avro)](https://goreportcard.com/report/github.com/hamba/avro)
 [![Build Status](https://travis-ci.com/hamba/avro.svg?branch=master)](https://travis-ci.com/hamba/avro)
