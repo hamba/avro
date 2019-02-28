@@ -42,22 +42,22 @@ func (u *SimpleUnionType) GetType() (string, error) {
 	return "", fmt.Errorf("unknown type %T", u.Val)
 }
 
-type SimpleRecord struct {
+type UnionRecord struct {
 	Items map[string]*SimpleUnionType `avro:"items"`
 }
 
 func ExampleUnionType() {
 	schema := avro.MustParse(`{
 	    "type": "record",
-	    "name": "simple",
+	    "name": "union",
 	    "namespace": "org.hamba.avro",
 	    "fields" : [
 	        {"name": "items", "type": {"type": "map", "values": ["string", "int"]}}
 	    ]
 	}`)
 
-	simple := SimpleRecord{}
-	b, err := avro.Marshal(schema, simple)
+	record := UnionRecord{}
+	b, err := avro.Marshal(schema, record)
 	if err != nil {
 		fmt.Println("error:", err)
 	}
