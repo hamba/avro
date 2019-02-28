@@ -10,7 +10,7 @@ env:
 
 before_install:
   - go mod download
-  - go get -u golang.org/x/lint/golint
+  - go get golang.org/x/lint/golint
   - go get github.com/mattn/goveralls
 
 script:

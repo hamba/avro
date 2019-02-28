@@ -1,4 +1,4 @@
-![Logo](http://svg.wiersma.co.za/hamba/project?title=avro&tag=Go%20avro%20codec)
+![Logo](http://svg.wiersma.co.za/hamba/project?title=avro&tag=A%20fast%20Go%20avro%20codec)
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/hamba/avro)](https://goreportcard.com/report/github.com/hamba/avro)
 [![Build Status](https://travis-ci.com/hamba/avro.svg?branch=master)](https://travis-ci.com/hamba/avro)
@@ -91,6 +91,21 @@ with the first being `null` (ie. `["null", "string"]`), in this case a `*T` is a
 with `T` matching the conversion table above.
 * **avro.UnionType:** A `struct` in implementing `avro.UnionType` can be provided, allowing for
 strong type encoding. An example can be found in the [godoc](https://godoc.org/github.com/hamba/avro).
+
+## Benchmark
+
+Benchmark source code can be found at: [https://github.com/nrwiersma/avro-benchmarks](https://github.com/nrwiersma/avro-benchmarks)
+
+```
+BenchmarkGoAvroDecode-8     	  300000	      3863 ns/op	     442 B/op	      27 allocs/op
+BenchmarkGoAvroEncode-8     	  300000	      4677 ns/op	     841 B/op	      63 allocs/op
+BenchmarkHambaDecode-8      	 2000000	       655 ns/op	      64 B/op	       4 allocs/op
+BenchmarkHambaEncode-8      	 3000000	       577 ns/op	     200 B/op	       3 allocs/op
+BenchmarkLinkedinDecode-8   	 1000000	      2175 ns/op	    1776 B/op	      40 allocs/op
+BenchmarkLinkedinEncode-8   	 2000000	       816 ns/op	     288 B/op	      10 allocs/op
+```
+
+Always benchmark with your own workload. The result depends heavily on the data input.
 
 ## TODO
 
