@@ -102,17 +102,17 @@ func NewPrimitiveSchema(t Type) *PrimitiveSchema {
 	}
 }
 
-// Type implements the Schema interface.
+// Type returns the type of the schema.
 func (s *PrimitiveSchema) Type() Type {
 	return s.typ
 }
 
-// String implements the Schema interface.
+// String returns the canonical form of the schema.
 func (s *PrimitiveSchema) String() string {
 	return `"` + string(s.typ) + `"`
 }
 
-// Fingerprint implements the Schema interface.
+// Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *PrimitiveSchema) Fingerprint() [32]byte {
 	if s.fingerprint != emptyFgpt {
 		return s.fingerprint
@@ -131,7 +131,7 @@ type RecordSchema struct {
 	fingerprint [32]byte
 }
 
-// Type implements the Schema interface.
+// Type returns the type of the schema.
 func (s *RecordSchema) Type() Type {
 	return Record
 }
@@ -146,7 +146,7 @@ func (s *RecordSchema) Fields() []*Field {
 	return s.fields
 }
 
-// String implements the Schema interface.
+// String returns the canonical form of the schema.
 func (s *RecordSchema) String() string {
 	if s.canonical != "" {
 		return s.canonical
@@ -164,7 +164,7 @@ func (s *RecordSchema) String() string {
 	return s.canonical
 }
 
-// Fingerprint implements the Schema interface.
+// Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *RecordSchema) Fingerprint() [32]byte {
 	if s.fingerprint != emptyFgpt {
 		return s.fingerprint
@@ -212,7 +212,7 @@ type EnumSchema struct {
 	fingerprint [32]byte
 }
 
-// Type implements the Schema interface.
+// Type returns the type of the schema.
 func (s *EnumSchema) Type() Type {
 	return Enum
 }
@@ -227,7 +227,7 @@ func (s *EnumSchema) Symbols() []string {
 	return s.symbols
 }
 
-// String implements the Schema interface.
+// String returns the canonical form of the schema.
 func (s *EnumSchema) String() string {
 	if s.canonical != "" {
 		return s.canonical
@@ -245,7 +245,7 @@ func (s *EnumSchema) String() string {
 	return s.canonical
 }
 
-// Fingerprint implements the Schema interface.
+// Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *EnumSchema) Fingerprint() [32]byte {
 	if s.fingerprint != emptyFgpt {
 		return s.fingerprint
@@ -262,7 +262,7 @@ type ArraySchema struct {
 	fingerprint [32]byte
 }
 
-// Type implements the Schema interface.
+// Type returns the type of the schema.
 func (s *ArraySchema) Type() Type {
 	return Array
 }
@@ -272,12 +272,12 @@ func (s *ArraySchema) Items() Schema {
 	return s.items
 }
 
-// String implements the Schema interface.
+// String returns the canonical form of the schema.
 func (s *ArraySchema) String() string {
 	return `{"type":"array","items":` + s.items.String() + `}`
 }
 
-// Fingerprint implements the Schema interface.
+// Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *ArraySchema) Fingerprint() [32]byte {
 	if s.fingerprint != emptyFgpt {
 		return s.fingerprint
@@ -294,7 +294,7 @@ type MapSchema struct {
 	fingerprint [32]byte
 }
 
-// Type implements the Schema interface.
+// Type returns the type of the schema.
 func (s *MapSchema) Type() Type {
 	return Map
 }
@@ -304,7 +304,7 @@ func (s *MapSchema) Values() Schema {
 	return s.values
 }
 
-// Fingerprint implements the Schema interface.
+// Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *MapSchema) Fingerprint() [32]byte {
 	if s.fingerprint != emptyFgpt {
 		return s.fingerprint
@@ -314,7 +314,7 @@ func (s *MapSchema) Fingerprint() [32]byte {
 	return s.fingerprint
 }
 
-// String implements the Schema interface.
+// String returns the canonical form of the schema.
 func (s *MapSchema) String() string {
 	return `{"type":"map","values":` + s.values.String() + `}`
 }
@@ -327,7 +327,7 @@ type UnionSchema struct {
 	fingerprint [32]byte
 }
 
-// Type implements the Schema interface.
+// Type returns the type of the schema.
 func (s *UnionSchema) Type() Type {
 	return Union
 }
@@ -346,7 +346,7 @@ func (s *UnionSchema) Nullable() bool {
 	return true
 }
 
-// String implements the Schema interface.
+// String returns the canonical form of the schema.
 func (s *UnionSchema) String() string {
 	if s.canonical != "" {
 		return s.canonical
@@ -364,7 +364,7 @@ func (s *UnionSchema) String() string {
 	return s.canonical
 }
 
-// Fingerprint implements the Schema interface.
+// Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *UnionSchema) Fingerprint() [32]byte {
 	if s.fingerprint != emptyFgpt {
 		return s.fingerprint
@@ -383,7 +383,7 @@ type FixedSchema struct {
 	fingerprint [32]byte
 }
 
-// Type implements the Schema interface.
+// Type returns the type of the schema.
 func (s *FixedSchema) Type() Type {
 	return Fixed
 }
@@ -398,7 +398,7 @@ func (s *FixedSchema) Size() int {
 	return s.size
 }
 
-// String implements the Schema interface.
+// String returns the canonical form of the schema.
 func (s *FixedSchema) String() string {
 	if s.canonical != "" {
 		return s.canonical
@@ -409,7 +409,7 @@ func (s *FixedSchema) String() string {
 	return s.canonical
 }
 
-// Fingerprint implements the Schema interface.
+// Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *FixedSchema) Fingerprint() [32]byte {
 	if s.fingerprint != emptyFgpt {
 		return s.fingerprint
@@ -422,17 +422,17 @@ func (s *FixedSchema) Fingerprint() [32]byte {
 // NullSchema is an Avro null type schema.
 type NullSchema struct{}
 
-// Type implements the Schema interface.
+// Type returns the type of the schema.
 func (s *NullSchema) Type() Type {
 	return Null
 }
 
-// String implements the Schema interface.
+// String returns the canonical form of the schema.
 func (s *NullSchema) String() string {
 	return `"null"`
 }
 
-// Fingerprint implements the Schema interface.
+// Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *NullSchema) Fingerprint() [32]byte {
 	return [32]uint8{0xf0, 0x72, 0xcb, 0xec, 0x3b, 0xf8, 0x84, 0x18, 0x71, 0xd4, 0x28, 0x42, 0x30, 0xc5, 0xe9, 0x83, 0xdc, 0x21, 0x1a, 0x56, 0x83, 0x7a, 0xed, 0x86, 0x24, 0x87, 0x14, 0x8f, 0x94, 0x7d, 0x1a, 0x1f}
 }
@@ -442,7 +442,7 @@ type RefSchema struct {
 	actual NamedSchema
 }
 
-// Type implements the Schema interface.
+// Type returns the type of the schema.
 func (s *RefSchema) Type() Type {
 	return Ref
 }
@@ -452,12 +452,12 @@ func (s *RefSchema) Schema() Schema {
 	return s.actual
 }
 
-// String implements the Schema interface.
+// String returns the canonical form of the schema.
 func (s *RefSchema) String() string {
 	return `"` + s.actual.Name() + `"`
 }
 
-// Fingerprint implements the Schema interface.
+// Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *RefSchema) Fingerprint() [32]byte {
 	return s.actual.Fingerprint()
 }
