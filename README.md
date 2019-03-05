@@ -58,6 +58,8 @@ fmt.Println(out)
 // Outputs: {27 foo}
 ```
 
+More examples in the [godoc](https://godoc.org/github.com/hamba/avro).
+
 #### Types Conversions
 
 | Avro     | Go Struct                          | Go Interface              |
@@ -116,4 +118,5 @@ Always benchmark with your own workload. The result depends heavily on the data 
     * Refactor parsing to be cleaner
     * Better schema validation
     * Aliases
+* Avro container file codecs
 * Avro Textual Form?

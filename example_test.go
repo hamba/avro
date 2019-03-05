@@ -3,10 +3,29 @@ package avro_test
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/hamba/avro"
 )
+
+func ExampleParse() {
+	schema, err := avro.Parse(`{
+	    "type": "record",
+	    "name": "simple",
+	    "namespace": "org.hamba.avro",
+	    "fields" : [
+	        {"name": "a", "type": "long"},
+	        {"name": "b", "type": "string"}
+	    ]
+	}`)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(schema.Type())
+	// Outputs: record
+}
 
 func ExampleNewDecoder() {
 	schema := `{
