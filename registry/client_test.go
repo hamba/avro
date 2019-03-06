@@ -38,6 +38,22 @@ func TestClient_GetSchema(t *testing.T) {
 	assert.Equal(t, `["null","string","int"]`, schema.String())
 }
 
+func TestClient_GetSchemaCachesSchema(t *testing.T) {
+	count := 0
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		count++
+		_, _ = w.Write([]byte(`{"schema":"[\"null\",\"string\",\"int\"]"}`))
+	}))
+	defer s.Close()
+	client, _ := registry.NewClient(s.URL)
+
+	_, _ = client.GetSchema(5)
+
+	_, _ = client.GetSchema(5)
+
+	assert.Equal(t, 1, count)
+}
+
 func TestClient_GetSchemaRequestError(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
@@ -313,7 +329,7 @@ func TestClient_CreateSchemaSchemaError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestClient_IsSchemaRegistered(t *testing.T) {
+func TestClient_IsRegistered(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, "/subjects/test", r.URL.Path)
@@ -330,7 +346,7 @@ func TestClient_IsSchemaRegistered(t *testing.T) {
 	assert.Equal(t, `["null","string","int"]`, schema.String())
 }
 
-func TestClient_IsSchemaRegisteredRequestError(t *testing.T) {
+func TestClient_IsRegisteredRequestError(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
 	}))
@@ -342,7 +358,7 @@ func TestClient_IsSchemaRegisteredRequestError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestClient_IsSchemaRegisteredJsonError(t *testing.T) {
+func TestClient_IsRegisteredJsonError(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"id":10`))
 	}))
@@ -354,7 +370,7 @@ func TestClient_IsSchemaRegisteredJsonError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestClient_IsSchemaRegisteredCodecError(t *testing.T) {
+func TestClient_IsRegisteredSchemaError(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"id":10}`))
 	}))
@@ -374,4 +390,16 @@ func TestClient_HandlesServerError(t *testing.T) {
 	_, err := client.GetSchema(5)
 
 	assert.Error(t, err)
+}
+
+func TestError_Error(t *testing.T) {
+	err := registry.Error{
+		StatusCode: 404,
+		Code: 40403,
+		Message: "Schema not found",
+	}
+
+	str := err.Error()
+
+	assert.Equal(t, "Schema not found", str)
 }

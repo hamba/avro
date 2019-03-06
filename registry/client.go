@@ -1,10 +1,14 @@
+/*
+Package registry implements a Confluent Schema Registry compliant client.
+
+See the Confluent Schema Registry docs for an understanding of the API: https://docs.confluent.io/current/schema-registry/docs/api.html
+
+*/
 package registry
 
 import (
 	"bytes"
-	"errors"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -14,6 +18,7 @@ import (
 
 	"github.com/hamba/avro"
 	"github.com/json-iterator/go"
+	"github.com/modern-go/concurrent"
 )
 
 const (
@@ -77,6 +82,8 @@ func WithHTTPClient(client *http.Client) ClientFunc {
 type Client struct {
 	client *http.Client
 	base   string
+
+	cache *concurrent.Map // map[int]avro.Schema
 }
 
 // NewClient creates a schema registry Client with the given base url.
@@ -90,6 +97,7 @@ func NewClient(baseURL string, opts ...ClientFunc) (*Client, error) {
 	c := &Client{
 		client: defaultClient,
 		base:   baseURL,
+		cache:  concurrent.NewMap(),
 	}
 
 	for _, opt := range opts {
@@ -100,14 +108,28 @@ func NewClient(baseURL string, opts ...ClientFunc) (*Client, error) {
 }
 
 // GetSchema returns the schema with the given id.
+//
+// GetSchema will cache the schema in memory after it is successfully returned,
+// allowing it to be used efficiently in a high load situation.
 func (c *Client) GetSchema(id int) (avro.Schema, error) {
+	if schema, ok := c.cache.Load(id); ok {
+		return schema.(avro.Schema), nil
+	}
+
 	var payload schemaPayload
 	err := c.request(http.MethodGet, "/schemas/ids/"+strconv.Itoa(id), nil, &payload)
 	if err != nil {
 		return nil, err
 	}
 
-	return avro.Parse(payload.Schema)
+	schema, err := avro.Parse(payload.Schema)
+	if err != nil {
+		return nil, err
+	}
+
+	c.cache.Store(id, schema)
+
+	return schema, nil
 }
 
 // GetSubjects gets the registry subjects.
@@ -194,10 +216,27 @@ func (c *Client) request(method, uri string, in, out interface{}) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		io.Copy(ioutil.Discard, resp.Body)
-		return errors.New("registry: could not complete request")
+	if resp.StatusCode >= 400 {
+		err := Error{StatusCode: resp.StatusCode}
+		jsoniter.NewDecoder(resp.Body).Decode(err)
+		return err
 	}
 
 	return jsoniter.NewDecoder(resp.Body).Decode(out)
 }
+
+// Error is returned by the registry when there is an error.
+type Error struct {
+	StatusCode int `json:"-"`
+
+	Code    int    `json:"error_code"`
+	Message string `json:"message"`
+}
+
+// Error returns the error message.
+func (e Error) Error() string {
+	return e.Message
+}
+
+
+
