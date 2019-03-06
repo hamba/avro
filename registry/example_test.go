@@ -20,10 +20,10 @@ func Example() {
 
 	fmt.Println("schema: ", schema)
 
-	schemaStr := `["null","string","int"]`
-	id, schema, err := reg.IsRegistered("foobar", schemaStr)
+	schemaRaw := `["null","string","int"]`
+	id, schema, err := reg.IsRegistered("foobar", schemaRaw)
 	if err != nil {
-		id, schema, err = reg.CreateSchema("foobar", schemaStr)
+		id, schema, err = reg.CreateSchema("foobar", schemaRaw)
 	}
 
 	fmt.Println("id: ", id)
