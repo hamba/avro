@@ -127,7 +127,6 @@ type RecordSchema struct {
 	name   string
 	fields []*Field
 
-	canonical   string
 	fingerprint [32]byte
 }
 
@@ -148,10 +147,6 @@ func (s *RecordSchema) Fields() []*Field {
 
 // String returns the canonical form of the schema.
 func (s *RecordSchema) String() string {
-	if s.canonical != "" {
-		return s.canonical
-	}
-
 	fields := ""
 	for _, f := range s.fields {
 		fields += f.String() + ","
@@ -160,8 +155,7 @@ func (s *RecordSchema) String() string {
 		fields = fields[:len(fields)-1]
 	}
 
-	s.canonical = `{"name":"` + s.name + `","type":"record","fields":[` + fields + `]}`
-	return s.canonical
+	return  `{"name":"` + s.name + `","type":"record","fields":[` + fields + `]}`
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
@@ -323,7 +317,6 @@ func (s *MapSchema) String() string {
 type UnionSchema struct {
 	types Schemas
 
-	canonical   string
 	fingerprint [32]byte
 }
 
@@ -348,10 +341,6 @@ func (s *UnionSchema) Nullable() bool {
 
 // String returns the canonical form of the schema.
 func (s *UnionSchema) String() string {
-	if s.canonical != "" {
-		return s.canonical
-	}
-
 	types := ""
 	for _, typ := range s.types {
 		types += typ.String() + ","
@@ -360,8 +349,7 @@ func (s *UnionSchema) String() string {
 		types = types[:len(types)-1]
 	}
 
-	s.canonical = `[` + types + `]`
-	return s.canonical
+	return `[` + types + `]`
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
@@ -379,7 +367,6 @@ type FixedSchema struct {
 	name string
 	size int
 
-	canonical   string
 	fingerprint [32]byte
 }
 
@@ -400,13 +387,8 @@ func (s *FixedSchema) Size() int {
 
 // String returns the canonical form of the schema.
 func (s *FixedSchema) String() string {
-	if s.canonical != "" {
-		return s.canonical
-	}
-
 	size := strconv.Itoa(s.size)
-	s.canonical = `{"name":"` + s.name + `","type":"fixed","size":` + size + `}`
-	return s.canonical
+	return `{"name":"` + s.name + `","type":"fixed","size":` + size + `}`
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
@@ -434,7 +416,7 @@ func (s *NullSchema) String() string {
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *NullSchema) Fingerprint() [32]byte {
-	return [32]uint8{0xf0, 0x72, 0xcb, 0xec, 0x3b, 0xf8, 0x84, 0x18, 0x71, 0xd4, 0x28, 0x42, 0x30, 0xc5, 0xe9, 0x83, 0xdc, 0x21, 0x1a, 0x56, 0x83, 0x7a, 0xed, 0x86, 0x24, 0x87, 0x14, 0x8f, 0x94, 0x7d, 0x1a, 0x1f}
+	return [32]byte{0xf0, 0x72, 0xcb, 0xec, 0x3b, 0xf8, 0x84, 0x18, 0x71, 0xd4, 0x28, 0x42, 0x30, 0xc5, 0xe9, 0x83, 0xdc, 0x21, 0x1a, 0x56, 0x83, 0x7a, 0xed, 0x86, 0x24, 0x87, 0x14, 0x8f, 0x94, 0x7d, 0x1a, 0x1f}
 }
 
 // RefSchema is a reference to a named Avro schema.

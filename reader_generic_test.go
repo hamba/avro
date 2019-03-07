@@ -162,3 +162,12 @@ func TestReader_ReadNext(t *testing.T) {
 		})
 	}
 }
+
+func TestReader_ReadNextUnsupportedType(t *testing.T) {
+	schema := avro.NewPrimitiveSchema(avro.Type("test"))
+	r := avro.NewReader(bytes.NewReader([]byte{0x01}), 10)
+
+	_ = r.ReadNext(schema)
+
+	assert.Error(t, r.Error)
+}
