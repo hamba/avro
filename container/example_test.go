@@ -68,6 +68,9 @@ func ExampleNewEncoder() {
 
 	var record SimpleRecord
 	err = enc.Encode(record)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	if err := enc.Close(); err != nil {
 		log.Fatal(err)

@@ -395,8 +395,8 @@ func TestClient_HandlesServerError(t *testing.T) {
 func TestError_Error(t *testing.T) {
 	err := registry.Error{
 		StatusCode: 404,
-		Code: 40403,
-		Message: "Schema not found",
+		Code:       40403,
+		Message:    "Schema not found",
 	}
 
 	str := err.Error()
