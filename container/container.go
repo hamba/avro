@@ -14,6 +14,7 @@ import (
 	"io"
 
 	"github.com/hamba/avro"
+	"github.com/hamba/avro/internal/bytesx"
 )
 
 const (
@@ -44,7 +45,7 @@ type Header struct {
 // Decoder reads and decodes Avro values from a container file.
 type Decoder struct {
 	reader      *avro.Reader
-	resetReader *resetReader
+	resetReader *bytesx.ResetReader
 	decoder     *avro.Decoder
 	sync        [16]byte
 
@@ -58,18 +59,18 @@ func NewDecoder(r io.Reader) (*Decoder, error) {
 	var h Header
 	reader.ReadVal(HeaderSchema, &h)
 	if reader.Error != nil {
-		return nil, fmt.Errorf("file: unexpected error: %v", reader.Error)
+		return nil, fmt.Errorf("decoder: unexpected error: %v", reader.Error)
 	}
 
 	if h.Magic != magicBytes {
-		return nil, errors.New("file: invalid avro file")
+		return nil, errors.New("decoder: invalid avro file")
 	}
 	schema, err := avro.Parse(string(h.Meta[schemaKey]))
 	if err != nil {
 		return nil, err
 	}
 
-	decReader := &resetReader{}
+	decReader := bytesx.NewResetReader([]byte{})
 
 	// TODO: File Codecs
 	// codec, ok := codecs[string(h.Meta[codecKey])]
@@ -88,7 +89,7 @@ func NewDecoder(r io.Reader) (*Decoder, error) {
 // HasNext determines if there is another value to read.
 func (d *Decoder) HasNext() bool {
 	if d.count <= 0 {
-		count, _ := d.readBlock() // err handled in Error function
+		count := d.readBlock()
 		d.count = count
 	}
 
@@ -103,11 +104,7 @@ func (d *Decoder) Decode(v interface{}) error {
 
 	d.count--
 
-	err := d.decoder.Decode(v)
-	if err == io.EOF {
-		return nil
-	}
-	return err
+	return d.decoder.Decode(v)
 }
 
 // Error returns the last reader error.
@@ -119,7 +116,7 @@ func (d *Decoder) Error() error {
 	return d.reader.Error
 }
 
-func (d *Decoder) readBlock() (int64, error) {
+func (d *Decoder) readBlock() int64 {
 	count := d.reader.ReadLong()
 	size := d.reader.ReadLong()
 
@@ -130,13 +127,20 @@ func (d *Decoder) readBlock() (int64, error) {
 	var sync [16]byte
 	d.reader.Read(sync[:])
 	if d.sync != sync && d.reader.Error != io.EOF {
-		return count, errors.New("file: invalid block")
+		d.reader.Error = errors.New("decoder: invalid block")
 	}
 
-	if d.reader.Error == io.EOF {
-		return count, nil
+	return count
+}
+
+// EncoderFunc represents an configuration function for Encoder
+type EncoderFunc func(e *Encoder)
+
+// WithBlockLength sets the block length on the encoder.
+func WithBlockLength(length int) EncoderFunc {
+	return func(e *Encoder) {
+		e.blockLength = length
 	}
-	return count, d.reader.Error
 }
 
 // Encoder writes Avro container file to an output stream.
@@ -151,7 +155,7 @@ type Encoder struct {
 }
 
 // NewEncoder returns a new encoder that writes to w using schema s.
-func NewEncoder(s string, w io.Writer) (*Encoder, error) {
+func NewEncoder(s string, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
 	schema, err := avro.Parse(s)
 	if err != nil {
 		return nil, err
@@ -165,25 +169,24 @@ func NewEncoder(s string, w io.Writer) (*Encoder, error) {
 			schemaKey: []byte(schema.String()),
 		},
 	}
-	_, err = rand.Read(header.Sync[:])
-	if err != nil {
-		return nil, err
-	}
-
+	_, _ = rand.Read(header.Sync[:])
 	writer.WriteVal(HeaderSchema, header)
-	if writer.Error != nil {
-		return nil, writer.Error
-	}
 
 	buf := &bytes.Buffer{}
 
-	return &Encoder{
+	e := &Encoder{
 		writer:      writer,
 		buf:         buf,
 		encoder:     avro.NewEncoderForSchema(schema, buf),
 		sync:        header.Sync,
 		blockLength: 100,
-	}, nil
+	}
+
+	for _, opt := range opts {
+		opt(e)
+	}
+
+	return e, nil
 }
 
 // Encode writes the Avro encoding of v to the stream.
@@ -223,27 +226,4 @@ func (e *Encoder) writerBlock() error {
 	e.count = 0
 	e.buf.Reset()
 	return e.writer.Flush()
-}
-
-type resetReader struct {
-	buf  []byte
-	head int
-	tail int
-}
-
-func (r *resetReader) Read(p []byte) (int, error) {
-	if r.head == r.tail {
-		return 0, io.EOF
-	}
-
-	n := copy(p, r.buf)
-	r.head += n
-
-	return n, nil
-}
-
-func (r *resetReader) Reset(buf []byte) {
-	r.buf = buf
-	r.head = 0
-	r.tail = len(buf)
 }

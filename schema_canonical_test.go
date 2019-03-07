@@ -10,7 +10,7 @@ import (
 // Test cases are taken from the reference implementation here:
 // https://github.com/apache/avro/blob/master/share/test/data/schema-tests.txt
 
-func TestSchema_CanonicalAndFingerprint(t *testing.T) {
+func TestSchema_Canonical(t *testing.T) {
 	tests := []struct {
 		input     string
 		canonical string

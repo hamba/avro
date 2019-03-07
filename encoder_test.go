@@ -1,6 +1,7 @@
 package avro_test
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/hamba/avro"
@@ -12,6 +13,18 @@ func TestNewEncoder_SchemaError(t *testing.T) {
 
 	schema := "{}"
 	_, err := avro.NewEncoder(schema, nil)
+
+	assert.Error(t, err)
+}
+
+func TestEncoder_EncodeUnsupportedType(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := avro.NewPrimitiveSchema(avro.Type("test"))
+	buf := bytes.NewBuffer([]byte{})
+	enc := avro.NewEncoderForSchema(schema, buf)
+
+	err := enc.Encode(true)
 
 	assert.Error(t, err)
 }

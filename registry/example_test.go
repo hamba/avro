@@ -24,6 +24,9 @@ func Example() {
 	id, schema, err := reg.IsRegistered("foobar", schemaRaw)
 	if err != nil {
 		id, schema, err = reg.CreateSchema("foobar", schemaRaw)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	fmt.Println("id: ", id)

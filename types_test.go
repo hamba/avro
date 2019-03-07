@@ -47,6 +47,9 @@ func (u *TestUnionType) SetType(typ string) error {
 	case string(avro.Int):
 		u.Val = int(0)
 
+	case string(avro.String):
+		u.Val = nil
+
 	default:
 		return fmt.Errorf("unknown type %s", typ)
 	}

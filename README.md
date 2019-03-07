@@ -111,7 +111,6 @@ Always benchmark with your own workload. The result depends heavily on the data 
 
 ## TODO
 
-* Improve test coverage, docs and examples
 * Logical Types
 * Schema
     * Refactor parsing to be cleaner

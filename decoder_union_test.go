@@ -158,6 +158,19 @@ func TestDecoder_UnionTypedSetTypeError(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestDecoder_UnionTypedSetTypeNilPtr(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x02, 0x06, 0x66, 0x6F, 0x6F}
+	schema := `["null", "string"]`
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	got := &TestUnionType{}
+	err := dec.Decode(&got)
+
+	assert.Error(t, err)
+}
+
 func TestDecoder_UnionTypedInvalidSchema(t *testing.T) {
 	defer ConfigTeardown()
 
