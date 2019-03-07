@@ -113,7 +113,6 @@ Always benchmark with your own workload. The result depends heavily on the data 
 
 * Improve test coverage, docs and examples
 * Logical Types
-* Schema registry
 * Schema
     * Refactor parsing to be cleaner
     * Better schema validation
