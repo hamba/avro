@@ -3,7 +3,7 @@ Package container implements encoding and decoding of Avro Object Container File
 
 See the Avro specification for an understanding of Avro: http://avro.apache.org/docs/current/
 
- */
+*/
 package container
 
 import (
@@ -85,6 +85,7 @@ func NewDecoder(r io.Reader) (*Decoder, error) {
 	}, nil
 }
 
+// HasNext determines if there is another value to read.
 func (d *Decoder) HasNext() bool {
 	if d.count <= 0 {
 		count, _ := d.readBlock() // err handled in Error function
