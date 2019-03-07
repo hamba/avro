@@ -9,7 +9,7 @@ import (
 
 func TestConfig_Freeze(t *testing.T) {
 	api := Config{
-		TagKey: "test",
+		TagKey:      "test",
 		BlockLength: 2,
 	}.Freeze()
 	cfg := api.(*frozenConfig)
@@ -20,7 +20,7 @@ func TestConfig_Freeze(t *testing.T) {
 
 func TestConfig_ReusesDecoders(t *testing.T) {
 	api := Config{
-		TagKey: "test",
+		TagKey:      "test",
 		BlockLength: 2,
 	}.Freeze()
 	cfg := api.(*frozenConfig)
@@ -37,7 +37,7 @@ func TestConfig_ReusesDecoders(t *testing.T) {
 
 func TestConfig_ReusesEncoders(t *testing.T) {
 	api := Config{
-		TagKey: "test",
+		TagKey:      "test",
 		BlockLength: 2,
 	}.Freeze()
 	cfg := api.(*frozenConfig)
@@ -51,4 +51,3 @@ func TestConfig_ReusesEncoders(t *testing.T) {
 
 	assert.Equal(t, enc1, enc2)
 }
-

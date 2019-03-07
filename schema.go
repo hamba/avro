@@ -155,7 +155,7 @@ func (s *RecordSchema) String() string {
 		fields = fields[:len(fields)-1]
 	}
 
-	return  `{"name":"` + s.name + `","type":"record","fields":[` + fields + `]}`
+	return `{"name":"` + s.name + `","type":"record","fields":[` + fields + `]}`
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
