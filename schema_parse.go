@@ -289,9 +289,13 @@ func parseUnion(namespace string, v []interface{}) (Schema, error) {
 			return nil, err
 		}
 
-		// TODO: types[i] cannot be a union
-		// No dup types, except if named and names are different
+		if types[i].Type() == Union {
+			return nil, errors.New("avro: union type cannot be a union")
+		}
 	}
+
+	// TODO: no dup types or names
+
 	return &UnionSchema{
 		types: Schemas(types),
 	}, nil

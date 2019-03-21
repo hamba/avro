@@ -487,6 +487,21 @@ func TestUnionSchema(t *testing.T) {
 			wantErr:         false,
 		},
 		{
+			name:    "No Nested Union Type",
+			schema:  `["null", ["string"]]`,
+			wantErr: true,
+		},
+		{
+			name:    "No Duplicate Types",
+			schema:  `["string", "string"]`,
+			wantErr: true,
+		},
+		{
+			name:    "No Duplicate Names",
+			schema:  `[{"type":"enum", "name":"test", "symbols":["TEST"]}, {"type":"enum", "name":"test", "symbols":["TEST"]}]`,
+			wantErr: true,
+		},
+		{
 			name:    "Invalid Type",
 			schema:  `["null", "blah"]`,
 			wantErr: true,
