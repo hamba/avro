@@ -107,12 +107,12 @@ func TestDecoder_UnionTyped(t *testing.T) {
 func TestDecoder_UnionTypedInRecord(t *testing.T) {
 	defer ConfigTeardown()
 
-	data := []byte{0x02, 0x06, 0x66, 0x6F, 0x6F}
+	data := []byte{0x02, 0x36}
 	schema := `{
 	"type": "record",
 	"name": "test",
 	"fields" : [
-		{"name": "a", "type": ["null", "string"]}
+		{"name": "a", "type": ["null", "int"]}
 	]
 }`
 	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
@@ -121,7 +121,7 @@ func TestDecoder_UnionTypedInRecord(t *testing.T) {
 	err := dec.Decode(&got)
 
 	assert.NoError(t, err)
-	assert.Equal(t, "foo", got.A.Val)
+	assert.Equal(t, 27, got.A.Val)
 }
 
 func TestDecoder_UnionTypedNull(t *testing.T) {
