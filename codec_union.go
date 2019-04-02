@@ -150,19 +150,27 @@ func (e *mapUnionEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 
 func decoderOfTypedUnion(schema Schema, typ reflect2.Type) ValDecoder {
 	union := schema.(*UnionSchema)
+	ptrType := typ.(*reflect2.UnsafePtrType)
+	elemType := ptrType.Elem()
 
 	return &unionTypedDecoder{
 		schema: union,
-		typ:    typ,
+		typ:    ptrType,
+		elem:   elemType,
 	}
 }
 
 type unionTypedDecoder struct {
 	schema *UnionSchema
 	typ    reflect2.Type
+	elem   reflect2.Type
 }
 
 func (d *unionTypedDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
+	if *((*unsafe.Pointer)(ptr)) == nil {
+		newPtr := d.elem.UnsafeNew()
+		*((*unsafe.Pointer)(ptr)) = newPtr
+	}
 	union := d.typ.UnsafeIndirect(ptr).(UnionType)
 
 	schema := getUnionSchema(d.schema, r)
