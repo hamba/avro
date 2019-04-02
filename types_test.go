@@ -28,6 +28,10 @@ type TestNestedRecord struct {
 	B TestRecord `avro:"b"`
 }
 
+type TestUnionRecord struct {
+	A *TestUnionType `avro:"a"`
+}
+
 type TestUnionType struct {
 	Val interface{}
 }

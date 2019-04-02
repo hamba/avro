@@ -163,6 +163,10 @@ type unionTypedDecoder struct {
 }
 
 func (d *unionTypedDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
+	if *((*unsafe.Pointer)(ptr)) == nil {
+		newPtr := d.typ.UnsafeNew()
+		*((*unsafe.Pointer)(ptr)) = newPtr
+	}
 	union := d.typ.UnsafeIndirect(ptr).(UnionType)
 
 	schema := getUnionSchema(d.schema, r)
