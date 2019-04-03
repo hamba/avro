@@ -49,6 +49,8 @@ type Decoder struct {
 	decoder     *avro.Decoder
 	sync        [16]byte
 
+	codec Codec
+
 	count int64
 }
 
@@ -72,17 +74,17 @@ func NewDecoder(r io.Reader) (*Decoder, error) {
 
 	decReader := bytesx.NewResetReader([]byte{})
 
-	// TODO: File Codecs
-	// codec, ok := codecs[string(h.Meta[codecKey])]
-	//if codec, ok := codecs[string(h.Meta[codecKey])]; !ok {
-	//	return nil, fmt.Errorf("file: unknown codec %s", string(h.Meta[codecKey]))
-	//}
+	codec, err := resolveCodec(CodecName(h.Meta[codecKey]))
+	if err != nil {
+		return nil, err
+	}
 
 	return &Decoder{
 		reader:      reader,
 		resetReader: decReader,
 		decoder:     avro.NewDecoderForSchema(schema, decReader),
 		sync:        h.Sync,
+		codec:       codec,
 	}, nil
 }
 
@@ -133,13 +135,25 @@ func (d *Decoder) readBlock() int64 {
 	return count
 }
 
+type encoderConfig struct {
+	BlockLength int
+	CodecName   CodecName
+}
+
 // EncoderFunc represents an configuration function for Encoder
-type EncoderFunc func(e *Encoder)
+type EncoderFunc func(cfg *encoderConfig)
 
 // WithBlockLength sets the block length on the encoder.
 func WithBlockLength(length int) EncoderFunc {
-	return func(e *Encoder) {
-		e.blockLength = length
+	return func(cfg *encoderConfig) {
+		cfg.BlockLength = length
+	}
+}
+
+// WithCodec sets the compression codec on the encoder.
+func WithCodec(codec CodecName) EncoderFunc {
+	return func(cfg *encoderConfig) {
+		cfg.CodecName = codec
 	}
 }
 
@@ -149,6 +163,8 @@ type Encoder struct {
 	buf     *bytes.Buffer
 	encoder *avro.Encoder
 	sync    [16]byte
+
+	codec Codec
 
 	blockLength int
 	count       int
@@ -161,16 +177,30 @@ func NewEncoder(s string, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
 		return nil, err
 	}
 
+	cfg := encoderConfig{
+		BlockLength: 100,
+		CodecName:   Null,
+	}
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
 	writer := avro.NewWriter(w, 512)
 
 	header := Header{
 		Magic: magicBytes,
 		Meta: map[string][]byte{
 			schemaKey: []byte(schema.String()),
+			codecKey:  []byte(cfg.CodecName),
 		},
 	}
 	_, _ = rand.Read(header.Sync[:])
 	writer.WriteVal(HeaderSchema, header)
+
+	codec, err := resolveCodec(cfg.CodecName)
+	if err != nil {
+		return nil, err
+	}
 
 	buf := &bytes.Buffer{}
 
@@ -179,11 +209,8 @@ func NewEncoder(s string, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
 		buf:         buf,
 		encoder:     avro.NewEncoderForSchema(schema, buf),
 		sync:        header.Sync,
-		blockLength: 100,
-	}
-
-	for _, opt := range opts {
-		opt(e)
+		codec:       codec,
+		blockLength: cfg.BlockLength,
 	}
 
 	return e, nil
@@ -220,9 +247,17 @@ func (e *Encoder) Close() error {
 
 func (e *Encoder) writerBlock() error {
 	e.writer.WriteLong(int64(e.count))
-	e.writer.WriteLong(int64(e.buf.Len()))
-	e.writer.Write(e.buf.Bytes())
+
+	b, err := e.codec.Encode(e.buf.Bytes())
+	if err != nil {
+		return err
+	}
+
+	e.writer.WriteLong(int64(len(b)))
+	e.writer.Write(b)
+
 	e.writer.Write(e.sync[:])
+
 	e.count = 0
 	e.buf.Reset()
 	return e.writer.Flush()
