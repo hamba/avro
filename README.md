@@ -115,5 +115,4 @@ Always benchmark with your own workload. The result depends heavily on the data 
 * Aliases
 * Schema
     * Better schema validation
-* Avro container file codecs
 * Avro Textual Form?

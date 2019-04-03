@@ -1,10 +1,10 @@
-package container_test
+package ocf_test
 
 import (
 	"log"
 	"os"
 
-	"github.com/hamba/avro/container"
+	"github.com/hamba/avro/ocf"
 )
 
 func ExampleNewDecoder() {
@@ -19,7 +19,7 @@ func ExampleNewDecoder() {
 	}
 	defer f.Close()
 
-	dec, err := container.NewDecoder(f)
+	dec, err := ocf.NewDecoder(f)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func ExampleNewEncoder() {
 	}
 	defer f.Close()
 
-	enc, err := container.NewEncoder(schema, f)
+	enc, err := ocf.NewEncoder(schema, f)
 	if err != nil {
 		log.Fatal(err)
 	}
