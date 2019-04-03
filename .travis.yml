@@ -8,6 +8,10 @@ go:
 env:
   - GO111MODULE=on
 
+cache:
+  directories:
+    - $GOPATH/pkg/mod
+
 before_install:
   - go mod download
   - go get golang.org/x/lint/golint
