@@ -4,7 +4,7 @@ Package container implements encoding and decoding of Avro Object Container File
 See the Avro specification for an understanding of Avro: http://avro.apache.org/docs/current/
 
 */
-package container
+package ocf
 
 import (
 	"bytes"
@@ -72,12 +72,12 @@ func NewDecoder(r io.Reader) (*Decoder, error) {
 		return nil, err
 	}
 
-	decReader := bytesx.NewResetReader([]byte{})
-
 	codec, err := resolveCodec(CodecName(h.Meta[codecKey]))
 	if err != nil {
 		return nil, err
 	}
+
+	decReader := bytesx.NewResetReader([]byte{})
 
 	return &Decoder{
 		reader:      reader,
@@ -93,6 +93,10 @@ func (d *Decoder) HasNext() bool {
 	if d.count <= 0 {
 		count := d.readBlock()
 		d.count = count
+	}
+
+	if d.reader.Error != nil {
+		return false
 	}
 
 	return d.count > 0
@@ -122,9 +126,17 @@ func (d *Decoder) readBlock() int64 {
 	count := d.reader.ReadLong()
 	size := d.reader.ReadLong()
 
-	data := make([]byte, size)
-	d.reader.Read(data)
-	d.resetReader.Reset(data)
+	if count > 0 {
+		data := make([]byte, size)
+		d.reader.Read(data)
+
+		data, err := d.codec.Decode(data)
+		if err != nil {
+			d.reader.Error = err
+		}
+
+		d.resetReader.Reset(data)
+	}
 
 	var sync [16]byte
 	d.reader.Read(sync[:])

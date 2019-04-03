@@ -1,10 +1,13 @@
-package container
+package ocf
 
 import (
+	"bytes"
+	"compress/flate"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"hash/crc32"
+	"io/ioutil"
 
 	"github.com/golang/snappy"
 )
@@ -51,11 +54,30 @@ func (*NullCodec) Encode(b []byte) ([]byte, error) {
 type DeflateCodec struct{}
 
 func (*DeflateCodec) Decode(b []byte) ([]byte, error) {
-	return b, nil
+	r := flate.NewReader(bytes.NewBuffer(b))
+	data, err := ioutil.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+	if err := r.Close(); err != nil {
+		return nil, err
+	}
+
+	return data, nil
 }
 
 func (*DeflateCodec) Encode(b []byte) ([]byte, error) {
-	return b, nil
+	data := bytes.NewBuffer(make([]byte, 0, len(b)))
+
+	w, _ := flate.NewWriter(data, flate.DefaultCompression)
+	if _, err := w.Write(b); err != nil {
+		return nil, err
+	}
+	if err := w.Close(); err != nil {
+		return nil, err
+	}
+
+	return data.Bytes(), nil
 }
 
 type SnappyCodec struct{}
@@ -66,9 +88,7 @@ func (*SnappyCodec) Decode(b []byte) ([]byte, error) {
 		return nil, errors.New("block does not contain snappy checksum")
 	}
 
-	data := b[:l-4]
-
-	dst, err := snappy.Decode(nil, data)
+	dst, err := snappy.Decode(nil, b[:l-4])
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +98,7 @@ func (*SnappyCodec) Decode(b []byte) ([]byte, error) {
 		return nil, errors.New("snappy checksum mismatch")
 	}
 
-	return b, nil
+	return dst, nil
 }
 
 func (*SnappyCodec) Encode(b []byte) ([]byte, error) {
