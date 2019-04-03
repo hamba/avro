@@ -260,10 +260,7 @@ func (e *Encoder) Close() error {
 func (e *Encoder) writerBlock() error {
 	e.writer.WriteLong(int64(e.count))
 
-	b, err := e.codec.Encode(e.buf.Bytes())
-	if err != nil {
-		return err
-	}
+	b := e.codec.Encode(e.buf.Bytes())
 
 	e.writer.WriteLong(int64(len(b)))
 	e.writer.Write(b)

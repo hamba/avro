@@ -116,5 +116,4 @@ Always benchmark with your own workload. The result depends heavily on the data 
     * Refactor parsing to be cleaner
     * Better schema validation
     * Aliases
-* Avro container file codecs
 * Avro Textual Form?

@@ -194,6 +194,25 @@ func TestDecoderDeflate(t *testing.T) {
 	assert.Equal(t, 1, count)
 }
 
+func TestDecoderDeflate_InvalidData(t *testing.T) {
+	f, err := os.Open("../testdata/deflate-invalid-data.avro")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer f.Close()
+
+	dec, err := ocf.NewDecoder(f)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	dec.HasNext()
+
+	assert.Error(t, dec.Error())
+}
+
 func TestDecoderSnappy(t *testing.T) {
 	unionStr := "union value"
 	want := FullRecord{
@@ -244,6 +263,63 @@ func TestDecoderSnappy(t *testing.T) {
 
 	assert.NoError(t, dec.Error())
 	assert.Equal(t, 1, count)
+}
+
+func TestDecoderSnappy_InvalidData(t *testing.T) {
+	f, err := os.Open("../testdata/snappy-invalid-data.avro")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer f.Close()
+
+	dec, err := ocf.NewDecoder(f)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	dec.HasNext()
+
+	assert.Error(t, dec.Error())
+}
+
+func TestDecoderSnappy_ShortCRC(t *testing.T) {
+	f, err := os.Open("../testdata/snappy-short-crc.avro")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer f.Close()
+
+	dec, err := ocf.NewDecoder(f)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	dec.HasNext()
+
+	assert.Error(t, dec.Error())
+}
+
+func TestDecoderSnappy_InvalidCRC(t *testing.T) {
+	f, err := os.Open("../testdata/snappy-invalid-crc.avro")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer f.Close()
+
+	dec, err := ocf.NewDecoder(f)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	dec.HasNext()
+
+	assert.Error(t, dec.Error())
 }
 
 func TestDecoder_DecodeAvroError(t *testing.T) {
