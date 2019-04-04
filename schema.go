@@ -2,7 +2,10 @@ package avro
 
 import (
 	"crypto/sha256"
+	"errors"
+	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/modern-go/concurrent"
 )
@@ -60,7 +63,7 @@ func (s Schemas) Get(name string) (Schema, int) {
 			return schema, i
 		}
 
-		if namedSchema, ok := schema.(NamedSchema); ok && namedSchema.Name() == name {
+		if namedSchema, ok := schema.(NamedSchema); ok && namedSchema.FullName() == name {
 			return schema, i
 		}
 	}
@@ -84,8 +87,59 @@ type Schema interface {
 type NamedSchema interface {
 	Schema
 
-	// Name returns the fill name of the schema.
+	// Name returns the name of the schema.
 	Name() string
+
+	// Namespace returns the namespace of a schema.
+	Namespace() string
+
+	// FullName returns the full qualified name of a schema.
+	FullName() string
+}
+
+type name struct {
+	name  string
+	space string
+	full  string
+}
+
+func newName(n, s string) (name, error) {
+	if idx := strings.LastIndexByte(n, '.'); idx > -1 {
+		s = n[:idx]
+		n = n[idx+1:]
+	}
+
+	full := n
+	if s != "" {
+		full = s + "." + n
+	}
+
+	for _, part := range strings.Split(full, ".") {
+		if err := validateName(part); err != nil {
+			return name{}, err
+		}
+	}
+
+	return name{
+		name:  n,
+		space: s,
+		full:  full,
+	}, nil
+}
+
+// Name returns the name of a schema.
+func (n name) Name() string {
+	return n.name
+}
+
+// Namespace returns the namespace of a schema.
+func (n name) Namespace() string {
+	return n.space
+}
+
+// FullName returns the full qualified name of a schema.
+func (n name) FullName() string {
+	return n.full
 }
 
 // PrimitiveSchema is an Avro primitive type schema.
@@ -124,10 +178,23 @@ func (s *PrimitiveSchema) Fingerprint() [32]byte {
 
 // RecordSchema is an Avro record type schema.
 type RecordSchema struct {
-	name   string
+	name
+
 	fields []*Field
 
 	fingerprint [32]byte
+}
+
+// NewRecordSchema creates a new record schema instance.
+func NewRecordSchema(name, space string) (*RecordSchema, error) {
+	n, err := newName(name, space)
+	if err != nil {
+		return nil, err
+	}
+
+	return &RecordSchema{
+		name: n,
+	}, nil
 }
 
 // Type returns the type of the schema.
@@ -135,9 +202,9 @@ func (s *RecordSchema) Type() Type {
 	return Record
 }
 
-// Name implements the NamedSchema interface.
-func (s *RecordSchema) Name() string {
-	return s.name
+// AddField adds a field to the record.
+func (s *RecordSchema) AddField(field *Field) {
+	s.fields = append(s.fields, field)
 }
 
 // Fields returns the fields of a record.
@@ -155,7 +222,7 @@ func (s *RecordSchema) String() string {
 		fields = fields[:len(fields)-1]
 	}
 
-	return `{"name":"` + s.name + `","type":"record","fields":[` + fields + `]}`
+	return `{"name":"` + s.FullName() + `","type":"record","fields":[` + fields + `]}`
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
@@ -173,6 +240,24 @@ type Field struct {
 	name string
 	typ  Schema
 	def  interface{}
+}
+
+// NewField creates a new field instance.
+func NewField(name string, typ Schema, def interface{}) (*Field, error) {
+	if err := validateName(name); err != nil {
+		return nil, err
+	}
+
+	def, err := validateDefault(name, typ, def)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Field{
+		name: name,
+		typ:  typ,
+		def:  def,
+	}, nil
 }
 
 // Name returns the name of a field.
@@ -199,21 +284,38 @@ func (s *Field) String() string {
 
 // EnumSchema is an Avro enum type schema.
 type EnumSchema struct {
-	name    string
+	name
+
 	symbols []string
 
-	canonical   string
 	fingerprint [32]byte
+}
+
+// NewEnumSchema creates a new enum schema instance.
+func NewEnumSchema(name, namespace string, symbols []string) (*EnumSchema, error) {
+	n, err := newName(name, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(symbols) == 0 {
+		return nil, errors.New("avro: enum must have a non-empty array of symbols")
+	}
+	for _, symbol := range symbols {
+		if err := validateName(symbol); err != nil {
+			return nil, fmt.Errorf("avro: invalid symnol %s", symbol)
+		}
+	}
+
+	return &EnumSchema{
+		name:    n,
+		symbols: symbols,
+	}, nil
 }
 
 // Type returns the type of the schema.
 func (s *EnumSchema) Type() Type {
 	return Enum
-}
-
-// Name implements the NamedSchema interface.
-func (s *EnumSchema) Name() string {
-	return s.name
 }
 
 // Symbols returns the symbols of an enum.
@@ -223,10 +325,6 @@ func (s *EnumSchema) Symbols() []string {
 
 // String returns the canonical form of the schema.
 func (s *EnumSchema) String() string {
-	if s.canonical != "" {
-		return s.canonical
-	}
-
 	symbols := ""
 	for _, sym := range s.symbols {
 		symbols += `"` + sym + `",`
@@ -235,8 +333,7 @@ func (s *EnumSchema) String() string {
 		symbols = symbols[:len(symbols)-1]
 	}
 
-	s.canonical = `{"name":"` + s.name + `","type":"enum","symbols":[` + symbols + `]}`
-	return s.canonical
+	return `{"name":"` + s.FullName() + `","type":"enum","symbols":[` + symbols + `]}`
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
@@ -254,6 +351,13 @@ type ArraySchema struct {
 	items Schema
 
 	fingerprint [32]byte
+}
+
+// ArraySchema creates an array schema instance.
+func NewArraySchema(items Schema) *ArraySchema {
+	return &ArraySchema{
+		items: items,
+	}
 }
 
 // Type returns the type of the schema.
@@ -288,6 +392,13 @@ type MapSchema struct {
 	fingerprint [32]byte
 }
 
+// NewMapSchema creates a map schema instance.
+func NewMapSchema(values Schema) *MapSchema {
+	return &MapSchema{
+		values: values,
+	}
+}
+
 // Type returns the type of the schema.
 func (s *MapSchema) Type() Type {
 	return Map
@@ -318,6 +429,30 @@ type UnionSchema struct {
 	types Schemas
 
 	fingerprint [32]byte
+}
+
+// NewUnionSchema creates a union schema instance.
+func NewUnionSchema(types []Schema) (*UnionSchema, error) {
+	seen := map[string]bool{}
+	for _, schema := range types {
+		if schema.Type() == Union {
+			return nil, errors.New("avro: union type cannot be a union")
+		}
+
+		strType := string(schema.Type())
+		if named, ok := schema.(NamedSchema); ok {
+			strType = named.FullName()
+		}
+
+		if seen[strType] {
+			return nil, errors.New("avro: union type must be unique")
+		}
+		seen[strType] = true
+	}
+
+	return &UnionSchema{
+		types: Schemas(types),
+	}, nil
 }
 
 // Type returns the type of the schema.
@@ -364,20 +499,29 @@ func (s *UnionSchema) Fingerprint() [32]byte {
 
 // FixedSchema is an Avro fixed type schema.
 type FixedSchema struct {
-	name string
+	name
+
 	size int
 
 	fingerprint [32]byte
 }
 
+// NewFixedSchema creates a new fixed schema instance.
+func NewFixedSchema(name, namespace string, size int) (*FixedSchema, error) {
+	n, err := newName(name, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	return &FixedSchema{
+		name: n,
+		size: size,
+	}, nil
+}
+
 // Type returns the type of the schema.
 func (s *FixedSchema) Type() Type {
 	return Fixed
-}
-
-// Name implements the NamedSchema interface.
-func (s *FixedSchema) Name() string {
-	return s.name
 }
 
 // Size returns the number of bytes of the fixed schema.
@@ -388,7 +532,7 @@ func (s *FixedSchema) Size() int {
 // String returns the canonical form of the schema.
 func (s *FixedSchema) String() string {
 	size := strconv.Itoa(s.size)
-	return `{"name":"` + s.name + `","type":"fixed","size":` + size + `}`
+	return `{"name":"` + s.FullName() + `","type":"fixed","size":` + size + `}`
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
@@ -436,10 +580,165 @@ func (s *RefSchema) Schema() Schema {
 
 // String returns the canonical form of the schema.
 func (s *RefSchema) String() string {
-	return `"` + s.actual.Name() + `"`
+	return `"` + s.actual.FullName() + `"`
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *RefSchema) Fingerprint() [32]byte {
 	return s.actual.Fingerprint()
+}
+
+func invalidNameFirstChar(r rune) bool {
+	return (r < 'A' || r > 'Z') && (r < 'a' || r > 'z') && r != '_'
+}
+
+func invalidNameOtherChar(r rune) bool {
+	return invalidNameFirstChar(r) && (r < '0' || r > '9')
+}
+
+func validateName(name string) error {
+	if len(name) == 0 {
+		return errors.New("avro: name must be a non-empty")
+	}
+
+	if strings.IndexFunc(name[:1], invalidNameFirstChar) > -1 {
+		return fmt.Errorf("avro: invalid name %s", name)
+	}
+	if strings.IndexFunc(name[1:], invalidNameOtherChar) > -1 {
+		return fmt.Errorf("avro: invalid name %s", name)
+	}
+
+	return nil
+}
+
+func validateDefault(name string, schema Schema, def interface{}) (interface{}, error) {
+	if def == nil {
+		return nil, nil
+	}
+
+	def, ok := isValidDefault(schema, def)
+	if !ok {
+		return nil, fmt.Errorf("avro: invalid default for field %s. %+v not a %s", name, def, schema.Type())
+	}
+
+	return def, nil
+}
+
+func isValidDefault(schema Schema, def interface{}) (interface{}, bool) {
+	switch schema.Type() {
+	case Null:
+		return nil, def == nil
+
+	case String, Bytes, Enum, Fixed:
+		if _, ok := def.(string); ok {
+			return def, true
+		}
+
+	case Boolean:
+		if _, ok := def.(bool); ok {
+			return def, true
+		}
+
+	case Int:
+		if _, ok := def.(int8); ok {
+			return def, true
+		}
+		if _, ok := def.(int16); ok {
+			return def, true
+		}
+		if _, ok := def.(int32); ok {
+			return def, true
+		}
+		if _, ok := def.(int); ok {
+			return def, true
+		}
+		if f, ok := def.(float64); ok {
+			return int(f), true
+		}
+
+	case Long:
+		if _, ok := def.(int64); ok {
+			return def, true
+		}
+		if f, ok := def.(float64); ok {
+			return int64(f), true
+		}
+
+	case Float:
+		if _, ok := def.(float32); ok {
+			return def, true
+		}
+		if f, ok := def.(float64); ok {
+			return float32(f), true
+		}
+
+	case Double:
+		if _, ok := def.(float64); ok {
+			return def, true
+		}
+
+	case Array:
+		arr, ok := def.([]interface{})
+		if !ok {
+			return nil, false
+		}
+
+		arrSchema := schema.(*ArraySchema)
+		for i, v := range arr {
+			v, ok := isValidDefault(arrSchema.Items(), v)
+			if !ok {
+				return nil, false
+			}
+			arr[i] = v
+		}
+
+		return arr, true
+
+	case Map:
+		m, ok := def.(map[string]interface{})
+		if !ok {
+			return nil, false
+		}
+
+		mapSchema := schema.(*MapSchema)
+		for k, v := range m {
+			v, ok := isValidDefault(mapSchema.Values(), v)
+			if !ok {
+				return nil, false
+			}
+
+			m[k] = v
+		}
+
+		return m, true
+
+	case Union:
+		unionSchema := schema.(*UnionSchema)
+		return isValidDefault(unionSchema.Types()[0], def)
+
+	case Record:
+		m, ok := def.(map[string]interface{})
+		if !ok {
+			return nil, false
+		}
+
+		recordSchema := schema.(*RecordSchema)
+		for _, field := range recordSchema.Fields() {
+			fieldDef := field.Default()
+			if newDef, ok := m[field.Name()]; ok {
+				fieldDef = newDef
+			}
+
+			v, ok := isValidDefault(field.Type(), fieldDef)
+			if !ok {
+				return nil, false
+			}
+
+			m[field.Name()] = v
+		}
+
+		return m, true
+	}
+
+	return nil, false
 }

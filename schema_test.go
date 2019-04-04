@@ -173,7 +173,12 @@ func TestRecordSchema(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "Invalid Name",
+			name:    "Invalid Name First Char",
+			schema:  `{"type":"record", "name":"0test", "namespace": "org.apache.avro", "fields":[{"name": "field", "type": "int"}]}`,
+			wantErr: true,
+		},
+		{
+			name:    "Invalid Name Other Char",
 			schema:  `{"type":"record", "name":"test+", "namespace": "org.apache.avro", "fields":[{"name": "field", "type": "int"}]}`,
 			wantErr: true,
 		},
@@ -244,45 +249,109 @@ func TestRecordSchema(t *testing.T) {
 	}
 }
 
-func TestRecordSchema_Default(t *testing.T) {
+func TestRecordSchema_ValidatesDefault(t *testing.T) {
 	tests := []struct {
 		name   string
 		schema string
-		want   interface{}
+		wantErr   bool
 	}{
 		{
-			name:   "Normal",
-			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "field", "type": "string", "default": "test"}]}`,
-			want:   "test",
+			name:   "String",
+			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "string", "default": "test"}]}`,
+			wantErr:   false,
 		},
 		{
 			name:   "Int",
-			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "field", "type": "int", "default": 1}]}`,
-			want:   int32(1),
+			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "int", "default": 1}]}`,
+			wantErr:   false,
 		},
 		{
 			name:   "Long",
-			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "field", "type": "long", "default": 1}]}`,
-			want:   int64(1),
+			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "long", "default": 1}]}`,
+			wantErr:   false,
 		},
 		{
 			name:   "Float",
-			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "field", "type": "float", "default": 1}]}`,
-			want:   float32(1),
+			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "float", "default": 1}]}`,
+			wantErr:   false,
 		},
 		{
 			name:   "Double",
-			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "field", "type": "double", "default": 1}]}`,
-			want:   float64(1),
+			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "double", "default": 1}]}`,
+			wantErr:   false,
+		},
+		{
+			name:   "Array",
+			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"array", "items": "int"}, "default": [1,2]}]}`,
+			wantErr:   false,
+		},
+		{
+			name:   "Array Not Array",
+			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"array", "items": "int"}, "default": "test"}]}`,
+			wantErr:   true,
+		},
+		{
+			name:   "Array Invalid Type",
+			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"array", "items": "int"}, "default": ["test"]}]}`,
+			wantErr:   true,
+		},
+		{
+			name:   "Map",
+			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"map", "values": "int"}, "default": {"b": 1}}]}`,
+			wantErr:   false,
+		},
+		{
+			name:   "Map Not Map",
+			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"map", "values": "int"}, "default": "test"}]}`,
+			wantErr:   true,
+		},
+		{
+			name:   "Map Invalid Type",
+			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"map", "values": "int"}, "default": {"b": "test"}}]}`,
+			wantErr:   true,
+		},
+		{
+			name:   "Union",
+			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": ["null", "string"], "default": null}]}`,
+			wantErr:   false,
+		},
+		{
+			name:   "Union Invalid Type",
+			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": ["null", "string"], "default": "string"}]}`,
+			wantErr:   true,
+		},
+		{
+			name:   "Record",
+			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"record", "name": "test2", "fields":[{"name": "b", "type": "int"},{"name": "c", "type": "int", "default": 1}]}, "default": {"b": 1}}]}`,
+			wantErr:   false,
+		},
+		{
+			name:   "Record Not Map",
+			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"record", "name": "test2", "fields":[{"name": "b", "type": "int"},{"name": "c", "type": "int", "default": 1}]}, "default": "test"}]}`,
+			wantErr:   true,
+		},
+		{
+			name:   "Record Invalid Type",
+			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"record", "name": "test2", "fields":[{"name": "b", "type": "int"},{"name": "c", "type": "int", "default": 1}]}, "default": {"b": "test"}}]}`,
+			wantErr:   true,
+		},
+		{
+			name:   "Record Invalid Field Type",
+			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"record", "name": "test2", "fields":[{"name": "b", "type": "int"},{"name": "c", "type": "int", "default": "test"}]}, "default": {"b": 1}}]}`,
+			wantErr:   true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s, err := avro.Parse(tt.schema)
+			_, err := avro.Parse(tt.schema)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
 
 			assert.NoError(t, err)
-			assert.Equal(t, tt.want, s.(*avro.RecordSchema).Fields()[0].Default())
 		})
 	}
 }
@@ -386,7 +455,7 @@ func TestEnumSchema(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, avro.Enum, schema.Type())
 			named := schema.(avro.NamedSchema)
-			assert.Equal(t, tt.wantName, named.Name())
+			assert.Equal(t, tt.wantName, named.FullName())
 		})
 	}
 }
@@ -588,7 +657,7 @@ func TestFixedSchema(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, avro.Fixed, schema.Type())
 			named := schema.(avro.NamedSchema)
-			assert.Equal(t, tt.wantName, named.Name())
+			assert.Equal(t, tt.wantName, named.FullName())
 			assert.Equal(t, tt.wantFingerprint, named.Fingerprint())
 		})
 	}

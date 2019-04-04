@@ -91,7 +91,7 @@ func (d *mapUnionDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 
 	key := string(resSchema.Type())
 	if n, ok := resSchema.(NamedSchema); ok {
-		key = n.Name()
+		key = n.FullName()
 	}
 	keyPtr := reflect2.PtrOf(key)
 
@@ -180,7 +180,7 @@ func (d *unionTypedDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 
 	key := string(schema.Type())
 	if n, ok := schema.(NamedSchema); ok {
-		key = n.Name()
+		key = n.FullName()
 	}
 
 	if err := union.SetType(key); err != nil {

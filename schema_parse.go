@@ -4,13 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"regexp"
 	"strings"
 
 	"github.com/json-iterator/go"
 )
-
-var nameRegexp = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*?(\.[A-Za-z_][A-Za-z0-9_]*?)*$`)
 
 // Parse parses a schema string.
 func Parse(schema string) (Schema, error) {
@@ -141,20 +138,20 @@ func parseRecord(namespace string, m map[string]interface{}) (Schema, error) {
 		return nil, errors.New("avro: record must have an array of fields")
 	}
 
-	rec := &RecordSchema{
-		name:   fullName(namespace, name),
-		fields: make([]*Field, len(fields)),
+	rec, err := NewRecordSchema(name, namespace)
+	if err != nil {
+		return nil, err
 	}
 
-	schemaConfig.addSchemaToCache(rec.name, &RefSchema{actual: rec})
+	schemaConfig.addSchemaToCache(rec.FullName(), &RefSchema{actual: rec})
 
-	for i, f := range fields {
+	for _, f := range fields {
 		field, err := parseField(namespace, f)
 		if err != nil {
 			return nil, err
 		}
 
-		rec.fields[i] = field
+		rec.AddField(field)
 	}
 
 	return rec, nil
@@ -180,26 +177,9 @@ func parseField(namespace string, v interface{}) (*Field, error) {
 		return nil, err
 	}
 
-	field := &Field{
-		name: name,
-		typ:  typ,
-		def:  m["default"],
-	}
-
-	// TODO: check default types
-	// if the type is a union, the default must be of the same type if the first type
-	// Sanitise the default
-	if f, ok := field.def.(float64); ok {
-		switch typ.Type() {
-		case Int:
-			field.def = int32(f)
-
-		case Long:
-			field.def = int64(f)
-
-		case Float:
-			field.def = float32(f)
-		}
+	field, err := NewField(name, typ, m["default"])
+	if err != nil {
+		return nil, err
 	}
 
 	return field, nil
@@ -226,23 +206,15 @@ func parseEnum(namespace string, m map[string]interface{}) (Schema, error) {
 			return nil, fmt.Errorf("avro: invalid symbol: %+v", sym)
 		}
 
-		if err := validateName(str); err != nil {
-			return nil, err
-		}
-
 		symbols[i] = str
 	}
 
-	if len(symbols) == 0 {
-		return nil, errors.New("avro: enum must have a non-empty array of symbols")
+	enum, err := NewEnumSchema(name, namespace, symbols)
+	if err != nil {
+		return nil, err
 	}
 
-	enum := &EnumSchema{
-		name:    fullName(namespace, name),
-		symbols: symbols,
-	}
-
-	schemaConfig.addSchemaToCache(enum.name, enum)
+	schemaConfig.addSchemaToCache(enum.FullName(), enum)
 
 	return enum, nil
 }
@@ -258,9 +230,7 @@ func parseArray(namespace string, m map[string]interface{}) (Schema, error) {
 		return nil, err
 	}
 
-	return &ArraySchema{
-		items: schema,
-	}, nil
+	return NewArraySchema(schema), nil
 }
 
 func parseMap(namespace string, m map[string]interface{}) (Schema, error) {
@@ -274,31 +244,20 @@ func parseMap(namespace string, m map[string]interface{}) (Schema, error) {
 		return nil, err
 	}
 
-	return &MapSchema{
-		values: schema,
-	}, nil
+	return NewMapSchema(schema), nil
 }
 
 func parseUnion(namespace string, v []interface{}) (Schema, error) {
-	types := make([]Schema, len(v))
-
 	var err error
+	types := make([]Schema, len(v))
 	for i := range v {
 		types[i], err = parseType(namespace, v[i])
 		if err != nil {
 			return nil, err
 		}
-
-		if types[i].Type() == Union {
-			return nil, errors.New("avro: union type cannot be a union")
-		}
 	}
 
-	// TODO: no dup types or names
-
-	return &UnionSchema{
-		types: Schemas(types),
-	}, nil
+	return NewUnionSchema(types)
 }
 
 func parseFixed(namespace string, m map[string]interface{}) (Schema, error) {
@@ -315,12 +274,12 @@ func parseFixed(namespace string, m map[string]interface{}) (Schema, error) {
 		return nil, errors.New("avro: fixed must have a size")
 	}
 
-	fixed := &FixedSchema{
-		name: fullName(namespace, name),
-		size: int(size),
+	fixed, err := NewFixedSchema(name, namespace, int(size))
+	if err != nil {
+		return nil, err
 	}
 
-	schemaConfig.addSchemaToCache(fixed.name, fixed)
+	schemaConfig.addSchemaToCache(fixed.FullName(), fixed)
 
 	return fixed, nil
 }
@@ -337,14 +296,6 @@ func resolveName(m map[string]interface{}) (string, error) {
 	name, ok := m["name"].(string)
 	if !ok {
 		return "", errors.New("avro: name key required")
-	}
-
-	if name == "" {
-		return "", errors.New("avro: name must be a non-empty")
-	}
-
-	if err := validateName(name); err != nil {
-		return "", err
 	}
 
 	return name, nil
@@ -364,25 +315,5 @@ func resolveFullName(m map[string]interface{}) (string, string, error) {
 		return "", "", errors.New("avro: namespace key must be non-empty or omitted")
 	}
 
-	if err := validateNamespace(namespace); err != nil {
-		return "", "", err
-	}
-
 	return name, namespace, nil
-}
-
-func validateName(name string) error {
-	if !nameRegexp.MatchString(name) {
-		return fmt.Errorf("avro: name is invalid: %s", name)
-	}
-
-	return nil
-}
-
-func validateNamespace(namespace string) error {
-	if !nameRegexp.MatchString(namespace) {
-		return fmt.Errorf("avro: namespace is invalid: %s", namespace)
-	}
-
-	return nil
 }
