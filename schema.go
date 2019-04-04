@@ -353,7 +353,7 @@ type ArraySchema struct {
 	items Schema
 }
 
-// ArraySchema creates an array schema instance.
+// NewArraySchema creates an array schema instance.
 func NewArraySchema(items Schema) *ArraySchema {
 	return &ArraySchema{
 		items: items,

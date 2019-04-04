@@ -12,8 +12,10 @@ import (
 	"github.com/golang/snappy"
 )
 
+// CodecName represents a compression codec name.
 type CodecName string
 
+// Supported compression codecs.
 const (
 	Null    CodecName = "null"
 	Deflate CodecName = "deflate"
@@ -36,23 +38,31 @@ func resolveCodec(name CodecName) (Codec, error) {
 	}
 }
 
+// Codec represents a compression codec.
 type Codec interface {
+	// Decode decodes the given bytes.
 	Decode([]byte) ([]byte, error)
+	// Encode encodes the given bytes.
 	Encode([]byte) []byte
 }
 
+// NullCodec is a no op codec.
 type NullCodec struct{}
 
+// Decode decodes the given bytes.
 func (*NullCodec) Decode(b []byte) ([]byte, error) {
 	return b, nil
 }
 
+// Encode encodes the given bytes.
 func (*NullCodec) Encode(b []byte) []byte {
 	return b
 }
 
+// DeflateCodec is a flate compression codec.
 type DeflateCodec struct{}
 
+// Decode decodes the given bytes.
 func (*DeflateCodec) Decode(b []byte) ([]byte, error) {
 	r := flate.NewReader(bytes.NewBuffer(b))
 	data, err := ioutil.ReadAll(r)
@@ -65,6 +75,7 @@ func (*DeflateCodec) Decode(b []byte) ([]byte, error) {
 	return data, nil
 }
 
+// Encode encodes the given bytes.
 func (*DeflateCodec) Encode(b []byte) []byte {
 	data := bytes.NewBuffer(make([]byte, 0, len(b)))
 
@@ -75,8 +86,10 @@ func (*DeflateCodec) Encode(b []byte) []byte {
 	return data.Bytes()
 }
 
+// SnappyCodec is a snappy compression codec.
 type SnappyCodec struct{}
 
+// Decode decodes the given bytes.
 func (*SnappyCodec) Decode(b []byte) ([]byte, error) {
 	l := len(b)
 	if l < 5 {
@@ -96,6 +109,7 @@ func (*SnappyCodec) Decode(b []byte) ([]byte, error) {
 	return dst, nil
 }
 
+// Encode encodes the given bytes.
 func (*SnappyCodec) Encode(b []byte) []byte {
 	dst := snappy.Encode(nil, b)
 
