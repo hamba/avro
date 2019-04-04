@@ -547,6 +547,13 @@ type RefSchema struct {
 	actual NamedSchema
 }
 
+// NewRefSchema creates a ref schema instance.
+func NewRefSchema(schema NamedSchema) *RefSchema {
+	return &RefSchema{
+		actual: schema,
+	}
+}
+
 // Type returns the type of the schema.
 func (s *RefSchema) Type() Type {
 	return Ref
@@ -619,14 +626,14 @@ func isValidDefault(schema Schema, def interface{}) (interface{}, bool) {
 		}
 
 	case Int:
-		if _, ok := def.(int8); ok {
-			return def, true
+		if i, ok := def.(int8); ok {
+			return int(i), true
 		}
-		if _, ok := def.(int16); ok {
-			return def, true
+		if i, ok := def.(int16); ok {
+			return int(i), true
 		}
-		if _, ok := def.(int32); ok {
-			return def, true
+		if i, ok := def.(int32); ok {
+			return int(i), true
 		}
 		if _, ok := def.(int); ok {
 			return def, true

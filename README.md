@@ -113,6 +113,4 @@ Always benchmark with your own workload. The result depends heavily on the data 
 
 * Logical Types
 * Aliases
-* Schema
-    * Better schema validation
 * Avro Textual Form?

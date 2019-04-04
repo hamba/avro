@@ -1,0 +1,298 @@
+package avro
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestName_NameAndNamespace(t *testing.T) {
+	n, _ := newName("bar", "foo")
+
+	assert.Equal(t, "bar", n.Name())
+	assert.Equal(t, "foo", n.Namespace())
+	assert.Equal(t, "foo.bar", n.FullName())
+}
+
+func TestName_QualifiedName(t *testing.T) {
+	n, _ := newName("foo.bar", "test")
+
+	assert.Equal(t, "bar", n.Name())
+	assert.Equal(t, "foo", n.Namespace())
+	assert.Equal(t, "foo.bar", n.FullName())
+}
+
+func TestName_InvalidNameFirstChar(t *testing.T) {
+	_, err := newName("+bar", "foo")
+
+	assert.Error(t, err)
+}
+
+func TestName_InvalidNameOtherChar(t *testing.T) {
+	_, err := newName("bar+", "foo")
+
+	assert.Error(t, err)
+}
+
+func TestName_InvalidNamespaceFirstChar(t *testing.T) {
+	_, err := newName("bar", "+foo")
+
+	assert.Error(t, err)
+}
+
+func TestName_InvalidNamespaceOtherChar(t *testing.T) {
+	_, err := newName("bar", "foo+")
+
+	assert.Error(t, err)
+}
+
+func TestIsValidDefault(t *testing.T) {
+	tests := []struct {
+		name     string
+		schemaFn func() Schema
+		def      interface{}
+		want     interface{}
+		wantOk   bool
+	}{
+
+		{
+			name: "Null",
+			schemaFn: func() Schema {
+				return &NullSchema{}
+			},
+			def:    nil,
+			want:   nil,
+			wantOk: true,
+		},
+		{
+			name: "Null Invalid Type",
+			schemaFn: func() Schema {
+				return &NullSchema{}
+			},
+			def:    "test",
+			wantOk: false,
+		},
+		{
+			name: "String",
+			schemaFn: func() Schema {
+				return NewPrimitiveSchema(String)
+			},
+			def:    "test",
+			want:   "test",
+			wantOk: true,
+		},
+		{
+			name: "String Invalid Type",
+			schemaFn: func() Schema {
+				return NewPrimitiveSchema(String)
+			},
+			def:    1,
+			wantOk: false,
+		},
+		{
+			name: "Bytes",
+			schemaFn: func() Schema {
+				return NewPrimitiveSchema(Bytes)
+			},
+			def:    "test",
+			want:   "test",
+			wantOk: true,
+		},
+		{
+			name: "Bytes Invalid Type",
+			schemaFn: func() Schema {
+				return NewPrimitiveSchema(Bytes)
+			},
+			def:    1,
+			wantOk: false,
+		},
+		{
+			name: "Enum",
+			schemaFn: func() Schema {
+				s, _ := NewEnumSchema("foo", "", []string{"BAR"})
+				return s
+			},
+			def:    "test",
+			want:   "test",
+			wantOk: true,
+		},
+		{
+			name: "Enum Invalid Type",
+			schemaFn: func() Schema {
+				s, _ := NewEnumSchema("foo", "", []string{"BAR"})
+				return s
+			},
+			def:    1,
+			wantOk: false,
+		},
+		{
+			name: "Fixed",
+			schemaFn: func() Schema {
+				s, _ := NewFixedSchema("foo", "", 1)
+				return s
+			},
+			def:    "test",
+			want:   "test",
+			wantOk: true,
+		},
+		{
+			name: "Fixed Invalid Type",
+			schemaFn: func() Schema {
+				s, _ := NewFixedSchema("foo", "", 1)
+				return s
+			},
+			def:    1,
+			wantOk: false,
+		},
+		{
+			name: "Boolean",
+			schemaFn: func() Schema {
+				return NewPrimitiveSchema(Boolean)
+			},
+			def:    true,
+			want:   true,
+			wantOk: true,
+		},
+		{
+			name: "Boolean Invalid Type",
+			schemaFn: func() Schema {
+				return NewPrimitiveSchema(Boolean)
+			},
+			def:    1,
+			wantOk: false,
+		},
+		{
+			name: "Int",
+			schemaFn: func() Schema {
+				return NewPrimitiveSchema(Int)
+			},
+			def:    1,
+			want:   1,
+			wantOk: true,
+		},
+		{
+			name: "Int Int8",
+			schemaFn: func() Schema {
+				return NewPrimitiveSchema(Int)
+			},
+			def:    int8(1),
+			want:   1,
+			wantOk: true,
+		},
+		{
+			name: "Int Int16",
+			schemaFn: func() Schema {
+				return NewPrimitiveSchema(Int)
+			},
+			def:    int16(1),
+			want:   1,
+			wantOk: true,
+		},
+		{
+			name: "Int Int32",
+			schemaFn: func() Schema {
+				return NewPrimitiveSchema(Int)
+			},
+			def:    int32(1),
+			want:   1,
+			wantOk: true,
+		},
+		{
+			name: "Int Float64",
+			schemaFn: func() Schema {
+				return NewPrimitiveSchema(Int)
+			},
+			def:    float64(1),
+			want:   1,
+			wantOk: true,
+		},
+		{
+			name: "Int Invalid Type",
+			schemaFn: func() Schema {
+				return NewPrimitiveSchema(Int)
+			},
+			def:    "test",
+			wantOk: false,
+		},
+		{
+			name: "Long",
+			schemaFn: func() Schema {
+				return NewPrimitiveSchema(Long)
+			},
+			def:    int64(1),
+			want:   int64(1),
+			wantOk: true,
+		},
+		{
+			name: "Long Float64",
+			schemaFn: func() Schema {
+				return NewPrimitiveSchema(Long)
+			},
+			def:    float64(1),
+			want:   int64(1),
+			wantOk: true,
+		},
+		{
+			name: "Long Invalid Type",
+			schemaFn: func() Schema {
+				return NewPrimitiveSchema(Long)
+			},
+			def:    "test",
+			wantOk: false,
+		},
+		{
+			name: "Float",
+			schemaFn: func() Schema {
+				return NewPrimitiveSchema(Float)
+			},
+			def:    float32(1),
+			want:   float32(1),
+			wantOk: true,
+		},
+		{
+			name: "Float Float64",
+			schemaFn: func() Schema {
+				return NewPrimitiveSchema(Float)
+			},
+			def:    float64(1),
+			want:   float32(1),
+			wantOk: true,
+		},
+		{
+			name: "Float Invalid Type",
+			schemaFn: func() Schema {
+				return NewPrimitiveSchema(Float)
+			},
+			def:    "test",
+			wantOk: false,
+		},
+		{
+			name: "Double",
+			schemaFn: func() Schema {
+				return NewPrimitiveSchema(Double)
+			},
+			def:    float64(1),
+			want:   float64(1),
+			wantOk: true,
+		},
+		{
+			name: "Double Invalid Type",
+			schemaFn: func() Schema {
+				return NewPrimitiveSchema(Double)
+			},
+			def:    "test",
+			wantOk: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := isValidDefault(tt.schemaFn(), tt.def)
+
+			assert.Equal(t, tt.wantOk, ok)
+			if ok {
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}

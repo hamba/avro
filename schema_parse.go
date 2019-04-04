@@ -143,7 +143,7 @@ func parseRecord(namespace string, m map[string]interface{}) (Schema, error) {
 		return nil, err
 	}
 
-	schemaConfig.addSchemaToCache(rec.FullName(), &RefSchema{actual: rec})
+	schemaConfig.addSchemaToCache(rec.FullName(), NewRefSchema(rec))
 
 	for _, f := range fields {
 		field, err := parseField(namespace, f)
