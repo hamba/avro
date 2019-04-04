@@ -142,11 +142,25 @@ func (n name) FullName() string {
 	return n.full
 }
 
+type fingerprinter struct {
+	fingerprint [32]byte
+}
+
+// Fingerprint returns the SHA256 fingerprint of the schema.
+func (f *fingerprinter) Fingerprint(stringer fmt.Stringer) [32]byte {
+	if f.fingerprint != emptyFgpt {
+		return f.fingerprint
+	}
+
+	f.fingerprint = sha256.Sum256([]byte(stringer.String()))
+	return f.fingerprint
+}
+
 // PrimitiveSchema is an Avro primitive type schema.
 type PrimitiveSchema struct {
-	typ Type
+	fingerprinter
 
-	fingerprint [32]byte
+	typ Type
 }
 
 // NewPrimitiveSchema creates a new PrimitiveSchema.
@@ -168,21 +182,15 @@ func (s *PrimitiveSchema) String() string {
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *PrimitiveSchema) Fingerprint() [32]byte {
-	if s.fingerprint != emptyFgpt {
-		return s.fingerprint
-	}
-
-	s.fingerprint = sha256.Sum256([]byte(s.String()))
-	return s.fingerprint
+	return s.fingerprinter.Fingerprint(s)
 }
 
 // RecordSchema is an Avro record type schema.
 type RecordSchema struct {
 	name
+	fingerprinter
 
 	fields []*Field
-
-	fingerprint [32]byte
 }
 
 // NewRecordSchema creates a new record schema instance.
@@ -204,6 +212,9 @@ func (s *RecordSchema) Type() Type {
 
 // AddField adds a field to the record.
 func (s *RecordSchema) AddField(field *Field) {
+	// Clear the fingerprint cache
+	s.fingerprint = emptyFgpt
+
 	s.fields = append(s.fields, field)
 }
 
@@ -227,12 +238,7 @@ func (s *RecordSchema) String() string {
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *RecordSchema) Fingerprint() [32]byte {
-	if s.fingerprint != emptyFgpt {
-		return s.fingerprint
-	}
-
-	s.fingerprint = sha256.Sum256([]byte(s.String()))
-	return s.fingerprint
+	return s.fingerprinter.Fingerprint(s)
 }
 
 // Field is an Avro record type field.
@@ -285,10 +291,9 @@ func (s *Field) String() string {
 // EnumSchema is an Avro enum type schema.
 type EnumSchema struct {
 	name
+	fingerprinter
 
 	symbols []string
-
-	fingerprint [32]byte
 }
 
 // NewEnumSchema creates a new enum schema instance.
@@ -338,19 +343,14 @@ func (s *EnumSchema) String() string {
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *EnumSchema) Fingerprint() [32]byte {
-	if s.fingerprint != emptyFgpt {
-		return s.fingerprint
-	}
-
-	s.fingerprint = sha256.Sum256([]byte(s.String()))
-	return s.fingerprint
+	return s.fingerprinter.Fingerprint(s)
 }
 
 // ArraySchema is an Avro array type schema.
 type ArraySchema struct {
-	items Schema
+	fingerprinter
 
-	fingerprint [32]byte
+	items Schema
 }
 
 // ArraySchema creates an array schema instance.
@@ -377,19 +377,14 @@ func (s *ArraySchema) String() string {
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *ArraySchema) Fingerprint() [32]byte {
-	if s.fingerprint != emptyFgpt {
-		return s.fingerprint
-	}
-
-	s.fingerprint = sha256.Sum256([]byte(s.String()))
-	return s.fingerprint
+	return s.fingerprinter.Fingerprint(s)
 }
 
 // MapSchema is an Avro map type schema.
 type MapSchema struct {
-	values Schema
+	fingerprinter
 
-	fingerprint [32]byte
+	values Schema
 }
 
 // NewMapSchema creates a map schema instance.
@@ -411,12 +406,7 @@ func (s *MapSchema) Values() Schema {
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *MapSchema) Fingerprint() [32]byte {
-	if s.fingerprint != emptyFgpt {
-		return s.fingerprint
-	}
-
-	s.fingerprint = sha256.Sum256([]byte(s.String()))
-	return s.fingerprint
+	return s.fingerprinter.Fingerprint(s)
 }
 
 // String returns the canonical form of the schema.
@@ -426,9 +416,9 @@ func (s *MapSchema) String() string {
 
 // UnionSchema is an Avro union type schema.
 type UnionSchema struct {
-	types Schemas
+	fingerprinter
 
-	fingerprint [32]byte
+	types Schemas
 }
 
 // NewUnionSchema creates a union schema instance.
@@ -489,21 +479,15 @@ func (s *UnionSchema) String() string {
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *UnionSchema) Fingerprint() [32]byte {
-	if s.fingerprint != emptyFgpt {
-		return s.fingerprint
-	}
-
-	s.fingerprint = sha256.Sum256([]byte(s.String()))
-	return s.fingerprint
+	return s.fingerprinter.Fingerprint(s)
 }
 
 // FixedSchema is an Avro fixed type schema.
 type FixedSchema struct {
 	name
+	fingerprinter
 
 	size int
-
-	fingerprint [32]byte
 }
 
 // NewFixedSchema creates a new fixed schema instance.
@@ -537,12 +521,7 @@ func (s *FixedSchema) String() string {
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *FixedSchema) Fingerprint() [32]byte {
-	if s.fingerprint != emptyFgpt {
-		return s.fingerprint
-	}
-
-	s.fingerprint = sha256.Sum256([]byte(s.String()))
-	return s.fingerprint
+	return s.fingerprinter.Fingerprint(s)
 }
 
 // NullSchema is an Avro null type schema.
