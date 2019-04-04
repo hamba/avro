@@ -112,8 +112,5 @@ Always benchmark with your own workload. The result depends heavily on the data 
 ## TODO
 
 * Logical Types
-* Schema
-    * Refactor parsing to be cleaner
-    * Better schema validation
-    * Aliases
+* Aliases
 * Avro Textual Form?
