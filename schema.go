@@ -83,9 +83,21 @@ type Schema interface {
 	Fingerprint() [32]byte
 }
 
+// PropertySchema represents a schema with properties.
+type PropertySchema interface {
+	// AddProp adds a property to the schema.
+	//
+	// AddProp will not overwrite existing properties.
+	AddProp(name string, value interface{})
+
+	// Prop gets a property from the schema.
+	Prop(string) interface{}
+}
+
 // NamedSchema represents a schema with a name.
 type NamedSchema interface {
 	Schema
+	PropertySchema
 
 	// Name returns the name of the schema.
 	Name() string
@@ -156,6 +168,44 @@ func (f *fingerprinter) Fingerprint(stringer fmt.Stringer) [32]byte {
 	return f.fingerprint
 }
 
+type properties struct {
+	reserved []string
+	props    map[string]interface{}
+}
+
+// AddProp adds a property to the schema.
+//
+// AddProp will not overwrite existing properties.
+func (p *properties) AddProp(name string, value interface{}) {
+	// Create the props is needed.
+	if p.props == nil {
+		p.props = map[string]interface{}{}
+	}
+
+	// Dont allow reserved properties
+	for _, res := range p.reserved {
+		if name == res {
+			return
+		}
+	}
+
+	// Dont overwrite a property
+	if _, ok := p.props[name]; ok {
+		return
+	}
+
+	p.props[name] = value
+}
+
+// Prop gets a property from the schema.
+func (p *properties) Prop(name string) interface{} {
+	if p.props == nil {
+		return nil
+	}
+
+	return p.props[name]
+}
+
 // PrimitiveSchema is an Avro primitive type schema.
 type PrimitiveSchema struct {
 	fingerprinter
@@ -188,6 +238,7 @@ func (s *PrimitiveSchema) Fingerprint() [32]byte {
 // RecordSchema is an Avro record type schema.
 type RecordSchema struct {
 	name
+	properties
 	fingerprinter
 
 	fields []*Field
@@ -201,7 +252,8 @@ func NewRecordSchema(name, space string) (*RecordSchema, error) {
 	}
 
 	return &RecordSchema{
-		name: n,
+		name:       n,
+		properties: properties{reserved: schemaReserved},
 	}, nil
 }
 
@@ -243,6 +295,8 @@ func (s *RecordSchema) Fingerprint() [32]byte {
 
 // Field is an Avro record type field.
 type Field struct {
+	properties
+
 	name string
 	typ  Schema
 	def  interface{}
@@ -260,9 +314,10 @@ func NewField(name string, typ Schema, def interface{}) (*Field, error) {
 	}
 
 	return &Field{
-		name: name,
-		typ:  typ,
-		def:  def,
+		properties: properties{reserved: fieldReserved},
+		name:       name,
+		typ:        typ,
+		def:        def,
 	}, nil
 }
 
@@ -291,6 +346,7 @@ func (s *Field) String() string {
 // EnumSchema is an Avro enum type schema.
 type EnumSchema struct {
 	name
+	properties
 	fingerprinter
 
 	symbols []string
@@ -313,8 +369,9 @@ func NewEnumSchema(name, namespace string, symbols []string) (*EnumSchema, error
 	}
 
 	return &EnumSchema{
-		name:    n,
-		symbols: symbols,
+		name:       n,
+		properties: properties{reserved: schemaReserved},
+		symbols:    symbols,
 	}, nil
 }
 
@@ -348,6 +405,7 @@ func (s *EnumSchema) Fingerprint() [32]byte {
 
 // ArraySchema is an Avro array type schema.
 type ArraySchema struct {
+	properties
 	fingerprinter
 
 	items Schema
@@ -356,7 +414,8 @@ type ArraySchema struct {
 // NewArraySchema creates an array schema instance.
 func NewArraySchema(items Schema) *ArraySchema {
 	return &ArraySchema{
-		items: items,
+		properties: properties{reserved: schemaReserved},
+		items:      items,
 	}
 }
 
@@ -382,6 +441,7 @@ func (s *ArraySchema) Fingerprint() [32]byte {
 
 // MapSchema is an Avro map type schema.
 type MapSchema struct {
+	properties
 	fingerprinter
 
 	values Schema
@@ -390,7 +450,8 @@ type MapSchema struct {
 // NewMapSchema creates a map schema instance.
 func NewMapSchema(values Schema) *MapSchema {
 	return &MapSchema{
-		values: values,
+		properties: properties{reserved: schemaReserved},
+		values:     values,
 	}
 }
 
@@ -485,6 +546,7 @@ func (s *UnionSchema) Fingerprint() [32]byte {
 // FixedSchema is an Avro fixed type schema.
 type FixedSchema struct {
 	name
+	properties
 	fingerprinter
 
 	size int
@@ -498,8 +560,9 @@ func NewFixedSchema(name, namespace string, size int) (*FixedSchema, error) {
 	}
 
 	return &FixedSchema{
-		name: n,
-		size: size,
+		name:       n,
+		properties: properties{reserved: schemaReserved},
+		size:       size,
 	}, nil
 }
 

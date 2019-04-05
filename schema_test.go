@@ -168,11 +168,6 @@ func TestRecordSchema(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "Full Name",
-			schema:  `{"type":"record", "name":"org.apache.avro.test", "doc": "docs", "fields":[{"name": "field", "type": "int"}]}`,
-			wantErr: false,
-		},
-		{
 			name:    "Invalid Name First Char",
 			schema:  `{"type":"record", "name":"0test", "namespace": "org.apache.avro", "fields":[{"name": "field", "type": "int"}]}`,
 			wantErr: true,
@@ -356,6 +351,27 @@ func TestRecordSchema_ValidatesDefault(t *testing.T) {
 	}
 }
 
+func TestRecordSchema_HandlesProps(t *testing.T) {
+	schm := `
+{
+   "type": "record",
+   "name": "valid_name",
+   "namespace": "org.apache.avro",
+   "foo": "bar1",
+   "fields": [
+       {"name": "intField", "type": "int", "foo": "bar2"}
+   ]
+}
+`
+
+	s, err := avro.Parse(schm)
+
+	assert.NoError(t, err)
+	assert.Equal(t, avro.Record, s.Type())
+	assert.Equal(t, "bar1", s.(*avro.RecordSchema).Prop("foo"))
+	assert.Equal(t, "bar2", s.(*avro.RecordSchema).Fields()[0].Prop("foo"))
+}
+
 func TestRecordSchema_WithReference(t *testing.T) {
 	schm := `
 {
@@ -363,14 +379,8 @@ func TestRecordSchema_WithReference(t *testing.T) {
    "name": "valid_name",
    "namespace": "org.apache.avro",
    "fields": [
-       {
-           "name": "intField",
-           "type": "int"
-       },
-       {
-           "name": "Ref",
-           "type": "valid_name"
-       }
+       {"name": "intField", "type": "int"},
+       {"name": "Ref", "type": "valid_name"}
    ]
 }
 `
@@ -460,6 +470,16 @@ func TestEnumSchema(t *testing.T) {
 	}
 }
 
+func TestEnumSchema_HandlesProps(t *testing.T) {
+	schm := `{"type":"enum", "name":"test", "namespace": "org.apache.avro", "symbols":["TEST"], "foo":"bar"}`
+
+	s, err := avro.Parse(schm)
+
+	assert.NoError(t, err)
+	assert.Equal(t, avro.Enum, s.Type())
+	assert.Equal(t, "bar", s.(*avro.EnumSchema).Prop("foo"))
+}
+
 func TestArraySchema(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -498,6 +518,16 @@ func TestArraySchema(t *testing.T) {
 	}
 }
 
+func TestArraySchema_HandlesProps(t *testing.T) {
+	schm := `{"type":"array", "items": "int", "foo":"bar"}`
+
+	s, err := avro.Parse(schm)
+
+	assert.NoError(t, err)
+	assert.Equal(t, avro.Array, s.Type())
+	assert.Equal(t, "bar", s.(*avro.ArraySchema).Prop("foo"))
+}
+
 func TestMapSchema(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -534,6 +564,16 @@ func TestMapSchema(t *testing.T) {
 			assert.Equal(t, avro.Map, s.Type())
 		})
 	}
+}
+
+func TestMapSchema_HandlesProps(t *testing.T) {
+	schm := `{"type":"map", "values": "int", "foo":"bar"}`
+
+	s, err := avro.Parse(schm)
+
+	assert.NoError(t, err)
+	assert.Equal(t, avro.Map, s.Type())
+	assert.Equal(t, "bar", s.(*avro.MapSchema).Prop("foo"))
 }
 
 func TestUnionSchema(t *testing.T) {
@@ -661,6 +701,16 @@ func TestFixedSchema(t *testing.T) {
 			assert.Equal(t, tt.wantFingerprint, named.Fingerprint())
 		})
 	}
+}
+
+func TestFixedSchema_HandlesProps(t *testing.T) {
+	schm := `{"type":"fixed", "name":"test", "namespace": "org.apache.avro", "size": 12, "foo":"bar"}`
+
+	s, err := avro.Parse(schm)
+
+	assert.NoError(t, err)
+	assert.Equal(t, avro.Fixed, s.Type())
+	assert.Equal(t, "bar", s.(*avro.FixedSchema).Prop("foo"))
 }
 
 func TestSchema_Interop(t *testing.T) {

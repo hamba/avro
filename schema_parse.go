@@ -9,6 +9,11 @@ import (
 	"github.com/json-iterator/go"
 )
 
+var (
+	schemaReserved = []string{"doc", "fields", "items", "name", "namespace", "size", "symbols", "values", "type", "aliases"}
+	fieldReserved = []string{"default", "doc", "name", "order", "type", "aliases"}
+)
+
 // Parse parses a schema string.
 func Parse(schema string) (Schema, error) {
 	var json interface{}
@@ -145,6 +150,10 @@ func parseRecord(namespace string, m map[string]interface{}) (Schema, error) {
 
 	schemaConfig.addSchemaToCache(rec.FullName(), NewRefSchema(rec))
 
+	for k, v := range m {
+		rec.AddProp(k, v)
+	}
+
 	for _, f := range fields {
 		field, err := parseField(namespace, f)
 		if err != nil {
@@ -182,6 +191,10 @@ func parseField(namespace string, v interface{}) (*Field, error) {
 		return nil, err
 	}
 
+	for k, v := range m {
+		field.AddProp(k, v)
+	}
+
 	return field, nil
 }
 
@@ -216,6 +229,10 @@ func parseEnum(namespace string, m map[string]interface{}) (Schema, error) {
 
 	schemaConfig.addSchemaToCache(enum.FullName(), enum)
 
+	for k, v := range m {
+		enum.AddProp(k, v)
+	}
+
 	return enum, nil
 }
 
@@ -230,7 +247,13 @@ func parseArray(namespace string, m map[string]interface{}) (Schema, error) {
 		return nil, err
 	}
 
-	return NewArraySchema(schema), nil
+	arr := NewArraySchema(schema)
+
+	for k, v := range m {
+		arr.AddProp(k, v)
+	}
+
+	return arr, nil
 }
 
 func parseMap(namespace string, m map[string]interface{}) (Schema, error) {
@@ -244,7 +267,13 @@ func parseMap(namespace string, m map[string]interface{}) (Schema, error) {
 		return nil, err
 	}
 
-	return NewMapSchema(schema), nil
+	ms := NewMapSchema(schema)
+
+	for k, v := range m {
+		ms.AddProp(k, v)
+	}
+
+	return ms, nil
 }
 
 func parseUnion(namespace string, v []interface{}) (Schema, error) {
@@ -280,6 +309,10 @@ func parseFixed(namespace string, m map[string]interface{}) (Schema, error) {
 	}
 
 	schemaConfig.addSchemaToCache(fixed.FullName(), fixed)
+
+	for k, v := range m {
+		fixed.AddProp(k, v)
+	}
 
 	return fixed, nil
 }

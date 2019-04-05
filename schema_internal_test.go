@@ -46,6 +46,29 @@ func TestName_InvalidNamespaceOtherChar(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestProperties_AddPropDoesNotAddReservedProperties(t *testing.T) {
+	p := properties{reserved: []string{"test"}}
+
+	p.AddProp("test", "foo")
+
+	assert.Nil(t, p.Prop("test"))
+}
+
+func TestProperties_AddPropDoesNotOverwriteProperties(t *testing.T) {
+	p := properties{}
+
+	p.AddProp("test", "foo")
+	p.AddProp("test", "bar")
+
+	assert.Equal(t, "foo", p.Prop("test"))
+}
+
+func TestProperties_PropGetsFromEmptySet(t *testing.T) {
+	p := properties{}
+
+	assert.Nil(t, p.Prop("test"))
+}
+
 func TestIsValidDefault(t *testing.T) {
 	tests := []struct {
 		name     string
