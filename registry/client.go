@@ -235,5 +235,9 @@ type Error struct {
 
 // Error returns the error message.
 func (e Error) Error() string {
-	return e.Message
+	if e.Message != "" {
+		return e.Message
+	}
+
+	return "registry error: " + strconv.Itoa(e.StatusCode)
 }
