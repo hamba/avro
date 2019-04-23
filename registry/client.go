@@ -218,7 +218,7 @@ func (c *Client) request(method, uri string, in, out interface{}) error {
 
 	if resp.StatusCode >= 400 {
 		err := Error{StatusCode: resp.StatusCode}
-		jsoniter.NewDecoder(resp.Body).Decode(err)
+		_ = jsoniter.NewDecoder(resp.Body).Decode(&err)
 		return err
 	}
 
@@ -235,5 +235,9 @@ type Error struct {
 
 // Error returns the error message.
 func (e Error) Error() string {
-	return e.Message
+	if e.Message != "" {
+		return e.Message
+	}
+
+	return "registry error: " + strconv.Itoa(e.StatusCode)
 }
