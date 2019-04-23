@@ -218,7 +218,7 @@ func (c *Client) request(method, uri string, in, out interface{}) error {
 
 	if resp.StatusCode >= 400 {
 		err := Error{StatusCode: resp.StatusCode}
-		jsoniter.NewDecoder(resp.Body).Decode(err)
+		_ = jsoniter.NewDecoder(resp.Body).Decode(&err)
 		return err
 	}
 

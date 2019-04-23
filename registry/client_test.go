@@ -22,6 +22,26 @@ func TestNewClient_UrlError(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestClient_PopulatesError(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Content-Type", "application/vnd.schemaregistry.v1+json")
+		w.WriteHeader(422)
+		_, _ = w.Write([]byte(`{"error_code": 42202, "message": "schema may not be empty"}"`))
+	}))
+	defer s.Close()
+	client, _ := registry.NewClient(s.URL)
+
+	_, _, err := client.CreateSchema("test", "")
+
+	assert.Error(t, err)
+	assert.IsType(t, registry.Error{}, err)
+	assert.Equal(t, "schema may not be empty", err.Error())
+	regError := err.(registry.Error)
+	assert.Equal(t, 422, regError.StatusCode)
+	assert.Equal(t, 42202, regError.Code)
+	assert.Equal(t, "schema may not be empty", regError.Message)
+}
+
 func TestClient_GetSchema(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
