@@ -185,8 +185,8 @@ func (r *Reader) ReadLong() int64 {
 
 // ReadFloat reads a Float from the Reader.
 func (r *Reader) ReadFloat() float32 {
-	buf := make([]byte, 4)
-	r.Read(buf)
+	var buf [4]byte
+	r.Read(buf[:])
 
 	float := *(*float32)(unsafe.Pointer(&buf[0]))
 
@@ -195,8 +195,8 @@ func (r *Reader) ReadFloat() float32 {
 
 // ReadDouble reads a Double from the Reader.
 func (r *Reader) ReadDouble() float64 {
-	buf := make([]byte, 8)
-	r.Read(buf)
+	var buf [8]byte
+	r.Read(buf[:])
 
 	float := *(*float64)(unsafe.Pointer(&buf[0]))
 
@@ -220,10 +220,17 @@ func (r *Reader) ReadBytes() []byte {
 
 // ReadString reads a String from the Reader.
 func (r *Reader) ReadString() string {
-	size := r.ReadLong()
+	size := int(r.ReadLong())
 	if size < 0 {
 		r.ReportError("ReadString", "invalid string length")
 		return ""
+	}
+
+	// The string is entirely in the current buffer, fast path.
+	if r.head+size < r.tail {
+		ret := string(r.buf[r.head : r.head+size])
+		r.head += size
+		return ret
 	}
 
 	buf := make([]byte, size)

@@ -130,7 +130,7 @@ type onePtrEncoder struct {
 }
 
 func (e *onePtrEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
-	e.enc.Encode(unsafe.Pointer(&ptr), w)
+	e.enc.Encode(noescape(unsafe.Pointer(&ptr)), w)
 }
 
 func encoderOfType(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncoder {
