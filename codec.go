@@ -133,11 +133,6 @@ func (e *onePtrEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 	e.enc.Encode(noescape(unsafe.Pointer(&ptr)), w)
 }
 
-func noescape(p unsafe.Pointer) unsafe.Pointer {
-	x := uintptr(p)
-	return unsafe.Pointer(x ^ 0)
-}
-
 func encoderOfType(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncoder {
 	if typ.Kind() == reflect.Interface {
 		return &interfaceEncoder{schema: schema, typ: typ}
