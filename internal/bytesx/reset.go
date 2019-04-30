@@ -23,7 +23,7 @@ func (r *ResetReader) Read(p []byte) (int, error) {
 		return 0, io.EOF
 	}
 
-	n := copy(p, r.buf)
+	n := copy(p, r.buf[r.head:])
 	r.head += n
 
 	return n, nil

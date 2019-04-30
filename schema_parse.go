@@ -11,7 +11,7 @@ import (
 
 var (
 	schemaReserved = []string{"doc", "fields", "items", "name", "namespace", "size", "symbols", "values", "type", "aliases"}
-	fieldReserved = []string{"default", "doc", "name", "order", "type", "aliases"}
+	fieldReserved  = []string{"default", "doc", "name", "order", "type", "aliases"}
 )
 
 // Parse parses a schema string.

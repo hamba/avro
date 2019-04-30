@@ -246,94 +246,94 @@ func TestRecordSchema(t *testing.T) {
 
 func TestRecordSchema_ValidatesDefault(t *testing.T) {
 	tests := []struct {
-		name   string
-		schema string
-		wantErr   bool
+		name    string
+		schema  string
+		wantErr bool
 	}{
 		{
-			name:   "String",
-			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "string", "default": "test"}]}`,
-			wantErr:   false,
+			name:    "String",
+			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "string", "default": "test"}]}`,
+			wantErr: false,
 		},
 		{
-			name:   "Int",
-			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "int", "default": 1}]}`,
-			wantErr:   false,
+			name:    "Int",
+			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "int", "default": 1}]}`,
+			wantErr: false,
 		},
 		{
-			name:   "Long",
-			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "long", "default": 1}]}`,
-			wantErr:   false,
+			name:    "Long",
+			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "long", "default": 1}]}`,
+			wantErr: false,
 		},
 		{
-			name:   "Float",
-			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "float", "default": 1}]}`,
-			wantErr:   false,
+			name:    "Float",
+			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "float", "default": 1}]}`,
+			wantErr: false,
 		},
 		{
-			name:   "Double",
-			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "double", "default": 1}]}`,
-			wantErr:   false,
+			name:    "Double",
+			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "double", "default": 1}]}`,
+			wantErr: false,
 		},
 		{
-			name:   "Array",
-			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"array", "items": "int"}, "default": [1,2]}]}`,
-			wantErr:   false,
+			name:    "Array",
+			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"array", "items": "int"}, "default": [1,2]}]}`,
+			wantErr: false,
 		},
 		{
-			name:   "Array Not Array",
-			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"array", "items": "int"}, "default": "test"}]}`,
-			wantErr:   true,
+			name:    "Array Not Array",
+			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"array", "items": "int"}, "default": "test"}]}`,
+			wantErr: true,
 		},
 		{
-			name:   "Array Invalid Type",
-			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"array", "items": "int"}, "default": ["test"]}]}`,
-			wantErr:   true,
+			name:    "Array Invalid Type",
+			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"array", "items": "int"}, "default": ["test"]}]}`,
+			wantErr: true,
 		},
 		{
-			name:   "Map",
-			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"map", "values": "int"}, "default": {"b": 1}}]}`,
-			wantErr:   false,
+			name:    "Map",
+			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"map", "values": "int"}, "default": {"b": 1}}]}`,
+			wantErr: false,
 		},
 		{
-			name:   "Map Not Map",
-			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"map", "values": "int"}, "default": "test"}]}`,
-			wantErr:   true,
+			name:    "Map Not Map",
+			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"map", "values": "int"}, "default": "test"}]}`,
+			wantErr: true,
 		},
 		{
-			name:   "Map Invalid Type",
-			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"map", "values": "int"}, "default": {"b": "test"}}]}`,
-			wantErr:   true,
+			name:    "Map Invalid Type",
+			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"map", "values": "int"}, "default": {"b": "test"}}]}`,
+			wantErr: true,
 		},
 		{
-			name:   "Union",
-			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": ["null", "string"], "default": null}]}`,
-			wantErr:   false,
+			name:    "Union",
+			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": ["null", "string"], "default": null}]}`,
+			wantErr: false,
 		},
 		{
-			name:   "Union Invalid Type",
-			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": ["null", "string"], "default": "string"}]}`,
-			wantErr:   true,
+			name:    "Union Invalid Type",
+			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": ["null", "string"], "default": "string"}]}`,
+			wantErr: true,
 		},
 		{
-			name:   "Record",
-			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"record", "name": "test2", "fields":[{"name": "b", "type": "int"},{"name": "c", "type": "int", "default": 1}]}, "default": {"b": 1}}]}`,
-			wantErr:   false,
+			name:    "Record",
+			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"record", "name": "test2", "fields":[{"name": "b", "type": "int"},{"name": "c", "type": "int", "default": 1}]}, "default": {"b": 1}}]}`,
+			wantErr: false,
 		},
 		{
-			name:   "Record Not Map",
-			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"record", "name": "test2", "fields":[{"name": "b", "type": "int"},{"name": "c", "type": "int", "default": 1}]}, "default": "test"}]}`,
-			wantErr:   true,
+			name:    "Record Not Map",
+			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"record", "name": "test2", "fields":[{"name": "b", "type": "int"},{"name": "c", "type": "int", "default": 1}]}, "default": "test"}]}`,
+			wantErr: true,
 		},
 		{
-			name:   "Record Invalid Type",
-			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"record", "name": "test2", "fields":[{"name": "b", "type": "int"},{"name": "c", "type": "int", "default": 1}]}, "default": {"b": "test"}}]}`,
-			wantErr:   true,
+			name:    "Record Invalid Type",
+			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"record", "name": "test2", "fields":[{"name": "b", "type": "int"},{"name": "c", "type": "int", "default": 1}]}, "default": {"b": "test"}}]}`,
+			wantErr: true,
 		},
 		{
-			name:   "Record Invalid Field Type",
-			schema: `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"record", "name": "test2", "fields":[{"name": "b", "type": "int"},{"name": "c", "type": "int", "default": "test"}]}, "default": {"b": 1}}]}`,
-			wantErr:   true,
+			name:    "Record Invalid Field Type",
+			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"record", "name": "test2", "fields":[{"name": "b", "type": "int"},{"name": "c", "type": "int", "default": "test"}]}, "default": {"b": 1}}]}`,
+			wantErr: true,
 		},
 	}
 
