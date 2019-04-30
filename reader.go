@@ -227,7 +227,7 @@ func (r *Reader) ReadString() string {
 	}
 
 	// The string is entirely in the current buffer, fast path.
-	if r.head+size < r.tail {
+	if r.head+size <= r.tail {
 		ret := string(r.buf[r.head : r.head+size])
 		r.head += size
 		return ret
