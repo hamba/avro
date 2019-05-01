@@ -34,24 +34,24 @@ const (
 	Null    Type = "null"
 )
 
-type frozenSchemaConfig struct {
-	schemaCache concurrent.Map // map[string]Schema
+// SchemaCache is a cache of schemas.
+type SchemaCache struct {
+	cache concurrent.Map // map[string]Schema
 }
 
-func (c *frozenSchemaConfig) addSchemaToCache(name string, schema Schema) {
-	c.schemaCache.Store(name, schema)
+// Add adds a schema to the cache with the given name.
+func (c *SchemaCache) Add(name string, schema Schema) {
+	c.cache.Store(name, schema)
 }
 
-// getSchemaFromCache returns the Schema if it exists.
-func (c *frozenSchemaConfig) getSchemaFromCache(name string) Schema {
-	if v, ok := c.schemaCache.Load(name); ok {
+// Get returns the Schema if it exists.
+func (c *SchemaCache) Get(name string) Schema {
+	if v, ok := c.cache.Load(name); ok {
 		return v.(Schema)
 	}
 
 	return nil
 }
-
-var schemaConfig = frozenSchemaConfig{}
 
 // Schemas is a slice of Schemas.
 type Schemas []Schema
