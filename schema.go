@@ -18,6 +18,7 @@ type Type string
 // Schema type constants.
 const (
 	Record  Type = "record"
+	Error   Type = "error"
 	Ref     Type = "<ref>"
 	Enum    Type = "enum"
 	Array   Type = "array"
@@ -241,7 +242,8 @@ type RecordSchema struct {
 	properties
 	fingerprinter
 
-	fields []*Field
+	isError bool
+	fields  []*Field
 }
 
 // NewRecordSchema creates a new record schema instance.
@@ -257,9 +259,27 @@ func NewRecordSchema(name, space string) (*RecordSchema, error) {
 	}, nil
 }
 
+// NewErrorRecordSchema creates a new error record schema instance.
+func NewErrorRecordSchema(name, space string) (*RecordSchema, error) {
+	n, err := newName(name, space)
+	if err != nil {
+		return nil, err
+	}
+
+	return &RecordSchema{
+		name:       n,
+		properties: properties{reserved: schemaReserved},
+		isError:    true,
+	}, nil
+}
+
 // Type returns the type of the schema.
 func (s *RecordSchema) Type() Type {
 	return Record
+}
+
+func (s *RecordSchema) IsError() bool {
+	return s.isError
 }
 
 // AddField adds a field to the record.

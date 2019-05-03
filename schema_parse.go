@@ -19,17 +19,17 @@ var DefaultSchemaCache = &SchemaCache{}
 
 // Parse parses a schema string.
 func Parse(schema string) (Schema, error) {
-	return ParseWithCache(schema, DefaultSchemaCache)
+	return ParseWithCache(schema, "", DefaultSchemaCache)
 }
 
-// ParseWithCache parses a schema string using the given schema cache.
-func ParseWithCache(schema string, cache *SchemaCache) (Schema, error) {
+// ParseWithCache parses a schema string using the given namespace and  schema cache.
+func ParseWithCache(schema, namespace string, cache *SchemaCache) (Schema, error) {
 	var json interface{}
 	if err := jsoniter.Unmarshal([]byte(schema), &json); err != nil {
 		json = schema
 	}
 
-	return parseType("", json, cache)
+	return parseType(namespace, json, cache)
 }
 
 // MustParse parses a schema string, panicing if there is an error.
@@ -117,8 +117,8 @@ func parseComplex(namespace string, m map[string]interface{}, cache *SchemaCache
 	case String, Bytes, Int, Long, Float, Double, Boolean:
 		return NewPrimitiveSchema(typ), nil
 
-	case Record:
-		return parseRecord(namespace, m, cache)
+	case Record, Error:
+		return parseRecord(typ, namespace, m, cache)
 
 	case Enum:
 		return parseEnum(namespace, m, cache)
@@ -137,7 +137,7 @@ func parseComplex(namespace string, m map[string]interface{}, cache *SchemaCache
 	}
 }
 
-func parseRecord(namespace string, m map[string]interface{}, cache *SchemaCache) (Schema, error) {
+func parseRecord(typ Type, namespace string, m map[string]interface{}, cache *SchemaCache) (Schema, error) {
 	name, newNamespace, err := resolveFullName(m)
 	if err != nil {
 		return nil, err
@@ -151,7 +151,14 @@ func parseRecord(namespace string, m map[string]interface{}, cache *SchemaCache)
 		return nil, errors.New("avro: record must have an array of fields")
 	}
 
-	rec, err := NewRecordSchema(name, namespace)
+	var rec *RecordSchema
+	switch typ {
+	case Record:
+		rec, err = NewRecordSchema(name, namespace)
+
+	case Error:
+		rec, err = NewErrorRecordSchema(name, namespace)
+	}
 	if err != nil {
 		return nil, err
 	}

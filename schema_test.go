@@ -244,6 +244,67 @@ func TestRecordSchema(t *testing.T) {
 	}
 }
 
+func TestErrorRecordSchema(t *testing.T) {
+	tests := []struct {
+		name    string
+		schema  string
+		wantErr bool
+	}{
+		{
+			name:    "Valid",
+			schema:  `{"type":"error", "name":"test", "namespace": "org.apache.avro", "doc": "docs", "fields":[{"name": "field", "type": "int"}]}`,
+			wantErr: false,
+		},
+		{
+			name:    "Invalid Name First Char",
+			schema:  `{"type":"error", "name":"0test", "namespace": "org.apache.avro", "fields":[{"name": "field", "type": "int"}]}`,
+			wantErr: true,
+		},
+		{
+			name:    "Invalid Name Other Char",
+			schema:  `{"type":"error", "name":"test+", "namespace": "org.apache.avro", "fields":[{"name": "field", "type": "int"}]}`,
+			wantErr: true,
+		},
+		{
+			name:    "Empty Name",
+			schema:  `{"type":"error", "name":"", "namespace": "org.apache.avro", "fields":[{"name": "field", "type": "int"}]}`,
+			wantErr: true,
+		},
+		{
+			name:    "No Name",
+			schema:  `{"type":"error", "namespace": "org.apache.avro", "fields":[{"name": "intField", "type": "int"}]}`,
+			wantErr: true,
+		},
+		{
+			name:    "Invalid Namespace",
+			schema:  `{"type":"error", "name":"test", "namespace": "org.apache.avro+", "fields":[{"name": "field", "type": "int"}]}`,
+			wantErr: true,
+		},
+		{
+			name:    "Empty Namespace",
+			schema:  `{"type":"error", "name":"test", "namespace": "", "fields":[{"name": "intField", "type": "int"}]}`,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			s, err := avro.Parse(tt.schema)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, avro.Record, s.Type())
+			recSchema := s.(*avro.RecordSchema)
+			assert.True(t, recSchema.IsError())
+		})
+	}
+}
+
 func TestRecordSchema_ValidatesDefault(t *testing.T) {
 	tests := []struct {
 		name    string
