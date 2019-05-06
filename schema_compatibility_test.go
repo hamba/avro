@@ -134,6 +134,54 @@ func TestSchemaCompatibility_Compatible(t *testing.T) {
 			writer:  `{"type":"enum", "name":"test", "namespace": "org.apache.avro", "symbols":["TEST1"]}`,
 			wantErr: false,
 		},
+		{
+			name:    "Record Match",
+			reader:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "int"}, {"name": "b", "type": "string"}]}`,
+			writer:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "b", "type": "string"}, {"name": "a", "type": "int"}]}`,
+			wantErr: false,
+		},
+		{
+			name:    "Record Name Mismatch",
+			reader:  `{"type":"record", "name":"test1", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "int", "default": 1}, {"name": "b", "type": "string"}]}`,
+			writer:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "b", "type": "string", "default": "b"}, {"name": "a", "type": "int"}]}`,
+			wantErr: true,
+		},
+		{
+			name:    "Record Schema Mismatch",
+			reader:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "string"}, {"name": "b", "type": "string"}]}`,
+			writer:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "b", "type": "string"}, {"name": "a", "type": "int"}]}`,
+			wantErr: true,
+		},
+		{
+			name:    "Record Reader Field Missing",
+			reader:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "int"}]}`,
+			writer:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "b", "type": "string"}, {"name": "a", "type": "int"}]}`,
+			wantErr: false,
+		},
+		{
+			name:    "Record Writer Field Missing With Default",
+			reader:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "int"}, {"name": "b", "type": "string", "default": "test"}]}`,
+			writer:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "int"}]}`,
+			wantErr: false,
+		},
+		{
+			name:    "Record Writer Field Missing Without Default",
+			reader:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "int"}, {"name": "b", "type": "string"}]}`,
+			writer:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "int"}]}`,
+			wantErr: true,
+		},
+		{
+			name:    "Ref Dereference",
+			reader:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"record", "name":"test1", "namespace": "org.apache.avro", "fields":[{"name": "b", "type": "int"}]}}, {"name": "b", "type": "test1"}]}`,
+			writer:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"record", "name":"test1", "namespace": "org.apache.avro", "fields":[{"name": "b", "type": "int"}]}}, {"name": "b", "type": "test"}]}`,
+			wantErr: true,
+		},
+		{
+			name:    "Breaks Recursion",
+			reader:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "test"}]}`,
+			writer:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "test"}]}`,
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -152,4 +200,34 @@ func TestSchemaCompatibility_Compatible(t *testing.T) {
 			assert.NoError(t, err)
 		})
 	}
+}
+
+func TestSchemaCompatibility_CompatibleUsesCacheWithNoError(t *testing.T) {
+	reader :=  `"int"`
+	writer :=  `"int"`
+
+	r := avro.MustParse(reader)
+	w := avro.MustParse(writer)
+	sc := avro.NewSchemaCompatibility()
+
+	_ = sc.Compatible(r, w)
+
+	err := sc.Compatible(r, w)
+
+	assert.NoError(t, err)
+}
+
+func TestSchemaCompatibility_CompatibleUsesCacheWithError(t *testing.T) {
+	reader :=  `"int"`
+	writer :=  `"string"`
+
+	r := avro.MustParse(reader)
+	w := avro.MustParse(writer)
+	sc := avro.NewSchemaCompatibility()
+
+	_ = sc.Compatible(r, w)
+
+	err := sc.Compatible(r, w)
+
+	assert.Error(t, err)
 }

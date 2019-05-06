@@ -84,7 +84,7 @@ func TestIsValidDefault(t *testing.T) {
 				return &NullSchema{}
 			},
 			def:    nil,
-			want:   nil,
+			want:   nullDefault,
 			wantOk: true,
 		},
 		{
@@ -318,4 +318,10 @@ func TestIsValidDefault(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRecursionError_Error(t *testing.T) {
+	err := recursionError{}
+
+	assert.Equal(t, "", err.Error())
 }

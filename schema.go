@@ -11,6 +11,7 @@ import (
 )
 
 var emptyFgpt = [32]byte{}
+var nullDefault = struct{}{}
 
 // Type is a schema type
 type Type string
@@ -351,10 +352,19 @@ func (s *Field) Type() Schema {
 	return s.typ
 }
 
+// HasDefault determines if the field has a default value.
+func (s *Field) HasDefault() bool {
+	return s.def != nil
+}
+
 // Default returns the default of a field or nil.
 //
 // The only time a nil default is valid is for a Null Type.
 func (s *Field) Default() interface{} {
+	if s.def == nullDefault {
+		return nil
+	}
+
 	return s.def
 }
 
@@ -682,7 +692,10 @@ func validateName(name string) error {
 
 func validateDefault(name string, schema Schema, def interface{}) (interface{}, error) {
 	if def == nil {
-		return nil, nil
+		if schema.Type() != Null && !(schema.Type() == Union && schema.(*UnionSchema).Nullable()) {
+			// This is an empty default value.
+			return nil, nil
+		}
 	}
 
 	def, ok := isValidDefault(schema, def)
@@ -696,7 +709,7 @@ func validateDefault(name string, schema Schema, def interface{}) (interface{}, 
 func isValidDefault(schema Schema, def interface{}) (interface{}, bool) {
 	switch schema.Type() {
 	case Null:
-		return nil, def == nil
+		return nullDefault, def == nil
 
 	case String, Bytes, Enum, Fixed:
 		if _, ok := def.(string); ok {

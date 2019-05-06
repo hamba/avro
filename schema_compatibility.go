@@ -166,7 +166,7 @@ func (c *SchemaCompatibility) checkFixedSize(reader, writer *FixedSchema) error 
 
 func (c *SchemaCompatibility) checkEnumSymbols(reader, writer *EnumSchema) error {
 	for _, symbol := range writer.Symbols() {
-		if !contains(reader.Symbols(), symbol) {
+		if !c.contains(reader.Symbols(), symbol) {
 			return fmt.Errorf("reader %s is missing symbol %s", reader.FullName(), symbol)
 		}
 	}
@@ -175,10 +175,25 @@ func (c *SchemaCompatibility) checkEnumSymbols(reader, writer *EnumSchema) error
 }
 
 func (c *SchemaCompatibility) checkRecordFields(reader, writer *RecordSchema) error {
+	for _, field := range reader.Fields() {
+		f, ok := c.getField(writer.Fields(), field)
+		if !ok {
+			if field.HasDefault() {
+				continue
+			}
+
+			return fmt.Errorf("reader field %s is missing in writer schema and has no default", field.Name())
+		}
+
+		if err := c.compatible(field.Type(), f.Type()); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
-func contains(a []string, s string) bool {
+func (c *SchemaCompatibility) contains(a []string, s string) bool {
 	for _, str := range a {
 		if str == s {
 			return true
@@ -186,4 +201,14 @@ func contains(a []string, s string) bool {
 	}
 
 	return false
+}
+
+func (c *SchemaCompatibility) getField(a []*Field, f *Field) (*Field, bool) {
+	for _, field := range a {
+		if field.Name() == f.Name() {
+			return field, true
+		}
+	}
+
+	return nil, false
 }
