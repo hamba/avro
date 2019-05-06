@@ -203,8 +203,8 @@ func TestSchemaCompatibility_Compatible(t *testing.T) {
 }
 
 func TestSchemaCompatibility_CompatibleUsesCacheWithNoError(t *testing.T) {
-	reader :=  `"int"`
-	writer :=  `"int"`
+	reader := `"int"`
+	writer := `"int"`
 
 	r := avro.MustParse(reader)
 	w := avro.MustParse(writer)
@@ -218,8 +218,8 @@ func TestSchemaCompatibility_CompatibleUsesCacheWithNoError(t *testing.T) {
 }
 
 func TestSchemaCompatibility_CompatibleUsesCacheWithError(t *testing.T) {
-	reader :=  `"int"`
-	writer :=  `"string"`
+	reader := `"int"`
+	writer := `"string"`
 
 	r := avro.MustParse(reader)
 	w := avro.MustParse(writer)
