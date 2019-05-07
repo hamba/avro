@@ -1,6 +1,7 @@
 package avro
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/modern-go/concurrent"
@@ -51,6 +52,10 @@ func (c *SchemaCompatibility) compatible(reader, writer Schema) error {
 
 	c.cache.Store(key, recursionError{})
 	err := c.match(reader, writer)
+	if err != nil {
+		// We dont want to pay the cost of fmt.Errorf every time
+		err = errors.New(err.Error())
+	}
 	c.cache.Store(key, err)
 	return err
 }
@@ -89,7 +94,32 @@ func (c *SchemaCompatibility) match(reader, writer Schema) error {
 			return fmt.Errorf("reader union lacking writer schema %s", writer.Type())
 		}
 
-		// TODO: check promotions
+		switch writer.Type() {
+		case Int:
+			if reader.Type() == Long || reader.Type() == Float || reader.Type() == Double {
+				return nil
+			}
+
+		case Long:
+			if reader.Type() == Float || reader.Type() == Double {
+				return nil
+			}
+
+		case Float:
+			if reader.Type() == Double {
+				return nil
+			}
+
+		case String:
+			if reader.Type() == Bytes {
+				return nil
+			}
+
+		case Bytes:
+			if reader.Type() == String {
+				return nil
+			}
+		}
 
 		return fmt.Errorf("reader schema %s not compatible with writer schema %s", reader.Type(), writer.Type())
 	}
