@@ -91,8 +91,8 @@ type name, or scheam full name in the case of a named schema (enum, fixed or rec
 * ***T:** This is allowed in a "nullable" union. A nullable union is defined as a two schema union, 
 with the first being `null` (ie. `["null", "string"]`), in this case a `*T` is allowed, 
 with `T` matching the conversion table above.
-* **avro.UnionType:** A `struct` in implementing `avro.UnionType` can be provided, allowing for
-strong type encoding. An example can be found in the [godoc](https://godoc.org/github.com/hamba/avro).
+* **interface{}:** An `interface` can be provided and the type or name resolved. Primitive types
+are pre-registered, but named types will need to be registered with the `Register` function.
 
 ## Benchmark
 

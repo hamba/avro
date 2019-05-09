@@ -8,6 +8,8 @@ import (
 	"github.com/modern-go/reflect2"
 )
 
+type null struct{}
+
 // ValDecoder represents an internal value decoder.
 //
 // You should never use ValDecoder directly.
@@ -72,8 +74,8 @@ func (c *frozenConfig) DecoderOf(schema Schema, typ reflect2.Type) ValDecoder {
 }
 
 func decoderOfType(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
-	// Handle eface case
-	if typ.Kind() == reflect.Interface {
+	// Handle eface case when it isnt a union
+	if typ.Kind() == reflect.Interface && schema.Type() != Union {
 		if _, ok := typ.(*reflect2.UnsafeIFaceType); !ok {
 			return &efaceDecoder{schema: schema}
 		}
@@ -111,6 +113,10 @@ func decoderOfType(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecod
 }
 
 func (c *frozenConfig) EncoderOf(schema Schema, typ reflect2.Type) ValEncoder {
+	if typ == nil {
+		typ = reflect2.TypeOf((*null)(nil))
+	}
+
 	rtype := typ.RType()
 	encoder := c.getEncoderFromCache(schema.Fingerprint(), rtype)
 	if encoder != nil {
@@ -139,7 +145,7 @@ func encoderOfType(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncod
 	}
 
 	switch schema.Type() {
-	case String, Bytes, Int, Long, Float, Double, Boolean:
+	case String, Bytes, Int, Long, Float, Double, Boolean, Null:
 		return createEncoderOfNative(schema, typ)
 
 	case Record:

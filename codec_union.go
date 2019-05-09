@@ -9,8 +9,6 @@ import (
 	"github.com/modern-go/reflect2"
 )
 
-var unionType = reflect2.TypeOfPtr((*UnionType)(nil)).Elem()
-
 func createDecoderOfUnion(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
 	switch typ.Kind() {
 	case reflect.Map:
@@ -21,13 +19,15 @@ func createDecoderOfUnion(cfg *frozenConfig, schema Schema, typ reflect2.Type) V
 		return decoderOfMapUnion(cfg, schema, typ)
 
 	case reflect.Ptr:
-		if typ.Implements(unionType) {
-			return decoderOfTypedUnion(schema, typ)
-		}
 		if !schema.(*UnionSchema).Nullable() {
 			break
 		}
 		return decoderOfPtrUnion(cfg, schema, typ)
+
+	case reflect.Interface:
+		if _, ok := typ.(*reflect2.UnsafeIFaceType); !ok {
+			return decoderOfResolvedUnion(cfg, schema)
+		}
 	}
 
 	return &errorDecoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s", typ.String(), schema.Type())}
@@ -43,16 +43,13 @@ func createEncoderOfUnion(cfg *frozenConfig, schema Schema, typ reflect2.Type) V
 		return encoderOfMapUnion(cfg, schema, typ)
 
 	case reflect.Ptr:
-		if typ.Implements(unionType) {
-			return encoderOfTypedUnion(schema, typ)
-		}
 		if !schema.(*UnionSchema).Nullable() {
 			break
 		}
 		return encoderOfPtrUnion(cfg, schema, typ)
 	}
 
-	return &errorEncoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s", typ.String(), schema.Type())}
+	return encoderOfResolverUnion(cfg, schema, typ)
 }
 
 func decoderOfMapUnion(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
@@ -148,96 +145,6 @@ func (e *mapUnionEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 	encoderOfType(e.cfg, schema, elemType).Encode(elemPtr, w)
 }
 
-func decoderOfTypedUnion(schema Schema, typ reflect2.Type) ValDecoder {
-	union := schema.(*UnionSchema)
-	ptrType := typ.(*reflect2.UnsafePtrType)
-	elemType := ptrType.Elem()
-
-	return &unionTypedDecoder{
-		schema: union,
-		typ:    ptrType,
-		elem:   elemType,
-	}
-}
-
-type unionTypedDecoder struct {
-	schema *UnionSchema
-	typ    reflect2.Type
-	elem   reflect2.Type
-}
-
-func (d *unionTypedDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
-	if *((*unsafe.Pointer)(ptr)) == nil {
-		newPtr := d.elem.UnsafeNew()
-		*((*unsafe.Pointer)(ptr)) = newPtr
-	}
-	union := d.typ.UnsafeIndirect(ptr).(UnionType)
-
-	schema := getUnionSchema(d.schema, r)
-	if schema == nil {
-		return
-	}
-
-	key := string(schema.Type())
-	if n, ok := schema.(NamedSchema); ok {
-		key = n.FullName()
-	}
-
-	if err := union.SetType(key); err != nil {
-		r.Error = err
-		return
-	}
-
-	// In a null case, just return
-	if schema.Type() == Null {
-		return
-	}
-
-	if *union.Value() == nil {
-		r.ReportError("decode union type", "can not read into nil pointer")
-		return
-	}
-	r.ReadVal(schema, union.Value())
-}
-
-func encoderOfTypedUnion(schema Schema, typ reflect2.Type) ValEncoder {
-	union := schema.(*UnionSchema)
-
-	return &unionTypedEncoder{
-		schema: union,
-		typ:    typ,
-	}
-}
-
-type unionTypedEncoder struct {
-	schema *UnionSchema
-	typ    reflect2.Type
-}
-
-func (e *unionTypedEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
-	union := e.typ.UnsafeIndirect(ptr).(UnionType)
-	name, err := union.GetType()
-	if err != nil {
-		w.Error = err
-		return
-	}
-
-	schema, pos := e.schema.Types().Get(name)
-	if schema == nil {
-		w.Error = fmt.Errorf("avro: unknown union type %s", name)
-		return
-	}
-
-	w.WriteLong(int64(pos))
-
-	val := *union.Value()
-	if schema.Type() == Null && val == nil {
-		return
-	}
-
-	w.WriteVal(schema, val)
-}
-
 func decoderOfPtrUnion(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
 	union := schema.(*UnionSchema)
 	ptrType := typ.(*reflect2.UnsafePtrType)
@@ -298,6 +205,99 @@ func (e *unionPtrEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 
 	w.WriteLong(1)
 	e.encoder.Encode(*((*unsafe.Pointer)(ptr)), w)
+}
+
+func decoderOfResolvedUnion(cfg *frozenConfig, schema Schema) ValDecoder {
+	union := schema.(*UnionSchema)
+
+	return &unionResolvedDecoder{
+		cfg:          cfg,
+		schema:       union,
+		efaceDecoder: &efaceDecoder{schema: schema},
+	}
+}
+
+type unionResolvedDecoder struct {
+	cfg          *frozenConfig
+	schema       *UnionSchema
+	efaceDecoder *efaceDecoder
+}
+
+func (d *unionResolvedDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
+	schema := getUnionSchema(d.schema, r)
+	if schema == nil {
+		return
+	}
+
+	key := string(schema.Type())
+	if n, ok := schema.(NamedSchema); ok {
+		key = n.FullName()
+	}
+
+	pObj := (*interface{})(ptr)
+	obj := *pObj
+
+	if schema.Type() == Null {
+		*pObj = nil
+		return
+	}
+
+	typ, err := d.cfg.resolver.Type(key)
+	if err != nil {
+		// We cannot resolve this, set it to the map type
+		obj := map[string]interface{}{}
+		obj[key] = r.ReadNext(schema)
+
+		*pObj = obj
+		return
+	}
+
+	if typ.Kind() != reflect.Ptr {
+		*pObj = r.ReadNext(schema)
+		return
+	}
+
+	ptrType := typ.(*reflect2.UnsafePtrType)
+	ptrElemType := ptrType.Elem()
+	if reflect2.IsNil(obj) {
+		obj := ptrElemType.New()
+		r.ReadVal(schema, obj)
+		*pObj = obj
+		return
+	}
+	r.ReadVal(schema, obj)
+}
+
+func encoderOfResolverUnion(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncoder {
+	union := schema.(*UnionSchema)
+
+	name, err := cfg.resolver.Name(typ)
+	if err != nil {
+		return &errorEncoder{err: err}
+	}
+
+	schema, pos := union.Types().Get(name)
+	if schema == nil {
+		return &errorEncoder{err: fmt.Errorf("avro: unknown union type %s", name)}
+	}
+
+	encoder := encoderOfType(cfg, schema, typ)
+
+	return &unionResolverEncoder{
+		pos:     pos,
+		encoder: encoder,
+	}
+}
+
+type unionResolverEncoder struct {
+	pos     int
+	encoder ValEncoder
+}
+
+func (e *unionResolverEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
+	w.WriteLong(int64(e.pos))
+
+	e.encoder.Encode(ptr, w)
 }
 
 func getUnionSchema(schema *UnionSchema, r *Reader) Schema {

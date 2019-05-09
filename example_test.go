@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/hamba/avro"
 )
@@ -73,7 +72,7 @@ func ExampleNewDecoderForSchema() {
 		B string `avro:"b"`
 	}
 
-	r := bytes.NewReader([]byte{}) // Your reader goes here
+	r := bytes.NewReader([]byte{0x36, 0x06, 0x66, 0x6F, 0x6F}) // Your reader goes here
 	decoder := avro.NewDecoderForSchema(schema, r)
 
 	simple := SimpleRecord{}
@@ -82,6 +81,8 @@ func ExampleNewDecoderForSchema() {
 	}
 
 	fmt.Printf("%+v", simple)
+
+	//Output: {A:27 B:foo}
 }
 
 func ExampleUnmarshal() {
@@ -100,13 +101,15 @@ func ExampleUnmarshal() {
 		B string `avro:"b"`
 	}
 
-	data := []byte{} // Your Avro data here
+	data := []byte{0x36, 0x06, 0x66, 0x6F, 0x6F} // Your Avro data here
 	simple := SimpleRecord{}
 	if err := avro.Unmarshal(schema, data, &simple); err != nil {
 		fmt.Println("error:", err)
 	}
 
 	fmt.Printf("%+v", simple)
+
+	//Output: {A:27 B:foo}
 }
 
 func ExampleNewEncoder() {
@@ -131,12 +134,14 @@ func ExampleNewEncoder() {
 		fmt.Println("error:", err)
 	}
 
-	simple := SimpleRecord{}
+	simple := SimpleRecord{A: 27, B: "foo"}
 	if err := encoder.Encode(simple); err != nil {
 		fmt.Println("error:", err)
 	}
 
-	os.Stdout.Write(w.Bytes())
+	fmt.Println(w.Bytes())
+
+	//Output: [54 6 102 111 111]
 }
 
 func ExampleNewEncoderForSchema() {
@@ -158,12 +163,14 @@ func ExampleNewEncoderForSchema() {
 	w := &bytes.Buffer{}
 	encoder := avro.NewEncoderForSchema(schema, w)
 
-	simple := SimpleRecord{}
+	simple := SimpleRecord{A: 27, B: "foo"}
 	if err := encoder.Encode(simple); err != nil {
 		fmt.Println("error:", err)
 	}
 
-	os.Stdout.Write(w.Bytes())
+	fmt.Println(w.Bytes())
+
+	//Output: [54 6 102 111 111]
 }
 
 func ExampleMarshal() {
@@ -182,11 +189,13 @@ func ExampleMarshal() {
 		B string `avro:"b"`
 	}
 
-	simple := SimpleRecord{}
+	simple := SimpleRecord{A: 27, B: "foo"}
 	b, err := avro.Marshal(schema, simple)
 	if err != nil {
 		fmt.Println("error:", err)
 	}
 
-	os.Stdout.Write(b)
+	fmt.Println(b)
+
+	//Output: [54 6 102 111 111]
 }
