@@ -92,6 +92,10 @@ func TestSchema_Canonical(t *testing.T) {
 			canonical: `["int","boolean"]`,
 		},
 		{
+			input:     `{"fields":[], "type":"error", "name":"foo"}`,
+			canonical: `{"name":"foo","type":"error","fields":[]}`,
+		},
+		{
 			input:     `{"fields":[], "type":"record", "name":"foo"}`,
 			canonical: `{"name":"foo","type":"record","fields":[]}`,
 		},

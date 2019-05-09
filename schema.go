@@ -298,6 +298,11 @@ func (s *RecordSchema) Fields() []*Field {
 
 // String returns the canonical form of the schema.
 func (s *RecordSchema) String() string {
+	typ := "record"
+	if s.isError {
+		typ = "error"
+	}
+
 	fields := ""
 	for _, f := range s.fields {
 		fields += f.String() + ","
@@ -306,7 +311,7 @@ func (s *RecordSchema) String() string {
 		fields = fields[:len(fields)-1]
 	}
 
-	return `{"name":"` + s.FullName() + `","type":"record","fields":[` + fields + `]}`
+	return `{"name":"` + s.FullName() + `","type":"` + typ + `","fields":[` + fields + `]}`
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
