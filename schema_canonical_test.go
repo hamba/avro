@@ -162,7 +162,7 @@ func TestSchema_Canonical(t *testing.T) {
 		{
 			input: `{
 				"type":"record",
-				"namespace": "org.apache.avro",
+				"namespace": "org.hamba.avro",
 				"name":"X",
   				"fields":[
 					{"name":"value", "type":{
@@ -174,12 +174,12 @@ func TestSchema_Canonical(t *testing.T) {
 					}}
 				]
 			}`,
-			canonical: `{"name":"org.apache.avro.X","type":"record","fields":[{"name":"value","type":{"name":"org.apache.avro.Y","type":"record","fields":[{"name":"value","type":"string"}]}}]}`,
+			canonical: `{"name":"org.hamba.avro.X","type":"record","fields":[{"name":"value","type":{"name":"org.hamba.avro.Y","type":"record","fields":[{"name":"value","type":"string"}]}}]}`,
 		},
 		{
 			input: `{
 				"type":"record",
-				"namespace": "org.apache.avro",
+				"namespace": "org.hamba.avro",
 				"name":"X",
   				"fields":[
 					{"name":"value", "type":{
@@ -189,12 +189,12 @@ func TestSchema_Canonical(t *testing.T) {
 					}}
 				]
 			}`,
-			canonical: `{"name":"org.apache.avro.X","type":"record","fields":[{"name":"value","type":{"name":"org.apache.avro.Y","type":"enum","symbols":["TEST"]}}]}`,
+			canonical: `{"name":"org.hamba.avro.X","type":"record","fields":[{"name":"value","type":{"name":"org.hamba.avro.Y","type":"enum","symbols":["TEST"]}}]}`,
 		},
 		{
 			input: `{
 				"type":"record",
-				"namespace": "org.apache.avro",
+				"namespace": "org.hamba.avro",
 				"name":"X",
   				"fields":[
 					{"name":"value", "type":{
@@ -204,7 +204,7 @@ func TestSchema_Canonical(t *testing.T) {
 					}}
 				]
 			}`,
-			canonical: `{"name":"org.apache.avro.X","type":"record","fields":[{"name":"value","type":{"name":"org.apache.avro.Y","type":"fixed","size":15}}]}`,
+			canonical: `{"name":"org.hamba.avro.X","type":"record","fields":[{"name":"value","type":{"name":"org.hamba.avro.Y","type":"fixed","size":15}}]}`,
 		},
 	}
 
