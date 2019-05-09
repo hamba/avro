@@ -92,7 +92,9 @@ type name, or scheam full name in the case of a named schema (enum, fixed or rec
 with the first being `null` (ie. `["null", "string"]`), in this case a `*T` is allowed, 
 with `T` matching the conversion table above.
 * **interface{}:** An `interface` can be provided and the type or name resolved. Primitive types
-are pre-registered, but named types will need to be registered with the `Register` function.
+are pre-registered, but named types, maps and slices will need to be registered with the `Register` function. In the 
+case of arrays and maps the enclosed schema type or name is postfix to the type
+with a `:` separator, e.g `"map:string".
 
 ## Benchmark
 

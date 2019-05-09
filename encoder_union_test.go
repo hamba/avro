@@ -183,6 +183,40 @@ func TestEncoder_UnionInterfaceRecordNonPtr(t *testing.T) {
 	assert.Equal(t, []byte{0x02, 0x36, 0x06, 0x66, 0x6F, 0x6F}, buf.Bytes())
 }
 
+func TestEncoder_UnionInterfaceMap(t *testing.T) {
+	defer ConfigTeardown()
+
+	avro.Register("map:int", map[string]int{})
+
+	schema := `["int", {"type": "map", "values": "int"}]`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	var val interface{} = map[string]int{"foo": 27}
+	err = enc.Encode(val)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x02, 0x01, 0x0a, 0x06, 0x66, 0x6f, 0x6f, 0x36, 0x00}, buf.Bytes())
+}
+
+func TestEncoder_UnionInterfaceArray(t *testing.T) {
+	defer ConfigTeardown()
+
+	avro.Register("array:int", []int{})
+
+	schema := `["int", {"type": "array", "items": "int"}]`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	var val interface{} = []int{27}
+	err = enc.Encode(val)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x02, 0x01, 0x02, 0x36, 0x00}, buf.Bytes())
+}
+
 func TestEncoder_UnionInterfaceNull(t *testing.T) {
 	defer ConfigTeardown()
 

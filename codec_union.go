@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"unsafe"
 
 	"github.com/modern-go/reflect2"
@@ -86,10 +87,7 @@ func (d *mapUnionDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		d.mapType.UnsafeSet(ptr, d.mapType.UnsafeMakeMap(0))
 	}
 
-	key := string(resSchema.Type())
-	if n, ok := resSchema.(NamedSchema); ok {
-		key = n.FullName()
-	}
+	key := schemaTypeName(resSchema)
 	keyPtr := reflect2.PtrOf(key)
 
 	elemPtr := d.elemType.UnsafeNew()
@@ -229,9 +227,21 @@ func (d *unionResolvedDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		return
 	}
 
-	key := string(schema.Type())
-	if n, ok := schema.(NamedSchema); ok {
-		key = n.FullName()
+	name := schemaTypeName(schema)
+	switch schema.Type() {
+	case Map:
+		name += ":"
+		valSchema := schema.(*MapSchema).Values()
+		valName := schemaTypeName(valSchema)
+
+		name += valName
+
+	case Array:
+		name += ":"
+		itemSchema := schema.(*ArraySchema).Items()
+		itemName := schemaTypeName(itemSchema)
+
+		name += itemName
 	}
 
 	pObj := (*interface{})(ptr)
@@ -242,18 +252,34 @@ func (d *unionResolvedDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		return
 	}
 
-	typ, err := d.cfg.resolver.Type(key)
+	typ, err := d.cfg.resolver.Type(name)
 	if err != nil {
 		// We cannot resolve this, set it to the map type
 		obj := map[string]interface{}{}
-		obj[key] = r.ReadNext(schema)
+		obj[name] = r.ReadNext(schema)
 
 		*pObj = obj
 		return
 	}
 
 	if typ.Kind() != reflect.Ptr {
-		*pObj = r.ReadNext(schema)
+		var newObj interface{}
+		switch typ.Kind() {
+		case reflect.Map:
+			mapType := typ.(*reflect2.UnsafeMapType)
+			newObj = mapType.MakeMap(1)
+
+		case reflect.Slice:
+			mapType := typ.(*reflect2.UnsafeSliceType)
+			newObj = mapType.MakeSlice(1, 1)
+
+		default:
+			newObj = typ.New()
+		}
+
+		r.ReadVal(schema, newObj)
+
+		*pObj = typ.Indirect(newObj)
 		return
 	}
 
@@ -274,6 +300,10 @@ func encoderOfResolverUnion(cfg *frozenConfig, schema Schema, typ reflect2.Type)
 	name, err := cfg.resolver.Name(typ)
 	if err != nil {
 		return &errorEncoder{err: err}
+	}
+
+	if idx := strings.Index(name, ":"); idx > 0 {
+		name = name[:idx]
 	}
 
 	schema, pos := union.Types().Get(name)

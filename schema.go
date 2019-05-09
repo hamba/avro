@@ -525,10 +525,7 @@ func NewUnionSchema(types []Schema) (*UnionSchema, error) {
 			return nil, errors.New("avro: union type cannot be a union")
 		}
 
-		strType := string(schema.Type())
-		if named, ok := schema.(NamedSchema); ok {
-			strType = named.FullName()
-		}
+		strType := schemaTypeName(schema)
 
 		if seen[strType] {
 			return nil, errors.New("avro: union type must be unique")
@@ -828,4 +825,12 @@ func isValidDefault(schema Schema, def interface{}) (interface{}, bool) {
 	}
 
 	return nil, false
+}
+
+func schemaTypeName(schema Schema) string {
+	if n, ok := schema.(NamedSchema); ok {
+		return n.FullName()
+	}
+
+	return string(schema.Type())
 }

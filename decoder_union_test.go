@@ -179,6 +179,70 @@ func TestDecoder_UnionInterfaceInRecord(t *testing.T) {
 	assert.Equal(t, 27, got.A)
 }
 
+func TestDecoder_UnionInterfaceMap(t *testing.T) {
+	defer ConfigTeardown()
+
+	avro.Register("map:int", map[string]int{})
+
+	data := []byte{0x02, 0x01, 0x0a, 0x06, 0x66, 0x6f, 0x6f, 0x36, 0x00}
+	schema := `["int", {"type": "map", "values": "int"}]`
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	var got interface{}
+	err := dec.Decode(&got)
+
+	assert.NoError(t, err)
+	assert.Equal(t, map[string]int{"foo": 27}, got)
+}
+
+func TestDecoder_UnionInterfaceMapNamed(t *testing.T) {
+	defer ConfigTeardown()
+
+	avro.Register("map:test", map[string]string{})
+
+	data := []byte{0x02, 0x01, 0x0a, 0x06, 0x66, 0x6f, 0x6f, 0x02, 0x00}
+	schema := `["int", {"type": "map", "values": {"type":"enum", "name": "test", "symbols": ["A", "B"]}}]`
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	var got interface{}
+	err := dec.Decode(&got)
+
+	assert.NoError(t, err)
+	assert.Equal(t, map[string]string{"foo": "B"}, got)
+}
+
+func TestDecoder_UnionInterfaceArray(t *testing.T) {
+	defer ConfigTeardown()
+
+	avro.Register("array:int", []int{})
+
+	data := []byte{0x02, 0x01, 0x02, 0x36, 0x00}
+	schema := `["int", {"type": "array", "items": "int"}]`
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	var got interface{}
+	err := dec.Decode(&got)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []int{27}, got)
+}
+
+func TestDecoder_UnionInterfaceArrayNamed(t *testing.T) {
+	defer ConfigTeardown()
+
+	avro.Register("array:test", []string{})
+
+	data := []byte{0x02, 0x01, 0x02, 0x02, 0x00}
+	schema := `["int", {"type": "array", "items": {"type":"enum", "name": "test", "symbols": ["A", "B"]}}]`
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	var got interface{}
+	err := dec.Decode(&got)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"B"}, got)
+}
+
 func TestDecoder_UnionInterfaceNull(t *testing.T) {
 	defer ConfigTeardown()
 
