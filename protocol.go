@@ -30,11 +30,15 @@ func NewProtocol(name, space string) (*Protocol, error) {
 	}, nil
 }
 
-func (p *Protocol) AddType(schema Schema) {
+func (p *Protocol) AddType(schema NamedSchema) {
+	p.hash = ""
+
 	p.types = append(p.types, schema)
 }
 
 func (p *Protocol) AddMessage(name string, message *ProtocolMessage) {
+	p.hash = ""
+
 	p.messages[name] = message
 }
 
@@ -69,13 +73,22 @@ func (p *Protocol) String() string {
 }
 
 type ProtocolMessage struct {
-	Request  Schema
+	Request  *RecordSchema
 	Response Schema
-	Errors   Schema
+	Errors   *UnionSchema
+	OneWay   bool
 }
 
 func (m *ProtocolMessage) String() string {
-	return ""
+	fields := ""
+	for _, f := range m.Request.fields {
+		fields += f.String() + ","
+	}
+	if len(fields) > 0 {
+		fields = fields[:len(fields)-1]
+	}
+
+	return `{"request": [` + fields + `]}`
 }
 
 func ParseProtocol(json string) (*Protocol, error) {
