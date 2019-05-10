@@ -203,7 +203,7 @@ type unionSkipDecoder struct {
 }
 
 func (d *unionSkipDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
-	resSchema := getUnionSchema(d.schema, r)
+	_, resSchema := getUnionSchema(d.schema, r)
 	if resSchema == nil {
 		return
 	}

@@ -292,7 +292,7 @@ func TestDecoder_UnionInterfaceRecord(t *testing.T) {
 	assert.Equal(t, "foo", rec.B)
 }
 
-func TestDecoder_UnionInterfaceRecordReused(t *testing.T) {
+func TestDecoder_UnionInterfaceRecordNotReused(t *testing.T) {
 	defer ConfigTeardown()
 
 	avro.Register("test", &TestRecord{})
@@ -301,7 +301,7 @@ func TestDecoder_UnionInterfaceRecordReused(t *testing.T) {
 	schema := `["int", {"type": "record", "name": "test", "fields" : [{"name": "a", "type": "long"}, {"name": "b", "type": "string"}]}]`
 	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
 
-	var got interface{} = &TestRecord{}
+	var got interface{} = ""
 	err := dec.Decode(&got)
 
 	assert.NoError(t, err)

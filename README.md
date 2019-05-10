@@ -94,7 +94,8 @@ with `T` matching the conversion table above.
 * **interface{}:** An `interface` can be provided and the type or name resolved. Primitive types
 are pre-registered, but named types, maps and slices will need to be registered with the `Register` function. In the 
 case of arrays and maps the enclosed schema type or name is postfix to the type
-with a `:` separator, e.g `"map:string".
+with a `:` separator, e.g `"map:string"`. If any type cannot be resolved the map type above is used unless
+`Config.UnionResolutionError` is set to `true` in which case an error is returned.
 
 ## Benchmark
 

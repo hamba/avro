@@ -73,7 +73,7 @@ type mapUnionDecoder struct {
 }
 
 func (d *mapUnionDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
-	resSchema := getUnionSchema(d.schema, r)
+	_, resSchema := getUnionSchema(d.schema, r)
 	if resSchema == nil {
 		return
 	}
@@ -162,7 +162,7 @@ type unionPtrDecoder struct {
 }
 
 func (d *unionPtrDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
-	schema := getUnionSchema(d.schema, r)
+	_, schema := getUnionSchema(d.schema, r)
 	if schema == nil {
 		return
 	}
@@ -208,47 +208,51 @@ func (e *unionPtrEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 func decoderOfResolvedUnion(cfg *frozenConfig, schema Schema) ValDecoder {
 	union := schema.(*UnionSchema)
 
-	types := make(map[Schema]reflect2.Type, len(union.Types()))
-	for _, schema := range union.Types() {
+	types := make([]reflect2.Type, len(union.Types()))
+	decoders := make([]ValDecoder, len(union.Types()))
+	for i, schema := range union.Types() {
 		name := unionResolutionName(schema)
 		if typ, err := cfg.resolver.Type(name); err == nil {
-			types[schema] = typ
+			decoder := decoderOfType(cfg, schema, typ)
+			decoders[i] = decoder
+			types[i] = typ
+			continue
 		}
-	}
 
-	if len(types) != len(union.Types()) {
-		types = map[Schema]reflect2.Type{}
+		decoders = []ValDecoder{}
+		types = []reflect2.Type{}
+		break
 	}
 
 	return &unionResolvedDecoder{
-		cfg:    cfg,
-		schema: union,
-		types:  types,
+		cfg:      cfg,
+		schema:   union,
+		types:    types,
+		decoders: decoders,
 	}
 }
 
 type unionResolvedDecoder struct {
-	cfg    *frozenConfig
-	schema *UnionSchema
-	types  map[Schema]reflect2.Type
+	cfg      *frozenConfig
+	schema   *UnionSchema
+	types    []reflect2.Type
+	decoders []ValDecoder
 }
 
 func (d *unionResolvedDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
-	schema := getUnionSchema(d.schema, r)
+	i, schema := getUnionSchema(d.schema, r)
 	if schema == nil {
 		return
 	}
 
 	pObj := (*interface{})(ptr)
-	obj := *pObj
 
 	if schema.Type() == Null {
 		*pObj = nil
 		return
 	}
 
-	typ := d.types[schema]
-	if typ == nil {
+	if i >= len(d.decoders) {
 		if d.cfg.config.UnionResolutionError {
 			r.ReportError("decode union type", "unknown union type")
 			return
@@ -263,36 +267,48 @@ func (d *unionResolvedDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		return
 	}
 
-	if typ.Kind() != reflect.Ptr {
-		var newObj interface{}
-		switch typ.Kind() {
-		case reflect.Map:
-			mapType := typ.(*reflect2.UnsafeMapType)
-			newObj = mapType.MakeMap(1)
+	typ := d.types[i]
+	var newPtr unsafe.Pointer
+	switch typ.Kind() {
+	case reflect.Map:
+		mapType := typ.(*reflect2.UnsafeMapType)
+		newPtr = mapType.UnsafeMakeMap(1)
 
-		case reflect.Slice:
-			mapType := typ.(*reflect2.UnsafeSliceType)
-			newObj = mapType.MakeSlice(1, 1)
+	case reflect.Slice:
+		mapType := typ.(*reflect2.UnsafeSliceType)
+		newPtr = mapType.UnsafeMakeSlice(1, 1)
 
-		default:
-			newObj = typ.New()
-		}
+	case reflect.Ptr:
+		elemType := typ.(*reflect2.UnsafePtrType).Elem()
+		newPtr = elemType.UnsafeNew()
 
-		r.ReadVal(schema, newObj)
-
-		*pObj = typ.Indirect(newObj)
-		return
+	default:
+		newPtr = typ.UnsafeNew()
 	}
 
-	ptrType := typ.(*reflect2.UnsafePtrType)
-	ptrElemType := ptrType.Elem()
-	if reflect2.IsNil(obj) {
-		obj := ptrElemType.New()
-		r.ReadVal(schema, obj)
-		*pObj = obj
-		return
+	d.decoders[i].Decode(newPtr, r)
+	*pObj = typ.UnsafeIndirect(newPtr)
+}
+
+func unionResolutionName(schema Schema) string {
+	name := schemaTypeName(schema)
+	switch schema.Type() {
+	case Map:
+		name += ":"
+		valSchema := schema.(*MapSchema).Values()
+		valName := schemaTypeName(valSchema)
+
+		name += valName
+
+	case Array:
+		name += ":"
+		itemSchema := schema.(*ArraySchema).Items()
+		itemName := schemaTypeName(itemSchema)
+
+		name += itemName
 	}
-	r.ReadVal(schema, obj)
+
+	return name
 }
 
 func encoderOfResolverUnion(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncoder {
@@ -320,27 +336,6 @@ func encoderOfResolverUnion(cfg *frozenConfig, schema Schema, typ reflect2.Type)
 	}
 }
 
-func unionResolutionName(schema Schema) string {
-	name := schemaTypeName(schema)
-	switch schema.Type() {
-	case Map:
-		name += ":"
-		valSchema := schema.(*MapSchema).Values()
-		valName := schemaTypeName(valSchema)
-
-		name += valName
-
-	case Array:
-		name += ":"
-		itemSchema := schema.(*ArraySchema).Items()
-		itemName := schemaTypeName(itemSchema)
-
-		name += itemName
-	}
-
-	return name
-}
-
 type unionResolverEncoder struct {
 	pos     int
 	encoder ValEncoder
@@ -352,14 +347,14 @@ func (e *unionResolverEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 	e.encoder.Encode(ptr, w)
 }
 
-func getUnionSchema(schema *UnionSchema, r *Reader) Schema {
+func getUnionSchema(schema *UnionSchema, r *Reader) (int, Schema) {
 	types := schema.Types()
 
 	idx := int(r.ReadLong())
 	if idx < 0 || idx > len(types)-1 {
 		r.ReportError("decode union type", "unknown union type")
-		return nil
+		return 0, nil
 	}
 
-	return types[idx]
+	return idx, types[idx]
 }
