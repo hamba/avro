@@ -234,7 +234,7 @@ func encoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEnc
 	for i, field := range rec.Fields() {
 		fields[i] = mapEncoderField{
 			name:    field.Name(),
-			hasDef:  field.Default() != nil || field.Type().Type() == Null,
+			hasDef:  field.HasDefault(),
 			def:     field.Default(),
 			encoder: encoderOfType(cfg, field.Type(), mapType.Elem()),
 		}
