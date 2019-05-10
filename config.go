@@ -20,6 +20,10 @@ type Config struct {
 	// BlockLength is the length of blocks for maps and arrays.
 	// This defaults to 100.
 	BlockLength int
+
+	// UnionResolutionError determines if an error will be returned
+	// when a type cannot be resolved while decoding a union.
+	UnionResolutionError bool
 }
 
 // Freeze makes the configuration immutable.
