@@ -9,8 +9,12 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
-var protocolReserved = []string{"doc", "types", "messages", "protocol", "namespace"}
+var (
+	protocolReserved = []string{"doc", "types", "messages", "protocol", "namespace"}
+	messageReserved  = []string{"doc", "response", "request", "errors", "one-way"}
+)
 
+// Protocol is an Avro protocol.
 type Protocol struct {
 	name
 	properties
@@ -21,6 +25,7 @@ type Protocol struct {
 	hash string
 }
 
+// NewProtocol creates a protocol instance.
 func NewProtocol(name, space string, types []NamedSchema, messages map[string]*Message) (*Protocol, error) {
 	n, err := newName(name, space)
 	if err != nil {
@@ -40,14 +45,17 @@ func NewProtocol(name, space string, types []NamedSchema, messages map[string]*M
 	return p, nil
 }
 
+// Message returns a message with the given name or nil.
 func (p *Protocol) Message(name string) *Message {
 	return p.messages[name]
 }
 
+// Hash returns the MD5 hash of the protocol.
 func (p *Protocol) Hash() string {
 	return p.hash
 }
 
+// String returns the canonical form of the protocol.
 func (p *Protocol) String() string {
 	types := ""
 	for _, f := range p.types {
@@ -68,34 +76,73 @@ func (p *Protocol) String() string {
 	return `{"protocol":"` + p.Name() + `","namespace":"` + p.Namespace() + `","types":[` + types + `],"messages":{` + messages + `}}`
 }
 
+// Message is an Avro protocol message.
 type Message struct {
-	Request  *RecordSchema
-	Response Schema
-	Errors   *UnionSchema
-	OneWay   bool
+	properties
+
+	req    *RecordSchema
+	resp   Schema
+	errs   *UnionSchema
+	oneWay bool
 }
 
+// NewMessage creates a protocol message instance.
 func NewMessage(req *RecordSchema, resp Schema, errors *UnionSchema, oneWay bool) *Message {
 	return &Message{
-		Request:  req,
-		Response: resp,
-		Errors:   errors,
-		OneWay:   oneWay,
+		properties: properties{reserved: messageReserved},
+		req:        req,
+		resp:       resp,
+		errs:       errors,
+		oneWay:     oneWay,
 	}
 }
 
+// Request returns the message request schema.
+func (m *Message) Request() *RecordSchema {
+	return m.req
+}
+
+// Response returns the message response schema.
+func (m *Message) Response() Schema {
+	return m.resp
+}
+
+// Errors returns the message errors union schema.
+func (m *Message) Errors() *UnionSchema {
+	return m.errs
+}
+
+// OneWay determines of the message is a one way message.
+func (m *Message) OneWay() bool {
+	return m.oneWay
+}
+
+// String returns the canonical form of the message.
 func (m *Message) String() string {
 	fields := ""
-	for _, f := range m.Request.fields {
+	for _, f := range m.req.fields {
 		fields += f.String() + ","
 	}
 	if len(fields) > 0 {
 		fields = fields[:len(fields)-1]
 	}
 
-	return `{"request":[` + fields + `]}`
+	str := `{"request":[` + fields + `]`
+
+	if m.resp != nil {
+		str += `,"response":` + m.resp.String()
+	}
+
+	if m.errs != nil && len(m.errs.Types()) > 1 {
+		errs, _ := NewUnionSchema(m.errs.Types()[1:])
+		str += `,"errors":` + errs.String()
+	}
+
+	str += "}"
+	return str
 }
 
+// ParseProtocolFile parses an Avro protocol from a file.
 func ParseProtocolFile(path string) (*Protocol, error) {
 	s, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -105,6 +152,17 @@ func ParseProtocolFile(path string) (*Protocol, error) {
 	return ParseProtocol(string(s))
 }
 
+// MustParseProtocol parses an Avro protocol, panicing if there is an error.
+func MustParseProtocol(protocol string) *Protocol {
+	parsed, err := ParseProtocol(protocol)
+	if err != nil {
+		panic(err)
+	}
+
+	return parsed
+}
+
+// ParseProtocol parses an Avro protocol.
 func ParseProtocol(protocol string) (*Protocol, error) {
 	cache := &SchemaCache{}
 
@@ -143,7 +201,13 @@ func ParseProtocol(protocol string) (*Protocol, error) {
 		}
 	}
 
-	return NewProtocol(name.name, name.space, types, messages)
+	proto, _ := NewProtocol(name.name, name.space, types, messages)
+
+	for k, v := range m {
+		proto.AddProp(k, v)
+	}
+
+	return proto, nil
 }
 
 func parseProtocolTypes(namespace string, types []interface{}, cache *SchemaCache) ([]NamedSchema, error) {
@@ -186,7 +250,57 @@ func parseMessage(namespace string, m map[string]interface{}, cache *SchemaCache
 		fields:     fields,
 	}
 
-	return NewMessage(request, nil, nil, false), nil
+	var response Schema
+	if res, ok := m["response"]; ok {
+		schema, err := parseType(namespace, res, cache)
+		if err != nil {
+			return nil, err
+		}
+
+		if schema.Type() != Null {
+			response = schema
+		}
+	}
+
+	types := []Schema{NewPrimitiveSchema(String)}
+	if errs, ok := m["errors"].([]interface{}); ok {
+		for _, e := range errs {
+			schema, err := parseType(namespace, e, cache)
+			if err != nil {
+				return nil, err
+			}
+
+			if rec, ok := schema.(*RecordSchema); ok && !rec.IsError() {
+				return nil, errors.New("avro: errors record schema must be of type error")
+			}
+
+			types = append(types, schema)
+		}
+	}
+	errs, err := NewUnionSchema(types)
+	if err != nil {
+		return nil, err
+	}
+
+	oneWay := false
+	if o, ok := m["one-way"].(bool); ok {
+		oneWay = o
+		if oneWay && (len(errs.Types()) > 1 || response != nil) {
+			return nil, errors.New("avro: one-way messages cannot not have a response or errors")
+		}
+	}
+
+	if !oneWay && len(errs.Types()) <= 1 && response == nil {
+		oneWay = true
+	}
+
+	msg := NewMessage(request, response, errs, oneWay)
+
+	for k, v := range m {
+		msg.AddProp(k, v)
+	}
+
+	return msg, nil
 }
 
 func resolveProtocolName(m map[string]interface{}) (name, error) {

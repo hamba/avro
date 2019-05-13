@@ -8,7 +8,7 @@ import (
 )
 
 func ExampleRegister() {
-	data := []byte{0x02, 0x02}  // Your Avro data here
+	data := []byte{0x02, 0x02} // Your Avro data here
 	schema := avro.MustParse(`["null", {"type":"enum", "name": "test", "symbols": ["A", "B"]}]`)
 
 	avro.Register("test", "") // Register the name test as a string type

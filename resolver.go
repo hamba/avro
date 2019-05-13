@@ -36,7 +36,7 @@ func NewTypeResolver() *TypeResolver {
 	return r
 }
 
-//  Register registers names to their types for resolution.
+// Register registers names to their types for resolution.
 func (r *TypeResolver) Register(name string, obj interface{}) {
 	typ := reflect2.TypeOf(obj)
 	rtype := typ.RType()
