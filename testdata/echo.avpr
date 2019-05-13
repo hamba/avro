@@ -1,0 +1,26 @@
+{
+  "protocol": "Echo",
+  "namespace": "org.hamba.avro",
+  "doc": "Simple echo protocol",
+  "types": [
+    {"name":  "Ping", "type": "record", "fields": [
+      {"name": "timestamp", "type": "long", "default": -1},
+      {"name": "text", "type": "string", "default": ""}
+    ]},
+    {"name":  "Pong", "type": "record", "fields": [
+      {"name": "timestamp", "type": "long", "default": -1},
+      {"name": "ping", "type": "Ping"}
+    ]},
+    {"name":  "PongError", "type": "error", "fields": [
+      {"name": "timestamp", "type": "long", "default": -1},
+      {"name": "reason", "type": "string"}
+    ]}
+  ],
+  "messages": {
+    "ping": {
+      "request": [{"name": "ping", "type": "Ping"}],
+      "response": "Pong",
+      "errors": ["PongError"]
+    }
+  }
+}

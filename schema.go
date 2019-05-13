@@ -248,7 +248,7 @@ type RecordSchema struct {
 }
 
 // NewRecordSchema creates a new record schema instance.
-func NewRecordSchema(name, space string) (*RecordSchema, error) {
+func NewRecordSchema(name, space string, fields []*Field) (*RecordSchema, error) {
 	n, err := newName(name, space)
 	if err != nil {
 		return nil, err
@@ -257,11 +257,12 @@ func NewRecordSchema(name, space string) (*RecordSchema, error) {
 	return &RecordSchema{
 		name:       n,
 		properties: properties{reserved: schemaReserved},
+		fields:     fields,
 	}, nil
 }
 
 // NewErrorRecordSchema creates a new error record schema instance.
-func NewErrorRecordSchema(name, space string) (*RecordSchema, error) {
+func NewErrorRecordSchema(name, space string, fields []*Field) (*RecordSchema, error) {
 	n, err := newName(name, space)
 	if err != nil {
 		return nil, err
@@ -271,6 +272,7 @@ func NewErrorRecordSchema(name, space string) (*RecordSchema, error) {
 		name:       n,
 		properties: properties{reserved: schemaReserved},
 		isError:    true,
+		fields:     fields,
 	}, nil
 }
 
@@ -279,16 +281,9 @@ func (s *RecordSchema) Type() Type {
 	return Record
 }
 
+// IsError determines is this is an error record.
 func (s *RecordSchema) IsError() bool {
 	return s.isError
-}
-
-// AddField adds a field to the record.
-func (s *RecordSchema) AddField(field *Field) {
-	// Clear the fingerprint cache
-	s.fingerprint = emptyFgpt
-
-	s.fields = append(s.fields, field)
 }
 
 // Fields returns the fields of a record.

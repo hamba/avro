@@ -146,18 +146,19 @@ func parseRecord(typ Type, namespace string, m map[string]interface{}, cache *Sc
 		namespace = newNamespace
 	}
 
-	fields, ok := m["fields"].([]interface{})
+	fs, ok := m["fields"].([]interface{})
 	if !ok {
 		return nil, errors.New("avro: record must have an array of fields")
 	}
+	fields := make([]*Field, len(fs))
 
 	var rec *RecordSchema
 	switch typ {
 	case Record:
-		rec, err = NewRecordSchema(name, namespace)
+		rec, err = NewRecordSchema(name, namespace, fields)
 
 	case Error:
-		rec, err = NewErrorRecordSchema(name, namespace)
+		rec, err = NewErrorRecordSchema(name, namespace, fields)
 	}
 	if err != nil {
 		return nil, err
@@ -169,13 +170,13 @@ func parseRecord(typ Type, namespace string, m map[string]interface{}, cache *Sc
 		rec.AddProp(k, v)
 	}
 
-	for _, f := range fields {
+	for i, f := range fs {
 		field, err := parseField(namespace, f, cache)
 		if err != nil {
 			return nil, err
 		}
 
-		rec.AddField(field)
+		fields[i] = field
 	}
 
 	return rec, nil
