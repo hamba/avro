@@ -181,6 +181,27 @@ func TestEncoder_RecordMap(t *testing.T) {
 	assert.Equal(t, []byte{0x36, 0x06, 0x66, 0x6f, 0x6f}, buf.Bytes())
 }
 
+func TestEncoder_RecordMapNilValue(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{
+	"type": "record",
+	"name": "test",
+	"fields" : [
+		{"name": "a", "type": "long"},
+	    {"name": "b", "type": "string"}
+	]
+}`
+	obj := map[string]interface{}{"a": int64(27), "b": nil}
+	buf := &bytes.Buffer{}
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(obj)
+
+	assert.Error(t, err)
+}
+
 func TestEncoder_RecordMapMissingRequiredField(t *testing.T) {
 	defer ConfigTeardown()
 

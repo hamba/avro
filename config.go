@@ -20,6 +20,10 @@ type Config struct {
 	// BlockLength is the length of blocks for maps and arrays.
 	// This defaults to 100.
 	BlockLength int
+
+	// UnionResolutionError determines if an error will be returned
+	// when a type cannot be resolved while decoding a union.
+	UnionResolutionError bool
 }
 
 // Freeze makes the configuration immutable.
@@ -28,6 +32,7 @@ func (c Config) Freeze() API {
 		config:       c,
 		decoderCache: concurrent.NewMap(),
 		encoderCache: concurrent.NewMap(),
+		resolver:     NewTypeResolver(),
 	}
 
 	api.readerPool = &sync.Pool{
@@ -75,6 +80,9 @@ type API interface {
 
 	// EncoderOf returns the value encoder for a given schema and type.
 	EncoderOf(schema Schema, tpy reflect2.Type) ValEncoder
+
+	// Register registers names to their types for resolution. All primitive types are pre-registered.
+	Register(name string, obj interface{})
 }
 
 type frozenConfig struct {
@@ -85,6 +93,8 @@ type frozenConfig struct {
 
 	readerPool *sync.Pool
 	writerPool *sync.Pool
+
+	resolver *TypeResolver
 }
 
 func (c *frozenConfig) Marshal(schema Schema, v interface{}) ([]byte, error) {
@@ -157,6 +167,10 @@ func (c *frozenConfig) NewDecoder(schema Schema, r io.Reader) *Decoder {
 		s: schema,
 		r: reader,
 	}
+}
+
+func (c *frozenConfig) Register(name string, obj interface{}) {
+	c.resolver.Register(name, obj)
 }
 
 type cacheKey struct {

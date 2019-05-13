@@ -119,14 +119,14 @@ func encoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEnc
 		sf := structDesc.Fields.Get(field.Name())
 
 		if sf == nil {
-			if field.Default() == nil {
-				if field.Type().Type() == Null {
-					// We write nothing in a Null case, just skip it
-					continue
-				}
-
+			if !field.HasDefault() {
 				// In all other cases, this is a required field
 				return &errorEncoder{err: fmt.Errorf("avro: record %s is missing required field %s", rec.FullName(), field.Name())}
+			}
+
+			if field.Default() == nil {
+				// We write nothing in a Null case, just skip it
+				continue
 			}
 
 			defaultType := reflect2.TypeOf(field.Default())
@@ -234,7 +234,7 @@ func encoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEnc
 	for i, field := range rec.Fields() {
 		fields[i] = mapEncoderField{
 			name:    field.Name(),
-			hasDef:  field.Default() != nil || field.Type().Type() == Null,
+			hasDef:  field.HasDefault(),
 			def:     field.Default(),
 			encoder: encoderOfType(cfg, field.Type(), mapType.Elem()),
 		}

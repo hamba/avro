@@ -1,11 +1,5 @@
 package avro_test
 
-import (
-	"fmt"
-
-	"github.com/hamba/avro"
-)
-
 type TestInterface interface {
 	SomeFunc() int
 }
@@ -28,50 +22,6 @@ type TestNestedRecord struct {
 	B TestRecord `avro:"b"`
 }
 
-type TestUnionRecord struct {
-	A *TestUnionType `avro:"a"`
-}
-
-type TestUnionType struct {
-	Val interface{}
-}
-
-func (u *TestUnionType) Value() *interface{} {
-	return &u.Val
-}
-
-func (u *TestUnionType) SetType(typ string) error {
-	switch typ {
-	case string(avro.Null):
-		u.Val = nil
-
-	case "test":
-		u.Val = ""
-
-	case string(avro.Int):
-		u.Val = int(0)
-
-	case string(avro.String):
-		u.Val = nil
-
-	default:
-		return fmt.Errorf("unknown type %s", typ)
-	}
-
-	return nil
-}
-
-func (u *TestUnionType) GetType() (string, error) {
-	switch u.Val.(type) {
-	case nil:
-		return string(avro.Null), nil
-
-	case string:
-		return "test", nil
-
-	case int:
-		return string(avro.Int), nil
-	}
-
-	return "", fmt.Errorf("unknown type %T", u.Val)
+type TestUnion struct {
+	A interface{} `avro:"a"`
 }

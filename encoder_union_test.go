@@ -8,19 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestEncoder_UnionInvalidType(t *testing.T) {
-	defer ConfigTeardown()
-
-	schema := `["null", "string"]`
-	buf := bytes.NewBuffer([]byte{})
-	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
-
-	err = enc.Encode("foo")
-
-	assert.Error(t, err)
-}
-
 func TestEncoder_UnionMap(t *testing.T) {
 	defer ConfigTeardown()
 
@@ -103,87 +90,6 @@ func TestEncoder_UnionMapInvalidMap(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestEncoder_UnionTyped(t *testing.T) {
-	defer ConfigTeardown()
-
-	schema := `["null", "int"]`
-	buf := bytes.NewBuffer([]byte{})
-	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
-
-	err = enc.Encode(&TestUnionType{Val: 27})
-
-	assert.NoError(t, err)
-	assert.Equal(t, []byte{0x02, 0x36}, buf.Bytes())
-}
-
-func TestEncoder_UnionTypedNull(t *testing.T) {
-	defer ConfigTeardown()
-
-	schema := `["null", "string"]`
-	buf := bytes.NewBuffer([]byte{})
-	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
-
-	err = enc.Encode(&TestUnionType{Val: nil})
-
-	assert.NoError(t, err)
-	assert.Equal(t, []byte{0x00}, buf.Bytes())
-}
-
-func TestEncoder_UnionTypedNamed(t *testing.T) {
-	defer ConfigTeardown()
-
-	schema := `["null", {"type":"enum", "name": "test", "symbols": ["A", "B"]}]`
-	buf := bytes.NewBuffer([]byte{})
-	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
-
-	err = enc.Encode(&TestUnionType{Val: "B"})
-
-	assert.NoError(t, err)
-	assert.Equal(t, []byte{0x02, 0x02}, buf.Bytes())
-}
-
-func TestEncoder_UnionTypedNilPointer(t *testing.T) {
-	defer ConfigTeardown()
-
-	schema := `["null", "long"]`
-	buf := bytes.NewBuffer([]byte{})
-	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
-
-	err = enc.Encode(&TestUnionType{Val: int64(1)})
-
-	assert.Error(t, err)
-}
-
-func TestEncoder_UnionTypedGetTypeError(t *testing.T) {
-	defer ConfigTeardown()
-
-	schema := `["null", "long"]`
-	buf := bytes.NewBuffer([]byte{})
-	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
-
-	err = enc.Encode(&TestUnionType{Val: int64(1)})
-
-	assert.Error(t, err)
-}
-
-func TestEncoder_UnionTypedInvalidSchema(t *testing.T) {
-	defer ConfigTeardown()
-
-	schema := `["null", "long"]`
-	buf := bytes.NewBuffer([]byte{})
-	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
-
-	err = enc.Encode(&TestUnionType{Val: 1})
-
-	assert.Error(t, err)
-}
-
 func TestEncoder_UnionPtr(t *testing.T) {
 	defer ConfigTeardown()
 
@@ -224,6 +130,150 @@ func TestEncoder_UnionPtrNotNullable(t *testing.T) {
 
 	str := "test"
 	err = enc.Encode(&str)
+
+	assert.Error(t, err)
+}
+
+func TestEncoder_UnionInterface(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `["int", "string"]`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	var val interface{} = "foo"
+	err = enc.Encode(val)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x02, 0x06, 0x66, 0x6F, 0x6F}, buf.Bytes())
+}
+
+func TestEncoder_UnionInterfaceRecord(t *testing.T) {
+	defer ConfigTeardown()
+
+	avro.Register("test", &TestRecord{})
+
+	schema := `["int", {"type": "record", "name": "test", "fields" : [{"name": "a", "type": "long"}, {"name": "b", "type": "string"}]}]`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	var val interface{} = &TestRecord{A: 27, B: "foo"}
+	err = enc.Encode(val)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x02, 0x36, 0x06, 0x66, 0x6F, 0x6F}, buf.Bytes())
+}
+
+func TestEncoder_UnionInterfaceRecordNonPtr(t *testing.T) {
+	defer ConfigTeardown()
+
+	avro.Register("test", TestRecord{})
+
+	schema := `["int", {"type": "record", "name": "test", "fields" : [{"name": "a", "type": "long"}, {"name": "b", "type": "string"}]}]`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	var val interface{} = TestRecord{A: 27, B: "foo"}
+	err = enc.Encode(val)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x02, 0x36, 0x06, 0x66, 0x6F, 0x6F}, buf.Bytes())
+}
+
+func TestEncoder_UnionInterfaceMap(t *testing.T) {
+	defer ConfigTeardown()
+
+	avro.Register("map:int", map[string]int{})
+
+	schema := `["int", {"type": "map", "values": "int"}]`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	var val interface{} = map[string]int{"foo": 27}
+	err = enc.Encode(val)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x02, 0x01, 0x0a, 0x06, 0x66, 0x6f, 0x6f, 0x36, 0x00}, buf.Bytes())
+}
+
+func TestEncoder_UnionInterfaceArray(t *testing.T) {
+	defer ConfigTeardown()
+
+	avro.Register("array:int", []int{})
+
+	schema := `["int", {"type": "array", "items": "int"}]`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	var val interface{} = []int{27}
+	err = enc.Encode(val)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x02, 0x01, 0x02, 0x36, 0x00}, buf.Bytes())
+}
+
+func TestEncoder_UnionInterfaceNull(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type": "record", "name": "test", "fields" : [{"name": "a", "type": ["null", "string", "int"]}]}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(&TestUnion{A: nil})
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x00}, buf.Bytes())
+}
+
+func TestEncoder_UnionInterfaceNamed(t *testing.T) {
+	defer ConfigTeardown()
+
+	avro.Register("test", "")
+
+	schema := `["null", {"type":"enum", "name": "test", "symbols": ["A", "B"]}]`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	var val interface{} = "B"
+	err = enc.Encode(val)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x02, 0x02}, buf.Bytes())
+}
+
+func TestEncoder_UnionInterfaceUnregisteredType(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `["int", {"type": "record", "name": "test", "fields" : [{"name": "a", "type": "long"}, {"name": "b", "type": "string"}]}]`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	var val interface{} = &TestRecord{}
+	err = enc.Encode(val)
+
+	assert.Error(t, err)
+}
+
+func TestEncoder_UnionInterfaceNotInSchema(t *testing.T) {
+	defer ConfigTeardown()
+
+	avro.Register("test", &TestRecord{})
+
+	schema := `["int", "string"]`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	var val interface{} = &TestRecord{}
+	err = enc.Encode(val)
 
 	assert.Error(t, err)
 }

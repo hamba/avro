@@ -11,6 +11,7 @@ import (
 )
 
 var emptyFgpt = [32]byte{}
+var nullDefault = struct{}{}
 
 // Type is a schema type
 type Type string
@@ -18,6 +19,7 @@ type Type string
 // Schema type constants.
 const (
 	Record  Type = "record"
+	Error   Type = "error"
 	Ref     Type = "<ref>"
 	Enum    Type = "enum"
 	Array   Type = "array"
@@ -34,24 +36,24 @@ const (
 	Null    Type = "null"
 )
 
-type frozenSchemaConfig struct {
-	schemaCache concurrent.Map // map[string]Schema
+// SchemaCache is a cache of schemas.
+type SchemaCache struct {
+	cache concurrent.Map // map[string]Schema
 }
 
-func (c *frozenSchemaConfig) addSchemaToCache(name string, schema Schema) {
-	c.schemaCache.Store(name, schema)
+// Add adds a schema to the cache with the given name.
+func (c *SchemaCache) Add(name string, schema Schema) {
+	c.cache.Store(name, schema)
 }
 
-// getSchemaFromCache returns the Schema if it exists.
-func (c *frozenSchemaConfig) getSchemaFromCache(name string) Schema {
-	if v, ok := c.schemaCache.Load(name); ok {
+// Get returns the Schema if it exists.
+func (c *SchemaCache) Get(name string) Schema {
+	if v, ok := c.cache.Load(name); ok {
 		return v.(Schema)
 	}
 
 	return nil
 }
-
-var schemaConfig = frozenSchemaConfig{}
 
 // Schemas is a slice of Schemas.
 type Schemas []Schema
@@ -241,11 +243,12 @@ type RecordSchema struct {
 	properties
 	fingerprinter
 
-	fields []*Field
+	isError bool
+	fields  []*Field
 }
 
 // NewRecordSchema creates a new record schema instance.
-func NewRecordSchema(name, space string) (*RecordSchema, error) {
+func NewRecordSchema(name, space string, fields []*Field) (*RecordSchema, error) {
 	n, err := newName(name, space)
 	if err != nil {
 		return nil, err
@@ -254,6 +257,22 @@ func NewRecordSchema(name, space string) (*RecordSchema, error) {
 	return &RecordSchema{
 		name:       n,
 		properties: properties{reserved: schemaReserved},
+		fields:     fields,
+	}, nil
+}
+
+// NewErrorRecordSchema creates a new error record schema instance.
+func NewErrorRecordSchema(name, space string, fields []*Field) (*RecordSchema, error) {
+	n, err := newName(name, space)
+	if err != nil {
+		return nil, err
+	}
+
+	return &RecordSchema{
+		name:       n,
+		properties: properties{reserved: schemaReserved},
+		isError:    true,
+		fields:     fields,
 	}, nil
 }
 
@@ -262,12 +281,9 @@ func (s *RecordSchema) Type() Type {
 	return Record
 }
 
-// AddField adds a field to the record.
-func (s *RecordSchema) AddField(field *Field) {
-	// Clear the fingerprint cache
-	s.fingerprint = emptyFgpt
-
-	s.fields = append(s.fields, field)
+// IsError determines is this is an error record.
+func (s *RecordSchema) IsError() bool {
+	return s.isError
 }
 
 // Fields returns the fields of a record.
@@ -277,6 +293,11 @@ func (s *RecordSchema) Fields() []*Field {
 
 // String returns the canonical form of the schema.
 func (s *RecordSchema) String() string {
+	typ := "record"
+	if s.isError {
+		typ = "error"
+	}
+
 	fields := ""
 	for _, f := range s.fields {
 		fields += f.String() + ","
@@ -285,7 +306,7 @@ func (s *RecordSchema) String() string {
 		fields = fields[:len(fields)-1]
 	}
 
-	return `{"name":"` + s.FullName() + `","type":"record","fields":[` + fields + `]}`
+	return `{"name":"` + s.FullName() + `","type":"` + typ + `","fields":[` + fields + `]}`
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
@@ -331,10 +352,19 @@ func (s *Field) Type() Schema {
 	return s.typ
 }
 
+// HasDefault determines if the field has a default value.
+func (s *Field) HasDefault() bool {
+	return s.def != nil
+}
+
 // Default returns the default of a field or nil.
 //
 // The only time a nil default is valid is for a Null Type.
 func (s *Field) Default() interface{} {
+	if s.def == nullDefault {
+		return nil
+	}
+
 	return s.def
 }
 
@@ -490,10 +520,7 @@ func NewUnionSchema(types []Schema) (*UnionSchema, error) {
 			return nil, errors.New("avro: union type cannot be a union")
 		}
 
-		strType := string(schema.Type())
-		if named, ok := schema.(NamedSchema); ok {
-			strType = named.FullName()
-		}
+		strType := schemaTypeName(schema)
 
 		if seen[strType] {
 			return nil, errors.New("avro: union type must be unique")
@@ -662,7 +689,10 @@ func validateName(name string) error {
 
 func validateDefault(name string, schema Schema, def interface{}) (interface{}, error) {
 	if def == nil {
-		return nil, nil
+		if schema.Type() != Null && !(schema.Type() == Union && schema.(*UnionSchema).Nullable()) {
+			// This is an empty default value.
+			return nil, nil
+		}
 	}
 
 	def, ok := isValidDefault(schema, def)
@@ -676,7 +706,7 @@ func validateDefault(name string, schema Schema, def interface{}) (interface{}, 
 func isValidDefault(schema Schema, def interface{}) (interface{}, bool) {
 	switch schema.Type() {
 	case Null:
-		return nil, def == nil
+		return nullDefault, def == nil
 
 	case String, Bytes, Enum, Fixed:
 		if _, ok := def.(string); ok {
@@ -790,4 +820,12 @@ func isValidDefault(schema Schema, def interface{}) (interface{}, bool) {
 	}
 
 	return nil, false
+}
+
+func schemaTypeName(schema Schema) string {
+	if n, ok := schema.(NamedSchema); ok {
+		return n.FullName()
+	}
+
+	return string(schema.Type())
 }

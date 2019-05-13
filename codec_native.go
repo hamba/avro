@@ -137,8 +137,16 @@ func createEncoderOfNative(schema Schema, typ reflect2.Type) ValEncoder {
 		return &bytesCodec{sliceType: typ.(*reflect2.UnsafeSliceType)}
 	}
 
+	if schema.Type() == Null {
+		return &nullCodec{}
+	}
+
 	return &errorEncoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s", typ.String(), schema.Type())}
 }
+
+type nullCodec struct{}
+
+func (*nullCodec) Encode(ptr unsafe.Pointer, w *Writer) {}
 
 type boolCodec struct{}
 

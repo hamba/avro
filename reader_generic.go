@@ -79,11 +79,7 @@ func (r *Reader) ReadNext(schema Schema) interface{} {
 			return nil
 		}
 
-		key := string(schema.Type())
-		if n, ok := schema.(NamedSchema); ok {
-			key = n.FullName()
-		}
-
+		key := schemaTypeName(schema)
 		obj := map[string]interface{}{}
 		obj[key] = r.ReadNext(types[idx])
 

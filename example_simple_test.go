@@ -36,7 +36,6 @@ func Example_usage() {
 	}
 
 	fmt.Printf("%+v\n", data)
-	// Outputs: [54 6 102 111 111]
 
 	out := SimpleRecord{}
 	err = avro.Unmarshal(schema, data, &out)
@@ -45,5 +44,7 @@ func Example_usage() {
 	}
 
 	fmt.Printf("%+v\n", out)
-	// Outputs: {A:27 B:foo}
+
+	//Output: [54 6 102 111 111]
+	// {A:27 B:foo}
 }

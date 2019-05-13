@@ -14,14 +14,22 @@ var (
 	fieldReserved  = []string{"default", "doc", "name", "order", "type", "aliases"}
 )
 
+// DefaultSchemaCache is the default cache for schemas.
+var DefaultSchemaCache = &SchemaCache{}
+
 // Parse parses a schema string.
 func Parse(schema string) (Schema, error) {
+	return ParseWithCache(schema, "", DefaultSchemaCache)
+}
+
+// ParseWithCache parses a schema string using the given namespace and  schema cache.
+func ParseWithCache(schema, namespace string, cache *SchemaCache) (Schema, error) {
 	var json interface{}
 	if err := jsoniter.Unmarshal([]byte(schema), &json); err != nil {
 		json = schema
 	}
 
-	return parseType("", json)
+	return parseType(namespace, json, cache)
 }
 
 // MustParse parses a schema string, panicing if there is an error.
@@ -54,25 +62,25 @@ func ParseFiles(paths ...string) (Schema, error) {
 	return schema, nil
 }
 
-func parseType(namespace string, v interface{}) (Schema, error) {
+func parseType(namespace string, v interface{}, cache *SchemaCache) (Schema, error) {
 	switch val := v.(type) {
 	case nil:
 		return &NullSchema{}, nil
 
 	case string:
-		return parsePrimitive(namespace, val)
+		return parsePrimitive(namespace, val, cache)
 
 	case map[string]interface{}:
-		return parseComplex(namespace, val)
+		return parseComplex(namespace, val, cache)
 
 	case []interface{}:
-		return parseUnion(namespace, val)
+		return parseUnion(namespace, val, cache)
 	}
 
 	return nil, fmt.Errorf("avro: unknown type: %v", v)
 }
 
-func parsePrimitive(namespace, s string) (Schema, error) {
+func parsePrimitive(namespace, s string, cache *SchemaCache) (Schema, error) {
 	typ := Type(s)
 	switch typ {
 	case Null:
@@ -82,7 +90,7 @@ func parsePrimitive(namespace, s string) (Schema, error) {
 		return NewPrimitiveSchema(typ), nil
 
 	default:
-		schema := schemaConfig.getSchemaFromCache(fullName(namespace, s))
+		schema := cache.Get(fullName(namespace, s))
 		if schema != nil {
 			return schema, nil
 		}
@@ -91,9 +99,9 @@ func parsePrimitive(namespace, s string) (Schema, error) {
 	}
 }
 
-func parseComplex(namespace string, m map[string]interface{}) (Schema, error) {
+func parseComplex(namespace string, m map[string]interface{}, cache *SchemaCache) (Schema, error) {
 	if val, ok := m["type"].([]interface{}); ok {
-		return parseUnion(namespace, val)
+		return parseUnion(namespace, val, cache)
 	}
 
 	str, ok := m["type"].(string)
@@ -109,27 +117,27 @@ func parseComplex(namespace string, m map[string]interface{}) (Schema, error) {
 	case String, Bytes, Int, Long, Float, Double, Boolean:
 		return NewPrimitiveSchema(typ), nil
 
-	case Record:
-		return parseRecord(namespace, m)
+	case Record, Error:
+		return parseRecord(typ, namespace, m, cache)
 
 	case Enum:
-		return parseEnum(namespace, m)
+		return parseEnum(namespace, m, cache)
 
 	case Array:
-		return parseArray(namespace, m)
+		return parseArray(namespace, m, cache)
 
 	case Map:
-		return parseMap(namespace, m)
+		return parseMap(namespace, m, cache)
 
 	case Fixed:
-		return parseFixed(namespace, m)
+		return parseFixed(namespace, m, cache)
 
 	default:
-		return parseType(namespace, string(typ))
+		return parseType(namespace, string(typ), cache)
 	}
 }
 
-func parseRecord(namespace string, m map[string]interface{}) (Schema, error) {
+func parseRecord(typ Type, namespace string, m map[string]interface{}, cache *SchemaCache) (Schema, error) {
 	name, newNamespace, err := resolveFullName(m)
 	if err != nil {
 		return nil, err
@@ -138,35 +146,43 @@ func parseRecord(namespace string, m map[string]interface{}) (Schema, error) {
 		namespace = newNamespace
 	}
 
-	fields, ok := m["fields"].([]interface{})
+	fs, ok := m["fields"].([]interface{})
 	if !ok {
 		return nil, errors.New("avro: record must have an array of fields")
 	}
+	fields := make([]*Field, len(fs))
 
-	rec, err := NewRecordSchema(name, namespace)
+	var rec *RecordSchema
+	switch typ {
+	case Record:
+		rec, err = NewRecordSchema(name, namespace, fields)
+
+	case Error:
+		rec, err = NewErrorRecordSchema(name, namespace, fields)
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	schemaConfig.addSchemaToCache(rec.FullName(), NewRefSchema(rec))
+	cache.Add(rec.FullName(), NewRefSchema(rec))
 
 	for k, v := range m {
 		rec.AddProp(k, v)
 	}
 
-	for _, f := range fields {
-		field, err := parseField(namespace, f)
+	for i, f := range fs {
+		field, err := parseField(namespace, f, cache)
 		if err != nil {
 			return nil, err
 		}
 
-		rec.AddField(field)
+		fields[i] = field
 	}
 
 	return rec, nil
 }
 
-func parseField(namespace string, v interface{}) (*Field, error) {
+func parseField(namespace string, v interface{}, cache *SchemaCache) (*Field, error) {
 	m, ok := v.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("avro: invalid field: %+v", v)
@@ -181,7 +197,7 @@ func parseField(namespace string, v interface{}) (*Field, error) {
 		return nil, errors.New("avro: field requires a type")
 	}
 
-	typ, err := parseType(namespace, m["type"])
+	typ, err := parseType(namespace, m["type"], cache)
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +214,7 @@ func parseField(namespace string, v interface{}) (*Field, error) {
 	return field, nil
 }
 
-func parseEnum(namespace string, m map[string]interface{}) (Schema, error) {
+func parseEnum(namespace string, m map[string]interface{}, cache *SchemaCache) (Schema, error) {
 	name, newNamespace, err := resolveFullName(m)
 	if err != nil {
 		return nil, err
@@ -227,7 +243,7 @@ func parseEnum(namespace string, m map[string]interface{}) (Schema, error) {
 		return nil, err
 	}
 
-	schemaConfig.addSchemaToCache(enum.FullName(), enum)
+	cache.Add(enum.FullName(), enum)
 
 	for k, v := range m {
 		enum.AddProp(k, v)
@@ -236,13 +252,13 @@ func parseEnum(namespace string, m map[string]interface{}) (Schema, error) {
 	return enum, nil
 }
 
-func parseArray(namespace string, m map[string]interface{}) (Schema, error) {
+func parseArray(namespace string, m map[string]interface{}, cache *SchemaCache) (Schema, error) {
 	items, ok := m["items"]
 	if !ok {
 		return nil, errors.New("avro: array must have an items key")
 	}
 
-	schema, err := parseType(namespace, items)
+	schema, err := parseType(namespace, items, cache)
 	if err != nil {
 		return nil, err
 	}
@@ -256,13 +272,13 @@ func parseArray(namespace string, m map[string]interface{}) (Schema, error) {
 	return arr, nil
 }
 
-func parseMap(namespace string, m map[string]interface{}) (Schema, error) {
+func parseMap(namespace string, m map[string]interface{}, cache *SchemaCache) (Schema, error) {
 	values, ok := m["values"]
 	if !ok {
 		return nil, errors.New("avro: map must have an values key")
 	}
 
-	schema, err := parseType(namespace, values)
+	schema, err := parseType(namespace, values, cache)
 	if err != nil {
 		return nil, err
 	}
@@ -276,11 +292,11 @@ func parseMap(namespace string, m map[string]interface{}) (Schema, error) {
 	return ms, nil
 }
 
-func parseUnion(namespace string, v []interface{}) (Schema, error) {
+func parseUnion(namespace string, v []interface{}, cache *SchemaCache) (Schema, error) {
 	var err error
 	types := make([]Schema, len(v))
 	for i := range v {
-		types[i], err = parseType(namespace, v[i])
+		types[i], err = parseType(namespace, v[i], cache)
 		if err != nil {
 			return nil, err
 		}
@@ -289,7 +305,7 @@ func parseUnion(namespace string, v []interface{}) (Schema, error) {
 	return NewUnionSchema(types)
 }
 
-func parseFixed(namespace string, m map[string]interface{}) (Schema, error) {
+func parseFixed(namespace string, m map[string]interface{}, cache *SchemaCache) (Schema, error) {
 	name, newNamespace, err := resolveFullName(m)
 	if err != nil {
 		return nil, err
@@ -308,7 +324,7 @@ func parseFixed(namespace string, m map[string]interface{}) (Schema, error) {
 		return nil, err
 	}
 
-	schemaConfig.addSchemaToCache(fixed.FullName(), fixed)
+	cache.Add(fixed.FullName(), fixed)
 
 	for k, v := range m {
 		fixed.AddProp(k, v)

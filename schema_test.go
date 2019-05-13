@@ -164,32 +164,32 @@ func TestRecordSchema(t *testing.T) {
 	}{
 		{
 			name:    "Valid",
-			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "doc": "docs", "fields":[{"name": "field", "type": "int"}]}`,
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "doc": "docs", "fields":[{"name": "field", "type": "int"}]}`,
 			wantErr: false,
 		},
 		{
 			name:    "Invalid Name First Char",
-			schema:  `{"type":"record", "name":"0test", "namespace": "org.apache.avro", "fields":[{"name": "field", "type": "int"}]}`,
+			schema:  `{"type":"record", "name":"0test", "namespace": "org.hamba.avro", "fields":[{"name": "field", "type": "int"}]}`,
 			wantErr: true,
 		},
 		{
 			name:    "Invalid Name Other Char",
-			schema:  `{"type":"record", "name":"test+", "namespace": "org.apache.avro", "fields":[{"name": "field", "type": "int"}]}`,
+			schema:  `{"type":"record", "name":"test+", "namespace": "org.hamba.avro", "fields":[{"name": "field", "type": "int"}]}`,
 			wantErr: true,
 		},
 		{
 			name:    "Empty Name",
-			schema:  `{"type":"record", "name":"", "namespace": "org.apache.avro", "fields":[{"name": "field", "type": "int"}]}`,
+			schema:  `{"type":"record", "name":"", "namespace": "org.hamba.avro", "fields":[{"name": "field", "type": "int"}]}`,
 			wantErr: true,
 		},
 		{
 			name:    "No Name",
-			schema:  `{"type":"record", "namespace": "org.apache.avro", "fields":[{"name": "intField", "type": "int"}]}`,
+			schema:  `{"type":"record", "namespace": "org.hamba.avro", "fields":[{"name": "intField", "type": "int"}]}`,
 			wantErr: true,
 		},
 		{
 			name:    "Invalid Namespace",
-			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro+", "fields":[{"name": "field", "type": "int"}]}`,
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro+", "fields":[{"name": "field", "type": "int"}]}`,
 			wantErr: true,
 		},
 		{
@@ -199,32 +199,32 @@ func TestRecordSchema(t *testing.T) {
 		},
 		{
 			name:    "No Fields",
-			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro"}`,
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro"}`,
 			wantErr: true,
 		},
 		{
 			name:    "Invalid Field Type",
-			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":["test"]}`,
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":["test"]}`,
 			wantErr: true,
 		},
 		{
 			name:    "No Field Name",
-			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"type": "int"}]}`,
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"type": "int"}]}`,
 			wantErr: true,
 		},
 		{
 			name:    "Invalid Field Name",
-			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "field+", "type": "int"}]}`,
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "field+", "type": "int"}]}`,
 			wantErr: true,
 		},
 		{
 			name:    "No Field Type",
-			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "field"}]}`,
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "field"}]}`,
 			wantErr: true,
 		},
 		{
 			name:    "Invalid Field Type",
-			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "field", "type": "blah"}]}`,
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "field", "type": "blah"}]}`,
 			wantErr: true,
 		},
 	}
@@ -244,6 +244,67 @@ func TestRecordSchema(t *testing.T) {
 	}
 }
 
+func TestErrorRecordSchema(t *testing.T) {
+	tests := []struct {
+		name    string
+		schema  string
+		wantErr bool
+	}{
+		{
+			name:    "Valid",
+			schema:  `{"type":"error", "name":"test", "namespace": "org.hamba.avro", "doc": "docs", "fields":[{"name": "field", "type": "int"}]}`,
+			wantErr: false,
+		},
+		{
+			name:    "Invalid Name First Char",
+			schema:  `{"type":"error", "name":"0test", "namespace": "org.hamba.avro", "fields":[{"name": "field", "type": "int"}]}`,
+			wantErr: true,
+		},
+		{
+			name:    "Invalid Name Other Char",
+			schema:  `{"type":"error", "name":"test+", "namespace": "org.hamba.avro", "fields":[{"name": "field", "type": "int"}]}`,
+			wantErr: true,
+		},
+		{
+			name:    "Empty Name",
+			schema:  `{"type":"error", "name":"", "namespace": "org.hamba.avro", "fields":[{"name": "field", "type": "int"}]}`,
+			wantErr: true,
+		},
+		{
+			name:    "No Name",
+			schema:  `{"type":"error", "namespace": "org.hamba.avro", "fields":[{"name": "intField", "type": "int"}]}`,
+			wantErr: true,
+		},
+		{
+			name:    "Invalid Namespace",
+			schema:  `{"type":"error", "name":"test", "namespace": "org.hamba.avro+", "fields":[{"name": "field", "type": "int"}]}`,
+			wantErr: true,
+		},
+		{
+			name:    "Empty Namespace",
+			schema:  `{"type":"error", "name":"test", "namespace": "", "fields":[{"name": "intField", "type": "int"}]}`,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			s, err := avro.Parse(tt.schema)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, avro.Record, s.Type())
+			recSchema := s.(*avro.RecordSchema)
+			assert.True(t, recSchema.IsError())
+		})
+	}
+}
+
 func TestRecordSchema_ValidatesDefault(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -252,87 +313,87 @@ func TestRecordSchema_ValidatesDefault(t *testing.T) {
 	}{
 		{
 			name:    "String",
-			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "string", "default": "test"}]}`,
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "string", "default": "test"}]}`,
 			wantErr: false,
 		},
 		{
 			name:    "Int",
-			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "int", "default": 1}]}`,
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "int", "default": 1}]}`,
 			wantErr: false,
 		},
 		{
 			name:    "Long",
-			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "long", "default": 1}]}`,
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "long", "default": 1}]}`,
 			wantErr: false,
 		},
 		{
 			name:    "Float",
-			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "float", "default": 1}]}`,
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "float", "default": 1}]}`,
 			wantErr: false,
 		},
 		{
 			name:    "Double",
-			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": "double", "default": 1}]}`,
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "double", "default": 1}]}`,
 			wantErr: false,
 		},
 		{
 			name:    "Array",
-			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"array", "items": "int"}, "default": [1,2]}]}`,
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": {"type":"array", "items": "int"}, "default": [1,2]}]}`,
 			wantErr: false,
 		},
 		{
 			name:    "Array Not Array",
-			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"array", "items": "int"}, "default": "test"}]}`,
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": {"type":"array", "items": "int"}, "default": "test"}]}`,
 			wantErr: true,
 		},
 		{
 			name:    "Array Invalid Type",
-			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"array", "items": "int"}, "default": ["test"]}]}`,
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": {"type":"array", "items": "int"}, "default": ["test"]}]}`,
 			wantErr: true,
 		},
 		{
 			name:    "Map",
-			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"map", "values": "int"}, "default": {"b": 1}}]}`,
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": {"type":"map", "values": "int"}, "default": {"b": 1}}]}`,
 			wantErr: false,
 		},
 		{
 			name:    "Map Not Map",
-			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"map", "values": "int"}, "default": "test"}]}`,
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": {"type":"map", "values": "int"}, "default": "test"}]}`,
 			wantErr: true,
 		},
 		{
 			name:    "Map Invalid Type",
-			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"map", "values": "int"}, "default": {"b": "test"}}]}`,
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": {"type":"map", "values": "int"}, "default": {"b": "test"}}]}`,
 			wantErr: true,
 		},
 		{
 			name:    "Union",
-			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": ["null", "string"], "default": null}]}`,
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": ["null", "string"], "default": null}]}`,
 			wantErr: false,
 		},
 		{
 			name:    "Union Invalid Type",
-			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": ["null", "string"], "default": "string"}]}`,
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": ["null", "string"], "default": "string"}]}`,
 			wantErr: true,
 		},
 		{
 			name:    "Record",
-			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"record", "name": "test2", "fields":[{"name": "b", "type": "int"},{"name": "c", "type": "int", "default": 1}]}, "default": {"b": 1}}]}`,
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": {"type":"record", "name": "test2", "fields":[{"name": "b", "type": "int"},{"name": "c", "type": "int", "default": 1}]}, "default": {"b": 1}}]}`,
 			wantErr: false,
 		},
 		{
 			name:    "Record Not Map",
-			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"record", "name": "test2", "fields":[{"name": "b", "type": "int"},{"name": "c", "type": "int", "default": 1}]}, "default": "test"}]}`,
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": {"type":"record", "name": "test2", "fields":[{"name": "b", "type": "int"},{"name": "c", "type": "int", "default": 1}]}, "default": "test"}]}`,
 			wantErr: true,
 		},
 		{
 			name:    "Record Invalid Type",
-			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"record", "name": "test2", "fields":[{"name": "b", "type": "int"},{"name": "c", "type": "int", "default": 1}]}, "default": {"b": "test"}}]}`,
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": {"type":"record", "name": "test2", "fields":[{"name": "b", "type": "int"},{"name": "c", "type": "int", "default": 1}]}, "default": {"b": "test"}}]}`,
 			wantErr: true,
 		},
 		{
 			name:    "Record Invalid Field Type",
-			schema:  `{"type":"record", "name":"test", "namespace": "org.apache.avro", "fields":[{"name": "a", "type": {"type":"record", "name": "test2", "fields":[{"name": "b", "type": "int"},{"name": "c", "type": "int", "default": "test"}]}, "default": {"b": 1}}]}`,
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": {"type":"record", "name": "test2", "fields":[{"name": "b", "type": "int"},{"name": "c", "type": "int", "default": "test"}]}, "default": {"b": 1}}]}`,
 			wantErr: true,
 		},
 	}
@@ -356,7 +417,7 @@ func TestRecordSchema_HandlesProps(t *testing.T) {
 {
    "type": "record",
    "name": "valid_name",
-   "namespace": "org.apache.avro",
+   "namespace": "org.hamba.avro",
    "foo": "bar1",
    "fields": [
        {"name": "intField", "type": "int", "foo": "bar2"}
@@ -377,7 +438,7 @@ func TestRecordSchema_WithReference(t *testing.T) {
 {
    "type": "record",
    "name": "valid_name",
-   "namespace": "org.apache.avro",
+   "namespace": "org.hamba.avro",
    "fields": [
        {"name": "intField", "type": "int"},
        {"name": "Ref", "type": "valid_name"}
@@ -402,28 +463,28 @@ func TestEnumSchema(t *testing.T) {
 	}{
 		{
 			name:     "Valid",
-			schema:   `{"type":"enum", "name":"test", "namespace": "org.apache.avro", "symbols":["TEST"]}`,
-			wantName: "org.apache.avro.test",
+			schema:   `{"type":"enum", "name":"test", "namespace": "org.hamba.avro", "symbols":["TEST"]}`,
+			wantName: "org.hamba.avro.test",
 			wantErr:  false,
 		},
 		{
 			name:    "Invalid Name",
-			schema:  `{"type":"enum", "name":"test+", "namespace": "org.apache.avro", "symbols":["TEST"]}`,
+			schema:  `{"type":"enum", "name":"test+", "namespace": "org.hamba.avro", "symbols":["TEST"]}`,
 			wantErr: true,
 		},
 		{
 			name:    "Empty Name",
-			schema:  `{"type":"enum", "name":"", "namespace": "org.apache.avro", "symbols":["TEST"]}`,
+			schema:  `{"type":"enum", "name":"", "namespace": "org.hamba.avro", "symbols":["TEST"]}`,
 			wantErr: true,
 		},
 		{
 			name:    "No Name",
-			schema:  `{"type":"enum", "namespace": "org.apache.avro", "symbols":["TEST"]}`,
+			schema:  `{"type":"enum", "namespace": "org.hamba.avro", "symbols":["TEST"]}`,
 			wantErr: true,
 		},
 		{
 			name:    "Invalid Namespace",
-			schema:  `{"type":"enum", "name":"test", "namespace": "org.apache.avro+", "symbols":["TEST"]}`,
+			schema:  `{"type":"enum", "name":"test", "namespace": "org.hamba.avro+", "symbols":["TEST"]}`,
 			wantErr: true,
 		},
 		{
@@ -433,22 +494,22 @@ func TestEnumSchema(t *testing.T) {
 		},
 		{
 			name:    "No Symbols",
-			schema:  `{"type":"enum", "name":"test", "namespace": "org.apache.avro"}`,
+			schema:  `{"type":"enum", "name":"test", "namespace": "org.hamba.avro"}`,
 			wantErr: true,
 		},
 		{
 			name:    "Empty Symbols",
-			schema:  `{"type":"enum", "name":"test", "namespace": "org.apache.avro", "symbols":[]}`,
+			schema:  `{"type":"enum", "name":"test", "namespace": "org.hamba.avro", "symbols":[]}`,
 			wantErr: true,
 		},
 		{
 			name:    "Invalid Symbol",
-			schema:  `{"type":"enum", "name":"test", "namespace": "org.apache.avro", "symbols":["TEST+"]}`,
+			schema:  `{"type":"enum", "name":"test", "namespace": "org.hamba.avro", "symbols":["TEST+"]}`,
 			wantErr: true,
 		},
 		{
 			name:    "Invalid Symbol Type",
-			schema:  `{"type":"enum", "name":"test", "namespace": "org.apache.avro", "symbols":[1]}`,
+			schema:  `{"type":"enum", "name":"test", "namespace": "org.hamba.avro", "symbols":[1]}`,
 			wantErr: true,
 		},
 	}
@@ -471,7 +532,7 @@ func TestEnumSchema(t *testing.T) {
 }
 
 func TestEnumSchema_HandlesProps(t *testing.T) {
-	schm := `{"type":"enum", "name":"test", "namespace": "org.apache.avro", "symbols":["TEST"], "foo":"bar"}`
+	schm := `{"type":"enum", "name":"test", "namespace": "org.hamba.avro", "symbols":["TEST"], "foo":"bar"}`
 
 	s, err := avro.Parse(schm)
 
@@ -643,29 +704,29 @@ func TestFixedSchema(t *testing.T) {
 	}{
 		{
 			name:            "Valid",
-			schema:          `{"type":"fixed", "name":"test", "namespace": "org.apache.avro", "size": 12}`,
-			wantName:        "org.apache.avro.test",
-			wantFingerprint: [32]byte{0xa8, 0x13, 0xfa, 0xb4, 0xf, 0xd7, 0xe3, 0xc9, 0x3a, 0x98, 0x77, 0x24, 0xaf, 0xa9, 0x36, 0xe6, 0xe9, 0x53, 0xa9, 0x1c, 0x10, 0x70, 0xfe, 0x4e, 0x13, 0x2a, 0x7c, 0x51, 0x6, 0x5f, 0xa4, 0xbc},
+			schema:          `{"type":"fixed", "name":"test", "namespace": "org.hamba.avro", "size": 12}`,
+			wantName:        "org.hamba.avro.test",
+			wantFingerprint: [32]uint8{0x8c, 0x9e, 0xcb, 0x4, 0x83, 0x2f, 0x3b, 0xa7, 0x58, 0x85, 0x9, 0x99, 0x41, 0xe, 0xbf, 0xd4, 0x7, 0xc7, 0x87, 0x4f, 0x8a, 0x12, 0xf4, 0xd0, 0x7f, 0x45, 0xdd, 0xaa, 0x10, 0x6b, 0x2f, 0xb3},
 			wantErr:         false,
 		},
 		{
 			name:    "Invalid Name",
-			schema:  `{"type":"fixed", "name":"test+", "namespace": "org.apache.avro", "size": 12}`,
+			schema:  `{"type":"fixed", "name":"test+", "namespace": "org.hamba.avro", "size": 12}`,
 			wantErr: true,
 		},
 		{
 			name:    "Empty Name",
-			schema:  `{"type":"fixed", "name":"", "namespace": "org.apache.avro", "size": 12}`,
+			schema:  `{"type":"fixed", "name":"", "namespace": "org.hamba.avro", "size": 12}`,
 			wantErr: true,
 		},
 		{
 			name:    "No Name",
-			schema:  `{"type":"fixed", "namespace": "org.apache.avro", "size": 12}`,
+			schema:  `{"type":"fixed", "namespace": "org.hamba.avro", "size": 12}`,
 			wantErr: true,
 		},
 		{
 			name:    "Invalid Namespace",
-			schema:  `{"type":"fixed", "name":"test", "namespace": "org.apache.avro+", "size": 12}`,
+			schema:  `{"type":"fixed", "name":"test", "namespace": "org.hamba.avro+", "size": 12}`,
 			wantErr: true,
 		},
 		{
@@ -675,12 +736,12 @@ func TestFixedSchema(t *testing.T) {
 		},
 		{
 			name:    "No Size",
-			schema:  `{"type":"fixed", "name":"test", "namespace": "org.apache.avro"}`,
+			schema:  `{"type":"fixed", "name":"test", "namespace": "org.hamba.avro"}`,
 			wantErr: true,
 		},
 		{
 			name:    "Invalid Size Type",
-			schema:  `{"type":"fixed", "name":"test", "namespace": "org.apache.avro", "size": "test"}`,
+			schema:  `{"type":"fixed", "name":"test", "namespace": "org.hamba.avro", "size": "test"}`,
 			wantErr: true,
 		},
 	}
@@ -704,7 +765,7 @@ func TestFixedSchema(t *testing.T) {
 }
 
 func TestFixedSchema_HandlesProps(t *testing.T) {
-	schm := `{"type":"fixed", "name":"test", "namespace": "org.apache.avro", "size": 12, "foo":"bar"}`
+	schm := `{"type":"fixed", "name":"test", "namespace": "org.hamba.avro", "size": 12, "foo":"bar"}`
 
 	s, err := avro.Parse(schm)
 
@@ -718,7 +779,7 @@ func TestSchema_Interop(t *testing.T) {
 {
    "type": "record",
    "name": "Interop",
-   "namespace": "org.apache.avro",
+   "namespace": "org.hamba.avro",
    "fields": [
        {
            "name": "intField",
@@ -818,7 +879,7 @@ func TestSchema_Interop(t *testing.T) {
                    },
                    {
                        "name": "child",
-                       "type": {"type": "org.apache.avro.Node"}
+                       "type": {"type": "org.hamba.avro.Node"}
                    },
                    {
                        "name": "children",
