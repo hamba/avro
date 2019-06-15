@@ -105,6 +105,24 @@ func TestDecoder_UnionPtr(t *testing.T) {
 	assert.Equal(t, &want, got)
 }
 
+func TestDecoder_UnionPtrReuseInstance(t *testing.T) {
+	defer ConfigTeardown()
+
+	avro.Register("test", &TestRecord{})
+
+	data := []byte{0x02, 0x36, 0x06, 0x66, 0x6F, 0x6F}
+	schema := `["null", {"type": "record", "name": "test", "fields" : [{"name": "a", "type": "long"}, {"name": "b", "type": "string"}]}]`
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	got := &TestRecord{}
+	err := dec.Decode(&got)
+
+	assert.NoError(t, err)
+	assert.IsType(t, &TestRecord{}, got)
+	assert.Equal(t, int64(27), got.A)
+	assert.Equal(t, "foo", got.B)
+}
+
 func TestDecoder_UnionPtrNull(t *testing.T) {
 	defer ConfigTeardown()
 
