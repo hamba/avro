@@ -146,18 +146,19 @@ func (e *mapUnionEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 func decoderOfPtrUnion(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
 	union := schema.(*UnionSchema)
 	ptrType := typ.(*reflect2.UnsafePtrType)
-	decoder := decoderOfType(cfg, union.Types()[1], ptrType.Elem())
+	elemType := ptrType.Elem()
+	decoder := decoderOfType(cfg, union.Types()[1], elemType)
 
 	return &unionPtrDecoder{
 		schema:  union,
-		typ:     ptrType,
+		typ:     elemType,
 		decoder: decoder,
 	}
 }
 
 type unionPtrDecoder struct {
 	schema  *UnionSchema
-	typ     *reflect2.UnsafePtrType
+	typ     reflect2.Type
 	decoder ValDecoder
 }
 
@@ -172,9 +173,16 @@ func (d *unionPtrDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		return
 	}
 
-	newPtr := d.typ.UnsafeNew()
-	d.decoder.Decode(newPtr, r)
-	*((*unsafe.Pointer)(ptr)) = newPtr
+	if *((*unsafe.Pointer)(ptr)) == nil {
+		// Create new instance
+		newPtr := d.typ.UnsafeNew()
+		d.decoder.Decode(newPtr, r)
+		*((*unsafe.Pointer)(ptr)) = newPtr
+		return
+	}
+
+	// Reuse existing instance
+	d.decoder.Decode(*((*unsafe.Pointer)(ptr)), r)
 }
 
 func encoderOfPtrUnion(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncoder {
@@ -184,14 +192,12 @@ func encoderOfPtrUnion(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValE
 
 	return &unionPtrEncoder{
 		schema:  union,
-		typ:     ptrType,
 		encoder: encoder,
 	}
 }
 
 type unionPtrEncoder struct {
 	schema  *UnionSchema
-	typ     *reflect2.UnsafePtrType
 	encoder ValEncoder
 }
 
