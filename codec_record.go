@@ -159,7 +159,7 @@ func (e *structEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 }
 
 type structFieldEncoder struct {
-	field      reflect2.StructField
+	field      *reflect2.UnsafeStructField
 	defaultPtr unsafe.Pointer
 	encoder    ValEncoder
 }
