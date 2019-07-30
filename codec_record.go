@@ -91,7 +91,7 @@ func (d *structDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 }
 
 type structFieldDecoder struct {
-	field   reflect2.StructField
+	field   *reflect2.UnsafeStructField
 	decoder ValDecoder
 }
 
@@ -321,7 +321,7 @@ func (sf structFields) Get(name string) *structField {
 }
 
 type structField struct {
-	Field reflect2.StructField
+	Field *reflect2.UnsafeStructField
 	Name  string
 }
 
@@ -329,7 +329,7 @@ func describeStruct(tagKey string, typ reflect2.Type) *structDescriptor {
 	structType := typ.(*reflect2.UnsafeStructType)
 	fields := structFields{}
 	for i := 0; i < structType.NumField(); i++ {
-		field := structType.Field(i)
+		field := structType.Field(i).(*reflect2.UnsafeStructField)
 		fieldName := field.Name()
 		if tag, ok := field.Tag().Lookup(tagKey); ok {
 			fieldName = tag

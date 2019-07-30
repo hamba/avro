@@ -579,6 +579,18 @@ func TestReader_ReadString(t *testing.T) {
 	}
 }
 
+func TestReader_ReadStringFastPathIsntBoundToBuffer(t *testing.T) {
+	data := []byte{0x06, 0x66, 0x6F, 0x6F, 0x08, 0x61, 0x76, 0x72, 0x6F}
+	r := avro.NewReader(bytes.NewReader(data), 4)
+
+	got1 := r.ReadString()
+	got2 := r.ReadString()
+
+	assert.NoError(t, r.Error)
+	assert.Equal(t, "foo", got1)
+	assert.Equal(t, "avro", got2)
+}
+
 func TestReader_ReadBlockHeader(t *testing.T) {
 	tests := []struct {
 		data []byte
