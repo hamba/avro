@@ -7,10 +7,10 @@ import (
 	"sync"
 )
 
-// The size of a CRC-64 checksum in bytes.
+// Size is the of a CRC-64 checksum in bytes.
 const Size = 8
 
-// The empty checksum.
+// Empty is the empty checksum.
 const Empty = 0xc15d213aa4d7a795
 
 // Table is a 256-word table representing the polynomial for efficient processing.
@@ -21,7 +21,7 @@ func makeTable() *Table {
 	for i := 0; i < 256; i++ {
 		fp := uint64(i)
 		for j := 0; j < 8; j++ {
-			fp = (fp >> 1) ^ (Empty & -(fp & 1));
+			fp = (fp >> 1) ^ (Empty & -(fp & 1))
 		}
 		t[i] = fp
 	}
@@ -75,7 +75,7 @@ func (d *digest) Reset() {
 // Write accumulatively adds the given data to the checksum.
 func (d *digest) Write(p []byte) (n int, err error) {
 	for i := 0; i < len(p); i++ {
-		d.crc = (d.crc >> 8) ^ d.tab[(int)(byte(d.crc)^p[i])&0xff];
+		d.crc = (d.crc >> 8) ^ d.tab[(int)(byte(d.crc)^p[i])&0xff]
 	}
 
 	return len(p), nil
