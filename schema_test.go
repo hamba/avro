@@ -875,6 +875,14 @@ func TestSchema_FingerprintUsingReference(t *testing.T) {
 	assert.Equal(t, []byte{0xe1, 0xd6, 0x1e, 0x7c, 0x2f, 0xe3, 0x3c, 0x2b}, got)
 }
 
+func TestSchema_FingerprintUsingInvalidType(t *testing.T) {
+	schema := avro.MustParse("string")
+
+	_, err := schema.FingerprintUsing("test")
+
+	assert.Error(t, err)
+}
+
 func TestSchema_Interop(t *testing.T) {
 	schm := `
 {
