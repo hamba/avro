@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hamba/avro/pkg/crc64"
 	"github.com/modern-go/concurrent"
 )
 
@@ -49,8 +50,9 @@ const (
 )
 
 var fingerprinters = map[FingerprintType]hash.Hash{
-	MD5:    md5.New(),
-	SHA256: sha256.New(),
+	CRC64Avro: crc64.New(),
+	MD5:       md5.New(),
+	SHA256:    sha256.New(),
 }
 
 // SchemaCache is a cache of schemas.
@@ -208,7 +210,7 @@ func (f *fingerprinter) FingerprintUsing(typ FingerprintType, stringer fmt.Strin
 
 	h.Reset()
 	h.Write([]byte(stringer.String()))
-	fingerprint := h.Sum(nil)
+	fingerprint := h.Sum(make([]byte, 0, h.Size()))
 	f.cache[typ] = fingerprint
 	return fingerprint, nil
 }
