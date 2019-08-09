@@ -807,18 +807,6 @@ func TestSchema_FingerprintUsing(t *testing.T) {
 			want:   []byte{0x8f, 0x1, 0x48, 0x72, 0x63, 0x45, 0x3, 0xc7},
 		},
 		{
-			name:   "Primitive MD5",
-			schema: "string",
-			typ:    avro.MD5,
-			want:   []byte{0x9, 0x5d, 0x71, 0xcf, 0x12, 0x55, 0x6b, 0x9d, 0x5e, 0x33, 0xa, 0xd5, 0x75, 0xb3, 0xdf, 0x5d},
-		},
-		{
-			name:   "Primitive SHA256",
-			schema: "string",
-			typ:    avro.SHA256,
-			want:   []byte{0xe9, 0xe5, 0xc1, 0xc9, 0xe4, 0xf6, 0x27, 0x73, 0x39, 0xd1, 0xbc, 0xde, 0x7, 0x33, 0xa5, 0x9b, 0xd4, 0x2f, 0x87, 0x31, 0xf4, 0x49, 0xda, 0x6d, 0xc1, 0x30, 0x10, 0xa9, 0x16, 0x93, 0xd, 0x48},
-		},
-		{
 			name:   "Record CRC64",
 			schema: `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "doc": "docs", "fields":[{"name": "field", "type": "int"}]}`,
 			typ:    avro.CRC64Avro,
@@ -866,6 +854,25 @@ func TestSchema_FingerprintUsing(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSchema_FingerprintUsingReference(t *testing.T) {
+	schema := avro.MustParse(`
+{
+   "type": "record",
+   "name": "valid_name",
+   "namespace": "org.hamba.avro",
+   "fields": [
+       {"name": "intField", "type": "int"},
+       {"name": "Ref", "type": "valid_name"}
+   ]
+}
+`)
+
+	got, err := schema.(*avro.RecordSchema).Fields()[1].Type().FingerprintUsing(avro.CRC64Avro)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0xe1, 0xd6, 0x1e, 0x7c, 0x2f, 0xe3, 0x3c, 0x2b}, got)
 }
 
 func TestSchema_Interop(t *testing.T) {
