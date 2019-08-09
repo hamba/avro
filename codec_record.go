@@ -124,14 +124,26 @@ func encoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEnc
 				return &errorEncoder{err: fmt.Errorf("avro: record %s is missing required field %s", rec.FullName(), field.Name())}
 			}
 
+			def := field.Default()
 			if field.Default() == nil {
-				// We write nothing in a Null case, just skip it
-				continue
+				if field.Type().Type() == Null {
+					// We write nothing in a Null case, just skip it
+					continue
+				}
+
+				if field.Type().Type() == Union && field.Type().(*UnionSchema).Nullable() {
+					defaultType := reflect2.TypeOf(&def)
+					fields = append(fields, &structFieldEncoder{
+						defaultPtr: reflect2.PtrOf(&def),
+						encoder:    encoderOfPtrUnion(cfg, field.Type(), defaultType),
+					})
+					continue
+				}
 			}
 
-			defaultType := reflect2.TypeOf(field.Default())
+			defaultType := reflect2.TypeOf(def)
 			fields = append(fields, &structFieldEncoder{
-				defaultPtr: reflect2.PtrOf(field.Default()),
+				defaultPtr: reflect2.PtrOf(def),
 				encoder:    encoderOfType(cfg, field.Type(), defaultType),
 			})
 
