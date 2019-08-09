@@ -193,6 +193,10 @@ func (f *fingerprinter) Fingerprint(stringer fmt.Stringer) [32]byte {
 
 // FingerprintUsing returns the fingerprint of the schema using the given algorithm or an error.
 func (f *fingerprinter) FingerprintUsing(typ FingerprintType, stringer fmt.Stringer) ([]byte, error) {
+	if f.cache == nil {
+		f.cache = map[FingerprintType][]byte{}
+	}
+
 	if b, ok := f.cache[typ]; ok {
 		return b, nil
 	}
@@ -203,7 +207,8 @@ func (f *fingerprinter) FingerprintUsing(typ FingerprintType, stringer fmt.Strin
 	}
 
 	h.Reset()
-	fingerprint := h.Sum([]byte(stringer.String()))
+	h.Write([]byte(stringer.String()))
+	fingerprint := h.Sum(nil)
 	f.cache[typ] = fingerprint
 	return fingerprint, nil
 }
@@ -357,6 +362,11 @@ func (s *RecordSchema) Fingerprint() [32]byte {
 	return s.fingerprinter.Fingerprint(s)
 }
 
+// FingerprintUsing returns the fingerprint of the schema using the given algorithm or an error.
+func (s *RecordSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
+	return s.fingerprinter.FingerprintUsing(typ, s)
+}
+
 // Field is an Avro record type field.
 type Field struct {
 	properties
@@ -476,6 +486,11 @@ func (s *EnumSchema) Fingerprint() [32]byte {
 	return s.fingerprinter.Fingerprint(s)
 }
 
+// FingerprintUsing returns the fingerprint of the schema using the given algorithm or an error.
+func (s *EnumSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
+	return s.fingerprinter.FingerprintUsing(typ, s)
+}
+
 // ArraySchema is an Avro array type schema.
 type ArraySchema struct {
 	properties
@@ -512,6 +527,11 @@ func (s *ArraySchema) Fingerprint() [32]byte {
 	return s.fingerprinter.Fingerprint(s)
 }
 
+// FingerprintUsing returns the fingerprint of the schema using the given algorithm or an error.
+func (s *ArraySchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
+	return s.fingerprinter.FingerprintUsing(typ, s)
+}
+
 // MapSchema is an Avro map type schema.
 type MapSchema struct {
 	properties
@@ -538,14 +558,19 @@ func (s *MapSchema) Values() Schema {
 	return s.values
 }
 
+// String returns the canonical form of the schema.
+func (s *MapSchema) String() string {
+	return `{"type":"map","values":` + s.values.String() + `}`
+}
+
 // Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *MapSchema) Fingerprint() [32]byte {
 	return s.fingerprinter.Fingerprint(s)
 }
 
-// String returns the canonical form of the schema.
-func (s *MapSchema) String() string {
-	return `{"type":"map","values":` + s.values.String() + `}`
+// FingerprintUsing returns the fingerprint of the schema using the given algorithm or an error.
+func (s *MapSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
+	return s.fingerprinter.FingerprintUsing(typ, s)
 }
 
 // UnionSchema is an Avro union type schema.
@@ -613,6 +638,11 @@ func (s *UnionSchema) Fingerprint() [32]byte {
 	return s.fingerprinter.Fingerprint(s)
 }
 
+// FingerprintUsing returns the fingerprint of the schema using the given algorithm or an error.
+func (s *UnionSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
+	return s.fingerprinter.FingerprintUsing(typ, s)
+}
+
 // FixedSchema is an Avro fixed type schema.
 type FixedSchema struct {
 	name
@@ -657,8 +687,15 @@ func (s *FixedSchema) Fingerprint() [32]byte {
 	return s.fingerprinter.Fingerprint(s)
 }
 
+// FingerprintUsing returns the fingerprint of the schema using the given algorithm or an error.
+func (s *FixedSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
+	return s.fingerprinter.FingerprintUsing(typ, s)
+}
+
 // NullSchema is an Avro null type schema.
-type NullSchema struct{}
+type NullSchema struct {
+	fingerprinter
+}
 
 // Type returns the type of the schema.
 func (s *NullSchema) Type() Type {
@@ -672,7 +709,12 @@ func (s *NullSchema) String() string {
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *NullSchema) Fingerprint() [32]byte {
-	return [32]byte{0xf0, 0x72, 0xcb, 0xec, 0x3b, 0xf8, 0x84, 0x18, 0x71, 0xd4, 0x28, 0x42, 0x30, 0xc5, 0xe9, 0x83, 0xdc, 0x21, 0x1a, 0x56, 0x83, 0x7a, 0xed, 0x86, 0x24, 0x87, 0x14, 0x8f, 0x94, 0x7d, 0x1a, 0x1f}
+	return s.fingerprinter.Fingerprint(s)
+}
+
+// FingerprintUsing returns the fingerprint of the schema using the given algorithm or an error.
+func (s *NullSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
+	return s.fingerprinter.FingerprintUsing(typ, s)
 }
 
 // RefSchema is a reference to a named Avro schema.
@@ -705,6 +747,11 @@ func (s *RefSchema) String() string {
 // Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *RefSchema) Fingerprint() [32]byte {
 	return s.actual.Fingerprint()
+}
+
+// FingerprintUsing returns the fingerprint of the schema using the given algorithm or an error.
+func (s *RefSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
+	return s.actual.FingerprintUsing(typ)
 }
 
 func invalidNameFirstChar(r rune) bool {

@@ -775,8 +775,36 @@ func TestFixedSchema_HandlesProps(t *testing.T) {
 }
 
 func TestSchema_FingerprintUsing(t *testing.T) {
-	schema, _ := avro.Parse("")
-	schema.FingerprintUsing(avro.MD5)
+	tests := []struct {
+		name   string
+		schema string
+		typ    avro.FingerprintType
+		want   []byte
+	}{
+		{
+			name:   "Primitive MD5",
+			schema: "string",
+			typ:    avro.MD5,
+			want:   []byte{0x9, 0x5d, 0x71, 0xcf, 0x12, 0x55, 0x6b, 0x9d, 0x5e, 0x33, 0xa, 0xd5, 0x75, 0xb3, 0xdf, 0x5d},
+		},
+		{
+			name:   "Primitive SHA256",
+			schema: "string",
+			typ:    avro.SHA256,
+			want:   []byte{0xe9, 0xe5, 0xc1, 0xc9, 0xe4, 0xf6, 0x27, 0x73, 0x39, 0xd1, 0xbc, 0xde, 0x7, 0x33, 0xa5, 0x9b, 0xd4, 0x2f, 0x87, 0x31, 0xf4, 0x49, 0xda, 0x6d, 0xc1, 0x30, 0x10, 0xa9, 0x16, 0x93, 0xd, 0x48},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			schema := avro.MustParse(tt.schema)
+			got, err := schema.FingerprintUsing(tt.typ)
+
+			if assert.NoError(t, err) {
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
 }
 
 func TestSchema_Interop(t *testing.T) {
