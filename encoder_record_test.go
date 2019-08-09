@@ -116,6 +116,28 @@ func TestEncoder_RecordStructWithDefault(t *testing.T) {
 	assert.Equal(t, []byte{0x36, 0x06, 0x66, 0x6f, 0x6f}, buf.Bytes())
 }
 
+func TestEncoder_RecordStructPartialWithNullDefault(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{
+	"type": "record",
+	"name": "test",
+	"fields" : [
+		{"name": "a", "type": ["null", "string"], "default": null},
+	    {"name": "b", "type": "string"}
+	]
+}`
+	obj := TestPartialRecord{B: "foo"}
+	buf := &bytes.Buffer{}
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(obj)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x00, 0x06, 0x66, 0x6f, 0x6f}, buf.Bytes())
+}
+
 func TestEncoder_RecordStructWithNullDefault(t *testing.T) {
 	defer ConfigTeardown()
 
