@@ -774,6 +774,11 @@ func TestFixedSchema_HandlesProps(t *testing.T) {
 	assert.Equal(t, "bar", s.(*avro.FixedSchema).Prop("foo"))
 }
 
+func TestSchema_FingerprintUsing(t *testing.T) {
+	schema, _ := avro.Parse("")
+	schema.FingerprintUsing(avro.MD5)
+}
+
 func TestSchema_Interop(t *testing.T) {
 	schm := `
 {

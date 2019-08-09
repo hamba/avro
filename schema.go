@@ -1,9 +1,11 @@
 package avro
 
 import (
+	"crypto/md5"
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"hash"
 	"strconv"
 	"strings"
 
@@ -35,6 +37,21 @@ const (
 	Boolean Type = "boolean"
 	Null    Type = "null"
 )
+
+// FingerprintType is a fingerprinting algorithm.
+type FingerprintType string
+
+// Fingerprint type constants.
+const (
+	CRC64Avro FingerprintType = "CRC64-AVRO"
+	MD5       FingerprintType = "MD5"
+	SHA256    FingerprintType = "SHA256"
+)
+
+var fingerprinters = map[FingerprintType]hash.Hash{
+	MD5:    md5.New(),
+	SHA256: sha256.New(),
+}
 
 // SchemaCache is a cache of schemas.
 type SchemaCache struct {
@@ -83,6 +100,9 @@ type Schema interface {
 
 	// Fingerprint returns the SHA256 fingerprint of the schema.
 	Fingerprint() [32]byte
+
+	// FingerprintUsing returns the fingerprint of the schema using the given algorithm or an error.
+	FingerprintUsing(FingerprintType) ([]byte, error)
 }
 
 // PropertySchema represents a schema with properties.
@@ -158,6 +178,7 @@ func (n name) FullName() string {
 
 type fingerprinter struct {
 	fingerprint [32]byte
+	cache       map[FingerprintType][]byte
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
@@ -168,6 +189,23 @@ func (f *fingerprinter) Fingerprint(stringer fmt.Stringer) [32]byte {
 
 	f.fingerprint = sha256.Sum256([]byte(stringer.String()))
 	return f.fingerprint
+}
+
+// FingerprintUsing returns the fingerprint of the schema using the given algorithm or an error.
+func (f *fingerprinter) FingerprintUsing(typ FingerprintType, stringer fmt.Stringer) ([]byte, error) {
+	if b, ok := f.cache[typ]; ok {
+		return b, nil
+	}
+
+	h, ok := fingerprinters[typ]
+	if !ok {
+		return nil, fmt.Errorf("avro: unknown fingerprint alogrithm %s", f)
+	}
+
+	h.Reset()
+	fingerprint := h.Sum([]byte(stringer.String()))
+	f.cache[typ] = fingerprint
+	return fingerprint, nil
 }
 
 type properties struct {
@@ -235,6 +273,11 @@ func (s *PrimitiveSchema) String() string {
 // Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *PrimitiveSchema) Fingerprint() [32]byte {
 	return s.fingerprinter.Fingerprint(s)
+}
+
+// FingerprintUsing returns the fingerprint of the schema using the given algorithm or an error.
+func (s *PrimitiveSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
+	return s.fingerprinter.FingerprintUsing(typ, s)
 }
 
 // RecordSchema is an Avro record type schema.
