@@ -774,6 +774,115 @@ func TestFixedSchema_HandlesProps(t *testing.T) {
 	assert.Equal(t, "bar", s.(*avro.FixedSchema).Prop("foo"))
 }
 
+func TestSchema_FingerprintUsing(t *testing.T) {
+	tests := []struct {
+		name   string
+		schema string
+		typ    avro.FingerprintType
+		want   []byte
+	}{
+
+		{
+			name:   "Null CRC64",
+			schema: "null",
+			typ:    avro.CRC64Avro,
+			want:   []byte{0x63, 0xdd, 0x24, 0xe7, 0xcc, 0x25, 0x8f, 0x8a},
+		},
+		{
+			name:   "Null MD5",
+			schema: "null",
+			typ:    avro.MD5,
+			want:   []byte{0x9b, 0x41, 0xef, 0x67, 0x65, 0x1c, 0x18, 0x48, 0x8a, 0x8b, 0x8, 0xbb, 0x67, 0xc7, 0x56, 0x99},
+		},
+		{
+			name:   "Null SHA256",
+			schema: "null",
+			typ:    avro.SHA256,
+			want:   []byte{0xf0, 0x72, 0xcb, 0xec, 0x3b, 0xf8, 0x84, 0x18, 0x71, 0xd4, 0x28, 0x42, 0x30, 0xc5, 0xe9, 0x83, 0xdc, 0x21, 0x1a, 0x56, 0x83, 0x7a, 0xed, 0x86, 0x24, 0x87, 0x14, 0x8f, 0x94, 0x7d, 0x1a, 0x1f},
+		},
+		{
+			name:   "Primitive CRC64",
+			schema: "string",
+			typ:    avro.CRC64Avro,
+			want:   []byte{0x8f, 0x1, 0x48, 0x72, 0x63, 0x45, 0x3, 0xc7},
+		},
+		{
+			name:   "Record CRC64",
+			schema: `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "doc": "docs", "fields":[{"name": "field", "type": "int"}]}`,
+			typ:    avro.CRC64Avro,
+			want:   []byte{0xaf, 0x30, 0x30, 0xf0, 0x1c, 0x99, 0x76, 0xda},
+		},
+		{
+			name:   "Enum CRC64",
+			schema: `{"type":"enum", "name":"test", "namespace": "org.hamba.avro", "symbols":["TEST"]}`,
+			typ:    avro.CRC64Avro,
+			want:   []byte{0xc, 0xb0, 0xa2, 0xa6, 0x5f, 0x96, 0x8, 0xd1},
+		},
+		{
+			name:   "Array CRC64",
+			schema: `{"type":"array", "items": "int"}`,
+			typ:    avro.CRC64Avro,
+			want:   []byte{0x52, 0x2b, 0x81, 0x4f, 0xc9, 0x63, 0xb4, 0xbe},
+		},
+		{
+			name:   "Map CRC64",
+			schema: `{"type":"map", "values": "int"}`,
+			typ:    avro.CRC64Avro,
+			want:   []byte{0xdb, 0x39, 0xe2, 0xc2, 0x53, 0x4c, 0x89, 0x73},
+		},
+		{
+			name:   "Union CRC64",
+			schema: `["null", "int"]`,
+			typ:    avro.CRC64Avro,
+			want:   []byte{0xd5, 0x1c, 0xc0, 0x92, 0x2b, 0x46, 0xb1, 0xd7},
+		},
+		{
+			name:   "Fixed CRC64",
+			schema: `{"type":"fixed", "name":"test", "namespace": "org.hamba.avro", "size": 12}`,
+			typ:    avro.CRC64Avro,
+			want:   []byte{0x1, 0x7c, 0x1f, 0x7f, 0xa7, 0x6d, 0xa0, 0xa1},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			schema := avro.MustParse(tt.schema)
+			got, err := schema.FingerprintUsing(tt.typ)
+
+			if assert.NoError(t, err) {
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
+func TestSchema_FingerprintUsingReference(t *testing.T) {
+	schema := avro.MustParse(`
+{
+   "type": "record",
+   "name": "valid_name",
+   "namespace": "org.hamba.avro",
+   "fields": [
+       {"name": "intField", "type": "int"},
+       {"name": "Ref", "type": "valid_name"}
+   ]
+}
+`)
+
+	got, err := schema.(*avro.RecordSchema).Fields()[1].Type().FingerprintUsing(avro.CRC64Avro)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0xe1, 0xd6, 0x1e, 0x7c, 0x2f, 0xe3, 0x3c, 0x2b}, got)
+}
+
+func TestSchema_FingerprintUsingInvalidType(t *testing.T) {
+	schema := avro.MustParse("string")
+
+	_, err := schema.FingerprintUsing("test")
+
+	assert.Error(t, err)
+}
+
 func TestSchema_Interop(t *testing.T) {
 	schm := `
 {

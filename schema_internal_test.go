@@ -325,3 +325,14 @@ func TestRecursionError_Error(t *testing.T) {
 
 	assert.Equal(t, "", err.Error())
 }
+
+func TestSchema_FingerprintUsingCaches(t *testing.T) {
+	schema := NewPrimitiveSchema(String)
+
+	want, _ := schema.FingerprintUsing(CRC64Avro)
+
+	got, _ := schema.FingerprintUsing(CRC64Avro)
+
+	assert.Equal(t, want, schema.cache[CRC64Avro])
+	assert.Equal(t, want, got)
+}
