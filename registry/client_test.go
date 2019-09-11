@@ -52,8 +52,7 @@ func TestNewClient_BasicAuth(t *testing.T) {
 		_, _ = w.Write([]byte(`[]`))
 	}))
 	defer s.Close()
-	client, _ := registry.NewClient(s.URL)
-	client.Auth = registry.Auth{Username: "username", Password: "password"}
+	client, _ := registry.NewClient(s.URL, registry.WithBasicAuth("username", "password"))
 
 	_, err := client.GetSubjects()
 

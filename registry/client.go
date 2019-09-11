@@ -57,6 +57,11 @@ type idPayload struct {
 	ID int `json:"id"`
 }
 
+type auth struct {
+	username string
+	password string
+}
+
 var defaultClient = &http.Client{
 	Transport: &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
@@ -78,10 +83,11 @@ func WithHTTPClient(client *http.Client) ClientFunc {
 	}
 }
 
-// Auth is the basic access authentication credentials for the HTTP client
-type Auth struct {
-	Username string
-	Password string
+// WithBasicAuth sets the credentials to perform http basic auth.
+func WithBasicAuth(username string, password string) ClientFunc {
+	return func(c *Client) {
+		c.auth = auth{username: username, password: password}
+	}
 }
 
 // Client is an HTTP registry client
@@ -89,7 +95,7 @@ type Client struct {
 	client *http.Client
 	base   string
 
-	Auth
+	auth
 
 	cache *concurrent.Map // map[int]avro.Schema
 }
@@ -218,8 +224,8 @@ func (c *Client) request(method, uri string, in, out interface{}) error {
 	req, _ := http.NewRequest(method, c.base+uri, body) // This error is not possible as we already parsed the url
 	req.Header.Set("Content-Type", contentType)
 
-	if len(c.Auth.Username) > 0 || len(c.Auth.Password) > 0 {
-		req.SetBasicAuth(c.Auth.Username, c.Auth.Password)
+	if len(c.auth.username) > 0 || len(c.auth.password) > 0 {
+		req.SetBasicAuth(c.auth.username, c.auth.password)
 	}
 
 	resp, err := c.client.Do(req)
