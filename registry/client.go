@@ -57,7 +57,7 @@ type idPayload struct {
 	ID int `json:"id"`
 }
 
-type auth struct {
+type credentials struct {
 	username string
 	password string
 }
@@ -86,7 +86,7 @@ func WithHTTPClient(client *http.Client) ClientFunc {
 // WithBasicAuth sets the credentials to perform http basic auth.
 func WithBasicAuth(username string, password string) ClientFunc {
 	return func(c *Client) {
-		c.auth = auth{username: username, password: password}
+		c.creds = credentials{username: username, password: password}
 	}
 }
 
@@ -95,7 +95,7 @@ type Client struct {
 	client *http.Client
 	base   string
 
-	auth
+	creds credentials
 
 	cache *concurrent.Map // map[int]avro.Schema
 }
@@ -224,8 +224,8 @@ func (c *Client) request(method, uri string, in, out interface{}) error {
 	req, _ := http.NewRequest(method, c.base+uri, body) // This error is not possible as we already parsed the url
 	req.Header.Set("Content-Type", contentType)
 
-	if len(c.auth.username) > 0 || len(c.auth.password) > 0 {
-		req.SetBasicAuth(c.auth.username, c.auth.password)
+	if len(c.creds.username) > 0 || len(c.creds.password) > 0 {
+		req.SetBasicAuth(c.creds.username, c.creds.password)
 	}
 
 	resp, err := c.client.Do(req)
