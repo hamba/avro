@@ -78,10 +78,18 @@ func WithHTTPClient(client *http.Client) ClientFunc {
 	}
 }
 
+// Auth is the basic access authentication credentials for the HTTP client
+type Auth struct {
+	Username string
+	Password string
+}
+
 // Client is an HTTP registry client
 type Client struct {
 	client *http.Client
 	base   string
+
+	Auth
 
 	cache *concurrent.Map // map[int]avro.Schema
 }
@@ -209,6 +217,10 @@ func (c *Client) request(method, uri string, in, out interface{}) error {
 
 	req, _ := http.NewRequest(method, c.base+uri, body) // This error is not possible as we already parsed the url
 	req.Header.Set("Content-Type", contentType)
+
+	if len(c.Auth.Username) > 0 || len(c.Auth.Password) > 0 {
+		req.SetBasicAuth(c.Auth.Username, c.Auth.Password)
+	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
