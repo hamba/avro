@@ -42,6 +42,23 @@ func TestClient_PopulatesError(t *testing.T) {
 	assert.Equal(t, "schema may not be empty", regError.Message)
 }
 
+func TestNewClient_BasicAuth(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		username, password, ok := r.BasicAuth()
+		assert.True(t, ok)
+		assert.Equal(t, "username", username)
+		assert.Equal(t, "password", password)
+
+		_, _ = w.Write([]byte(`[]`))
+	}))
+	defer s.Close()
+	client, _ := registry.NewClient(s.URL, registry.WithBasicAuth("username", "password"))
+
+	_, err := client.GetSubjects()
+
+	assert.NoError(t, err)
+}
+
 func TestClient_GetSchema(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)

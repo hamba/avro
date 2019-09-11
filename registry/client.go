@@ -57,6 +57,11 @@ type idPayload struct {
 	ID int `json:"id"`
 }
 
+type credentials struct {
+	username string
+	password string
+}
+
 var defaultClient = &http.Client{
 	Transport: &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
@@ -78,10 +83,19 @@ func WithHTTPClient(client *http.Client) ClientFunc {
 	}
 }
 
+// WithBasicAuth sets the credentials to perform http basic auth.
+func WithBasicAuth(username string, password string) ClientFunc {
+	return func(c *Client) {
+		c.creds = credentials{username: username, password: password}
+	}
+}
+
 // Client is an HTTP registry client
 type Client struct {
 	client *http.Client
 	base   string
+
+	creds credentials
 
 	cache *concurrent.Map // map[int]avro.Schema
 }
@@ -209,6 +223,10 @@ func (c *Client) request(method, uri string, in, out interface{}) error {
 
 	req, _ := http.NewRequest(method, c.base+uri, body) // This error is not possible as we already parsed the url
 	req.Header.Set("Content-Type", contentType)
+
+	if len(c.creds.username) > 0 || len(c.creds.password) > 0 {
+		req.SetBasicAuth(c.creds.username, c.creds.password)
+	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
