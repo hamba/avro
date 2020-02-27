@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"strings"
 
 	"github.com/json-iterator/go"
@@ -68,10 +69,10 @@ func parseType(namespace string, v interface{}, cache *SchemaCache) (Schema, err
 		return &NullSchema{}, nil
 
 	case string:
-		return parsePrimitive(namespace, val, cache)
+		return parsePrimitiveType(namespace, val, cache)
 
 	case map[string]interface{}:
-		return parseComplex(namespace, val, cache)
+		return parseComplexType(namespace, val, cache)
 
 	case []interface{}:
 		return parseUnion(namespace, val, cache)
@@ -80,14 +81,14 @@ func parseType(namespace string, v interface{}, cache *SchemaCache) (Schema, err
 	return nil, fmt.Errorf("avro: unknown type: %v", v)
 }
 
-func parsePrimitive(namespace, s string, cache *SchemaCache) (Schema, error) {
+func parsePrimitiveType(namespace, s string, cache *SchemaCache) (Schema, error) {
 	typ := Type(s)
 	switch typ {
 	case Null:
 		return &NullSchema{}, nil
 
 	case String, Bytes, Int, Long, Float, Double, Boolean:
-		return NewPrimitiveSchema(typ), nil
+		return parsePrimitive(typ, nil)
 
 	default:
 		schema := cache.Get(fullName(namespace, s))
@@ -99,7 +100,7 @@ func parsePrimitive(namespace, s string, cache *SchemaCache) (Schema, error) {
 	}
 }
 
-func parseComplex(namespace string, m map[string]interface{}, cache *SchemaCache) (Schema, error) {
+func parseComplexType(namespace string, m map[string]interface{}, cache *SchemaCache) (Schema, error) {
 	if val, ok := m["type"].([]interface{}); ok {
 		return parseUnion(namespace, val, cache)
 	}
@@ -115,7 +116,7 @@ func parseComplex(namespace string, m map[string]interface{}, cache *SchemaCache
 		return &NullSchema{}, nil
 
 	case String, Bytes, Int, Long, Float, Double, Boolean:
-		return NewPrimitiveSchema(typ), nil
+		return parsePrimitive(typ, m)
 
 	case Record, Error:
 		return parseRecord(typ, namespace, m, cache)
@@ -135,6 +136,39 @@ func parseComplex(namespace string, m map[string]interface{}, cache *SchemaCache
 	default:
 		return parseType(namespace, string(typ), cache)
 	}
+}
+
+func parsePrimitive(typ Type, m map[string]interface{}) (Schema, error) {
+	logical := parsePrimitiveLogicalType(typ, m)
+
+	return NewPrimitiveSchema(typ, logical), nil
+}
+
+func parsePrimitiveLogicalType(typ Type, m map[string]interface{}) LogicalSchema {
+	if m == nil {
+		return nil
+	}
+
+	lt, ok := m["logicalType"].(string)
+	if !ok {
+		return nil
+	}
+
+	ltyp := LogicalType(lt)
+	if (typ == String && ltyp == UUID) ||
+		(typ == Int && ltyp == Date) ||
+		(typ == Int && ltyp == TimeMillis) ||
+		(typ == Long && ltyp == TimeMicros) ||
+		(typ == Long && ltyp == TimestampMillis) ||
+		(typ == Long && ltyp == TimestampMicros) {
+		return NewPrimitiveLogicalSchema(ltyp)
+	}
+
+	if typ == Bytes && ltyp == Decimal {
+		return parseDecimalLogicalType(-1, m)
+	}
+
+	return nil
 }
 
 func parseRecord(typ Type, namespace string, m map[string]interface{}, cache *SchemaCache) (Schema, error) {
@@ -319,7 +353,9 @@ func parseFixed(namespace string, m map[string]interface{}, cache *SchemaCache) 
 		return nil, errors.New("avro: fixed must have a size")
 	}
 
-	fixed, err := NewFixedSchema(name, namespace, int(size))
+	logical := parseFixedLogicalType(int(size), m)
+
+	fixed, err := NewFixedSchema(name, namespace, int(size), logical)
 	if err != nil {
 		return nil, err
 	}
@@ -331,6 +367,50 @@ func parseFixed(namespace string, m map[string]interface{}, cache *SchemaCache) 
 	}
 
 	return fixed, nil
+}
+
+func parseFixedLogicalType(size int, m map[string]interface{}) LogicalSchema {
+	lt, ok := m["logicalType"].(string)
+	if !ok {
+		return nil
+	}
+
+	ltyp := LogicalType(lt)
+	if ltyp == Duration && size == 12 {
+		return NewPrimitiveLogicalSchema(Duration)
+	}
+
+	if ltyp == Decimal {
+		return parseDecimalLogicalType(size, m)
+	}
+
+	return nil
+}
+
+func parseDecimalLogicalType(size int, m map[string]interface{}) LogicalSchema {
+	prec, ok := m["precision"].(float64)
+	if !ok || prec <= 0 {
+		return nil
+	}
+
+	if size > 0 {
+		maxPrecision := math.Round(math.Floor(math.Log10(2) * (8*float64(size) - 1)))
+		if prec > maxPrecision {
+			return nil
+		}
+	}
+
+	scale, _ := m["scale"].(float64)
+	if scale < 0 {
+		return nil
+	}
+
+	// Scale may not be bigger than precision
+	if scale > prec {
+		return nil
+	}
+
+	return NewDecimalLogicalSchema(int(prec), int(scale))
 }
 
 func fullName(namespace, name string) string {

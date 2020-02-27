@@ -40,12 +40,36 @@ func TestSchema_Canonical(t *testing.T) {
 			canonical: `"int"`,
 		},
 		{
+			input:     `{"type":"int","logicalType":"date"}`,
+			canonical: `{"type":"int","logicalType":"date"}`,
+		},
+		{
+			input:     `{"type":"int","logicalType":"time-millis"}`,
+			canonical: `{"type":"int","logicalType":"time-millis"}`,
+		},
+		{
+			input:     `{"type":"int"}`,
+			canonical: `"int"`,
+		},
+		{
 			input:     `"long"`,
 			canonical: `"long"`,
 		},
 		{
 			input:     `{"type":"long"}`,
 			canonical: `"long"`,
+		},
+		{
+			input:     `{"type":"long","logicalType":"time-micros"}`,
+			canonical: `{"type":"long","logicalType":"time-micros"}`,
+		},
+		{
+			input:     `{"type":"long","logicalType":"timestamp-millis"}`,
+			canonical: `{"type":"long","logicalType":"timestamp-millis"}`,
+		},
+		{
+			input:     `{"type":"long","logicalType":"timestamp-millis"}`,
+			canonical: `{"type":"long","logicalType":"timestamp-millis"}`,
 		},
 		{
 			input:     `"float"`,
@@ -72,12 +96,24 @@ func TestSchema_Canonical(t *testing.T) {
 			canonical: `"bytes"`,
 		},
 		{
+			input:     `{"type":"bytes","logicalType":"decimal","precision":4,"scale":2}`,
+			canonical: `{"type":"bytes","logicalType":"decimal","precision":4,"scale":2}`,
+		},
+		{
+			input:     `{"type":"bytes","logicalType":"decimal","precision":4,"scale":0}`,
+			canonical: `{"type":"bytes","logicalType":"decimal","precision":4}`,
+		},
+		{
 			input:     `"string"`,
 			canonical: `"string"`,
 		},
 		{
 			input:     `{"type":"string"}`,
 			canonical: `"string"`,
+		},
+		{
+			input:     `{"type":"string","logicalType":"uuid"}`,
+			canonical: `{"type":"string","logicalType":"uuid"}`,
 		},
 		{
 			input:     `[  ]`,
@@ -142,6 +178,18 @@ func TestSchema_Canonical(t *testing.T) {
 		{
 			input:     `{"name":"foo","type":"fixed","size":15}`,
 			canonical: `{"name":"foo","type":"fixed","size":15}`,
+		},
+		{
+			input:     `{"name":"foo","type":"fixed","logicalType":"duration","size":12}`,
+			canonical: `{"name":"foo","type":"fixed","size":12,"logicalType":"duration"}`,
+		},
+		{
+			input:     `{"name":"foo","type":"fixed","logicalType":"decimal","size":12,"precision":4,"scale":2}`,
+			canonical: `{"name":"foo","type":"fixed","size":12,"logicalType":"decimal","precision":4,"scale":2}`,
+		},
+		{
+			input:     `{"name":"foo","type":"fixed","logicalType":"decimal","size":12,"precision":4,"scale":0}`,
+			canonical: `{"name":"foo","type":"fixed","size":12,"logicalType":"decimal","precision":4}`,
 		},
 		{
 			input:     `{"namespace":"x.y.z", "type":"fixed", "name":"foo", "doc":"foo bar", "size":32}`,

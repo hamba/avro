@@ -774,6 +774,199 @@ func TestFixedSchema_HandlesProps(t *testing.T) {
 	assert.Equal(t, "bar", s.(*avro.FixedSchema).Prop("foo"))
 }
 
+func TestSchema_LogicalTypes(t *testing.T) {
+	tests := []struct {
+		name            string
+		schema          string
+		wantType        avro.Type
+		wantLogical     bool
+		wantLogicalType avro.LogicalType
+		assertFn        func(t *testing.T, ls avro.LogicalSchema)
+	}{
+		{
+			name:        "Invalid",
+			schema:      `{"type": "int", "logicalType": "test"}`,
+			wantType:    avro.Int,
+			wantLogical: false,
+		},
+		{
+			name:            "Date",
+			schema:          `{"type": "int", "logicalType": "date"}`,
+			wantType:        avro.Int,
+			wantLogical:     true,
+			wantLogicalType: avro.Date,
+		},
+		{
+			name:            "Time Millis",
+			schema:          `{"type": "int", "logicalType": "time-millis"}`,
+			wantType:        avro.Int,
+			wantLogical:     true,
+			wantLogicalType: avro.TimeMillis,
+		},
+		{
+			name:            "Time Micros",
+			schema:          `{"type": "long", "logicalType": "time-micros"}`,
+			wantType:        avro.Long,
+			wantLogical:     true,
+			wantLogicalType: avro.TimeMicros,
+		},
+		{
+			name:            "Timestamp Millis",
+			schema:          `{"type": "long", "logicalType": "timestamp-millis"}`,
+			wantType:        avro.Long,
+			wantLogical:     true,
+			wantLogicalType: avro.TimestampMillis,
+		},
+		{
+			name:            "Timestamp Micros",
+			schema:          `{"type": "long", "logicalType": "timestamp-micros"}`,
+			wantType:        avro.Long,
+			wantLogical:     true,
+			wantLogicalType: avro.TimestampMicros,
+		},
+		{
+			name:            "UUID",
+			schema:          `{"type": "string", "logicalType": "uuid"}`,
+			wantType:        avro.String,
+			wantLogical:     true,
+			wantLogicalType: avro.UUID,
+		},
+		{
+			name:            "Duration",
+			schema:          `{"type": "fixed", "name":"test", "size": 12, "logicalType": "duration"}`,
+			wantType:        avro.Fixed,
+			wantLogical:     true,
+			wantLogicalType: avro.Duration,
+		},
+		{
+			name:        "Invalid Duration",
+			schema:      `{"type": "fixed", "name":"test", "size": 11, "logicalType": "duration"}`,
+			wantType:    avro.Fixed,
+			wantLogical: false,
+		},
+		{
+			name:            "Bytes Decimal",
+			schema:          `{"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}`,
+			wantType:        avro.Bytes,
+			wantLogical:     true,
+			wantLogicalType: avro.Decimal,
+			assertFn: func(t *testing.T, ls avro.LogicalSchema) {
+				dec, ok := ls.(*avro.DecimalLogicalSchema)
+				if assert.True(t, ok) {
+					assert.Equal(t, 4, dec.Precision())
+					assert.Equal(t, 2, dec.Scale())
+				}
+			},
+		},
+		{
+			name:            "Bytes Decimal No Scale",
+			schema:          `{"type": "bytes", "logicalType": "decimal", "precision": 4}`,
+			wantType:        avro.Bytes,
+			wantLogical:     true,
+			wantLogicalType: avro.Decimal,
+			assertFn: func(t *testing.T, ls avro.LogicalSchema) {
+				dec, ok := ls.(*avro.DecimalLogicalSchema)
+				if assert.True(t, ok) {
+					assert.Equal(t, 4, dec.Precision())
+					assert.Equal(t, 0, dec.Scale())
+				}
+			},
+		},
+		{
+			name:            "Bytes Decimal Negative Precision",
+			schema:          `{"type": "bytes", "logicalType": "decimal", "precision": 0}`,
+			wantType:        avro.Bytes,
+			wantLogical:     false,
+		},
+		{
+			name:            "Bytes Decimal Negative Scale",
+			schema:          `{"type": "bytes", "logicalType": "decimal", "precision": 1, "scale": -1}`,
+			wantType:        avro.Bytes,
+			wantLogical:     false,
+		},
+		{
+			name:            "Bytes Decimal Scale Larger Than Precision",
+			schema:          `{"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 6}`,
+			wantType:        avro.Bytes,
+			wantLogical:     false,
+		},
+		{
+			name:            "Fixed Decimal",
+			schema:          `{"type": "fixed", "name":"test", "size": 12, "logicalType": "decimal", "precision": 4, "scale": 2}`,
+			wantType:        avro.Fixed,
+			wantLogical:     true,
+			wantLogicalType: avro.Decimal,
+			assertFn: func(t *testing.T, ls avro.LogicalSchema) {
+				dec, ok := ls.(*avro.DecimalLogicalSchema)
+				if assert.True(t, ok) {
+					assert.Equal(t, 4, dec.Precision())
+					assert.Equal(t, 2, dec.Scale())
+				}
+			},
+		},
+		{
+			name:            "Fixed Decimal No Scale",
+			schema:          `{"type": "fixed", "name":"test", "size": 12, "logicalType": "decimal", "precision": 4}`,
+			wantType:        avro.Fixed,
+			wantLogical:     true,
+			wantLogicalType: avro.Decimal,
+			assertFn: func(t *testing.T, ls avro.LogicalSchema) {
+				dec, ok := ls.(*avro.DecimalLogicalSchema)
+				if assert.True(t, ok) {
+					assert.Equal(t, 4, dec.Precision())
+					assert.Equal(t, 0, dec.Scale())
+				}
+			},
+		},
+		{
+			name:            "Fixed Decimal Negative Precision",
+			schema:          `{"type": "fixed", "name":"test", "size": 12, "logicalType": "decimal", "precision": 0}`,
+			wantType:        avro.Fixed,
+			wantLogical:     false,
+		},
+		{
+			name:            "Fixed Decimal Precision Too Large",
+			schema:          `{"type": "fixed", "name":"test", "size": 4, "logicalType": "decimal", "precision": 10}`,
+			wantType:        avro.Fixed,
+			wantLogical:     false,
+		},
+		{
+			name:            "Fixed Decimal Scale Larger Than Precision",
+			schema:          `{"type": "fixed", "name":"test", "size": 12, "logicalType": "decimal", "precision": 4, "scale": 6}`,
+			wantType:        avro.Fixed,
+			wantLogical:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			schema, err := avro.Parse(tt.schema)
+
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantType, schema.Type())
+
+			lts, ok := schema.(avro.LogicalTypeSchema)
+			if !ok {
+				assert.Fail(t, "logical type schema expected")
+				return
+			}
+
+			ls := lts.Logical()
+			if assert.Equal(t, tt.wantLogical, ls != nil) {
+				if !tt.wantLogical {
+					return
+				}
+
+				assert.Equal(t, tt.wantLogicalType, ls.Type())
+
+				if tt.assertFn != nil {
+					tt.assertFn(t, ls)
+				}
+			}
+		})
+	}
+}
+
 func TestSchema_FingerprintUsing(t *testing.T) {
 	tests := []struct {
 		name   string

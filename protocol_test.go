@@ -26,11 +26,11 @@ func TestNewProtocol_ValidatesName(t *testing.T) {
 }
 
 func TestNewMessage(t *testing.T) {
-	field, _ := avro.NewField("test", avro.NewPrimitiveSchema(avro.String), nil)
+	field, _ := avro.NewField("test", avro.NewPrimitiveSchema(avro.String, nil), nil)
 	fields := []*avro.Field{field}
 	req, _ := avro.NewRecordSchema("test", "", fields)
-	resp := avro.NewPrimitiveSchema(avro.String)
-	types := []avro.Schema{avro.NewPrimitiveSchema(avro.String)}
+	resp := avro.NewPrimitiveSchema(avro.String, nil)
+	types := []avro.Schema{avro.NewPrimitiveSchema(avro.String, nil)}
 	errs, _ := avro.NewUnionSchema(types)
 
 	msg := avro.NewMessage(req, resp, errs, false)

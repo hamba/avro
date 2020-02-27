@@ -39,6 +39,21 @@ const (
 	Null    Type = "null"
 )
 
+// LogicalType is a schema logical type.
+type LogicalType string
+
+// Schema logical type constants.
+const (
+	Decimal         LogicalType = "decimal"
+	UUID            LogicalType = "uuid"
+	Date            LogicalType = "date"
+	TimeMillis      LogicalType = "time-millis"
+	TimeMicros      LogicalType = "time-micros"
+	TimestampMillis LogicalType = "timestamp-millis"
+	TimestampMicros LogicalType = "timestamp-micros"
+	Duration        LogicalType = "duration"
+)
+
 // FingerprintType is a fingerprinting algorithm.
 type FingerprintType string
 
@@ -107,6 +122,15 @@ type Schema interface {
 	FingerprintUsing(FingerprintType) ([]byte, error)
 }
 
+// LogicalSchema represents an Avro schema with a logical type.
+type LogicalSchema interface {
+	// Type returns the type of the logical schema.
+	Type() LogicalType
+
+	// String returns the canonical form of the logical schema.
+	String() string
+}
+
 // PropertySchema represents a schema with properties.
 type PropertySchema interface {
 	// AddProp adds a property to the schema.
@@ -131,6 +155,12 @@ type NamedSchema interface {
 
 	// FullName returns the full qualified name of a schema.
 	FullName() string
+}
+
+// LogicalTypeSchema represents a schema that can contain a logical type.
+type LogicalTypeSchema interface {
+	// Logical returns the logical schema or nil.
+	Logical() LogicalSchema
 }
 
 type name struct {
@@ -257,13 +287,15 @@ func (p *properties) Prop(name string) interface{} {
 type PrimitiveSchema struct {
 	fingerprinter
 
-	typ Type
+	typ     Type
+	logical LogicalSchema
 }
 
 // NewPrimitiveSchema creates a new PrimitiveSchema.
-func NewPrimitiveSchema(t Type) *PrimitiveSchema {
+func NewPrimitiveSchema(t Type, l LogicalSchema) *PrimitiveSchema {
 	return &PrimitiveSchema{
-		typ: t,
+		typ:     t,
+		logical: l,
 	}
 }
 
@@ -272,9 +304,18 @@ func (s *PrimitiveSchema) Type() Type {
 	return s.typ
 }
 
+// Logical returns the logical schema or nil.
+func (s *PrimitiveSchema) Logical() LogicalSchema {
+	return s.logical
+}
+
 // String returns the canonical form of the schema.
 func (s *PrimitiveSchema) String() string {
-	return `"` + string(s.typ) + `"`
+	if s.logical == nil {
+		return `"` + string(s.typ) + `"`
+	}
+
+	return `{"type":"` + string(s.typ) + `",` + s.logical.String() + `}`
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
@@ -651,11 +692,12 @@ type FixedSchema struct {
 	properties
 	fingerprinter
 
-	size int
+	size    int
+	logical LogicalSchema
 }
 
 // NewFixedSchema creates a new fixed schema instance.
-func NewFixedSchema(name, namespace string, size int) (*FixedSchema, error) {
+func NewFixedSchema(name, namespace string, size int, logical LogicalSchema) (*FixedSchema, error) {
 	n, err := newName(name, namespace)
 	if err != nil {
 		return nil, err
@@ -665,6 +707,7 @@ func NewFixedSchema(name, namespace string, size int) (*FixedSchema, error) {
 		name:       n,
 		properties: properties{reserved: schemaReserved},
 		size:       size,
+		logical:    logical,
 	}, nil
 }
 
@@ -678,10 +721,21 @@ func (s *FixedSchema) Size() int {
 	return s.size
 }
 
+// Logical returns the logical schema or nil.
+func (s *FixedSchema) Logical() LogicalSchema {
+	return s.logical
+}
+
 // String returns the canonical form of the schema.
 func (s *FixedSchema) String() string {
 	size := strconv.Itoa(s.size)
-	return `{"name":"` + s.FullName() + `","type":"fixed","size":` + size + `}`
+
+	var logical string
+	if s.logical != nil {
+		logical = "," + s.logical.String()
+	}
+
+	return `{"name":"` + s.FullName() + `","type":"fixed","size":` + size + logical + `}`
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
@@ -754,6 +808,68 @@ func (s *RefSchema) Fingerprint() [32]byte {
 // FingerprintUsing returns the fingerprint of the schema using the given algorithm or an error.
 func (s *RefSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
 	return s.actual.FingerprintUsing(typ)
+}
+
+// PrimitiveLogicalSchema is a logical type with no properties.
+type PrimitiveLogicalSchema struct {
+	typ LogicalType
+}
+
+// NewPrimitiveLogicalSchema creates a new primitive logical schema instance.
+func NewPrimitiveLogicalSchema(typ LogicalType) *PrimitiveLogicalSchema {
+	return &PrimitiveLogicalSchema{
+		typ: typ,
+	}
+}
+
+// Type returns the type of the logical schema.
+func (s *PrimitiveLogicalSchema) Type() LogicalType {
+	return s.typ
+}
+
+// String returns the canonical form of the logical schema.
+func (s *PrimitiveLogicalSchema) String() string {
+	return `"logicalType":"` + string(s.typ) + `"`
+}
+
+// DecimalLogicalSchema is a decimal logical type.
+type DecimalLogicalSchema struct {
+	prec  int
+	scale int
+}
+
+// NewDecimalLogicalSchema creates a new decimal logical schema instance.
+func NewDecimalLogicalSchema(prec, scale int) *DecimalLogicalSchema {
+	return &DecimalLogicalSchema{
+		prec:  prec,
+		scale: scale,
+	}
+}
+
+// Type returns the type of the logical schema.
+func (s *DecimalLogicalSchema) Type() LogicalType {
+	return Decimal
+}
+
+// Precision returns the precision of the decimal logical schema.
+func (s *DecimalLogicalSchema) Precision() int {
+	return s.prec
+}
+
+// Scale returns the scale of the decimal logical schema.
+func (s *DecimalLogicalSchema) Scale() int {
+	return s.scale
+}
+
+// String returns the canonical form of the logical schema.
+func (s *DecimalLogicalSchema) String() string {
+	var scale string
+	if s.scale > 0 {
+		scale = `,"scale":` + strconv.Itoa(s.scale)
+	}
+	precision := strconv.Itoa(s.prec)
+
+	return `"logicalType":"` + string(Decimal) + `","precision":` + precision + scale
 }
 
 func invalidNameFirstChar(r rune) bool {
