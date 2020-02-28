@@ -47,6 +47,7 @@ type Decoder struct {
 	reader      *avro.Reader
 	resetReader *bytesx.ResetReader
 	decoder     *avro.Decoder
+	meta        map[string][]byte
 	sync        [16]byte
 
 	codec Codec
@@ -83,9 +84,15 @@ func NewDecoder(r io.Reader) (*Decoder, error) {
 		reader:      reader,
 		resetReader: decReader,
 		decoder:     avro.NewDecoderForSchema(schema, decReader),
+		meta:        h.Meta,
 		sync:        h.Sync,
 		codec:       codec,
 	}, nil
+}
+
+// Metadata returns the header metadata.
+func (d *Decoder) Metadata() map[string][]byte {
+	return d.meta
 }
 
 // HasNext determines if there is another value to read.
@@ -150,6 +157,7 @@ func (d *Decoder) readBlock() int64 {
 type encoderConfig struct {
 	BlockLength int
 	CodecName   CodecName
+	Metadata    map[string][]byte
 }
 
 // EncoderFunc represents an configuration function for Encoder
@@ -166,6 +174,13 @@ func WithBlockLength(length int) EncoderFunc {
 func WithCodec(codec CodecName) EncoderFunc {
 	return func(cfg *encoderConfig) {
 		cfg.CodecName = codec
+	}
+}
+
+// WithMetadata sets the metadata on the encoder header.
+func WithMetadata(meta map[string][]byte) EncoderFunc {
+	return func(cfg *encoderConfig) {
+		cfg.Metadata = meta
 	}
 }
 
@@ -192,6 +207,7 @@ func NewEncoder(s string, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
 	cfg := encoderConfig{
 		BlockLength: 100,
 		CodecName:   Null,
+		Metadata:    map[string][]byte{},
 	}
 	for _, opt := range opts {
 		opt(&cfg)
@@ -199,12 +215,11 @@ func NewEncoder(s string, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
 
 	writer := avro.NewWriter(w, 512)
 
+	cfg.Metadata[schemaKey] = []byte(schema.String())
+	cfg.Metadata[codecKey] = []byte(cfg.CodecName)
 	header := Header{
 		Magic: magicBytes,
-		Meta: map[string][]byte{
-			schemaKey: []byte(schema.String()),
-			codecKey:  []byte(cfg.CodecName),
-		},
+		Meta:  cfg.Metadata,
 	}
 	_, _ = rand.Read(header.Sync[:])
 	writer.WriteVal(HeaderSchema, header)
