@@ -353,7 +353,7 @@ type dateCodec struct{}
 
 func (c *dateCodec) Decode(ptr unsafe.Pointer, r *Reader) {
 	i := r.ReadInt()
-	*((*time.Time)(ptr)) = time.Unix(0, int64(i) * int64(24*time.Hour)).UTC()
+	*((*time.Time)(ptr)) = time.Unix(0, int64(i)*int64(24*time.Hour)).UTC()
 }
 
 func (c *dateCodec) Encode(ptr unsafe.Pointer, w *Writer) {
@@ -365,7 +365,7 @@ type timestampMillisCodec struct{}
 
 func (c *timestampMillisCodec) Decode(ptr unsafe.Pointer, r *Reader) {
 	i := r.ReadLong()
-	*((*time.Time)(ptr)) = time.Unix(0, i * int64(time.Millisecond)).UTC()
+	*((*time.Time)(ptr)) = time.Unix(0, i*int64(time.Millisecond)).UTC()
 }
 
 func (c *timestampMillisCodec) Encode(ptr unsafe.Pointer, w *Writer) {
@@ -377,7 +377,7 @@ type timestampMicrosCodec struct{}
 
 func (c *timestampMicrosCodec) Decode(ptr unsafe.Pointer, r *Reader) {
 	i := r.ReadLong()
-	*((*time.Time)(ptr)) = time.Unix(0, i * int64(time.Microsecond)).UTC()
+	*((*time.Time)(ptr)) = time.Unix(0, i*int64(time.Microsecond)).UTC()
 }
 
 func (c *timestampMicrosCodec) Encode(ptr unsafe.Pointer, w *Writer) {

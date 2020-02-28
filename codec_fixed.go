@@ -95,7 +95,7 @@ func (c *fixedDecimalCodec) Encode(ptr unsafe.Pointer, w *Writer) {
 	var b []byte
 	switch i.Sign() {
 	case 0:
-		b = make([]byte, c.size, c.size)
+		b = make([]byte, c.size)
 
 	case 1:
 		b = i.Bytes()
@@ -103,13 +103,13 @@ func (c *fixedDecimalCodec) Encode(ptr unsafe.Pointer, w *Writer) {
 			b = append([]byte{0}, b...)
 		}
 		if len(b) < c.size {
-			padded := make([]byte, c.size, c.size)
+			padded := make([]byte, c.size)
 			copy(padded[c.size-len(b):], b)
 			b = padded
 		}
 
 	case -1:
-		b = i.Add(i, (&big.Int{}).Lsh(one, uint(c.size * 8))).Bytes()
+		b = i.Add(i, (&big.Int{}).Lsh(one, uint(c.size*8))).Bytes()
 	}
 
 	w.Write(b)

@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	timeRType      uintptr
-	ratRType       uintptr
+	timeRType uintptr
+	ratRType  uintptr
 )
 
 func init() {

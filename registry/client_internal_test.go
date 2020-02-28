@@ -16,7 +16,7 @@ func TestNewClient_WithHTTPClient(t *testing.T) {
 }
 
 func TestNewClient_WithBasicAuth(t *testing.T) {
-	creds := credentials{username:"username", password:"password"}
+	creds := credentials{username: "username", password: "password"}
 
 	client, _ := NewClient("http://example.com", WithBasicAuth("username", "password"))
 

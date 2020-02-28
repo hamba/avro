@@ -331,29 +331,6 @@ func TestEncoder_RecordMapInvalidValueType(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestEncoder_RecordInterface(t *testing.T) {
-	defer ConfigTeardown()
-
-	schema := `{
-	"type": "record",
-	"name": "test",
-	"fields" : [
-		{"name": "a", "type": "long"},
-	    {"name": "b", "type": "string"}
-	]
-}`
-	var obj TestInterface
-	obj = &TestRecord{A: 27, B: "foo"}
-	buf := &bytes.Buffer{}
-	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
-
-	err = enc.Encode(obj)
-
-	assert.NoError(t, err)
-	assert.Equal(t, []byte{0x36, 0x06, 0x66, 0x6f, 0x6f}, buf.Bytes())
-}
-
 func TestEncoder_RefStruct(t *testing.T) {
 	defer ConfigTeardown()
 
