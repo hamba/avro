@@ -84,11 +84,7 @@ type fixedDecimalCodec struct {
 func (c *fixedDecimalCodec) Decode(ptr unsafe.Pointer, r *Reader) {
 	b := make([]byte, c.size)
 	r.Read(b)
-	i := (&big.Int{}).SetBytes(b)
-	if len(b) > 0 && b[0]&0x80 > 0 {
-		i.Sub(i, new(big.Int).Lsh(one, uint(len(b))*8))
-	}
-	*((*big.Rat)(ptr)) = *big.NewRat(i.Int64(), int64(math.Pow10(c.scale)))
+	*((*big.Rat)(ptr)) = *ratFromBytes(b, c.scale)
 }
 
 func (c *fixedDecimalCodec) Encode(ptr unsafe.Pointer, w *Writer) {
