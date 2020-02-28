@@ -538,6 +538,23 @@ func TestEncoder_CloseHandlesWriteBlockError(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestEncodeDecodeMetadata(t *testing.T) {
+	buf := &bytes.Buffer{}
+	enc, _ := ocf.NewEncoder(`"long"`, buf, ocf.WithMetadata(map[string][]byte{
+		"test": []byte("foo"),
+	}))
+
+	err := enc.Encode(int64(1))
+	assert.NoError(t, err)
+
+	enc.Close()
+
+	dec, err := ocf.NewDecoder(buf)
+	assert.NoError(t, err)
+
+	assert.Equal(t, []byte("foo"), dec.Metadata()["test"])
+}
+
 type errorWriter struct{}
 
 func (*errorWriter) Write(p []byte) (n int, err error) {
