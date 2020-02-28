@@ -75,7 +75,7 @@ func TestEncoder_FixedRat_Zero(t *testing.T) {
 	err = enc.Encode(big.NewRat(0, 1))
 
 	assert.NoError(t, err)
-	assert.Equal(t, []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00,}, buf.Bytes())
+	assert.Equal(t, []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, buf.Bytes())
 }
 
 func TestEncoder_FixedRatInvalidLogicalSchema(t *testing.T) {

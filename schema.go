@@ -235,11 +235,11 @@ func (f *fingerprinter) FingerprintUsing(typ FingerprintType, stringer fmt.Strin
 
 	h, ok := fingerprinters[typ]
 	if !ok {
-		return nil, fmt.Errorf("avro: unknown fingerprint alogrithm %s", f)
+		return nil, fmt.Errorf("avro: unknown fingerprint alogrithm %s", typ)
 	}
 
 	h.Reset()
-	h.Write([]byte(stringer.String()))
+	_, _ = h.Write([]byte(stringer.String()))
 	fingerprint := h.Sum(make([]byte, 0, h.Size()))
 	f.cache[typ] = fingerprint
 	return fingerprint, nil

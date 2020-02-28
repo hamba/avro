@@ -31,7 +31,7 @@ func TestGolden(t *testing.T) {
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			hash.Reset()
-			hash.Write([]byte(tt.in))
+			_, _ = hash.Write([]byte(tt.in))
 
 			got := hash.Sum64()
 
@@ -64,7 +64,7 @@ func TestGoldenBytes(t *testing.T) {
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			hash.Reset()
-			hash.Write([]byte(tt.in))
+			_, _ = hash.Write([]byte(tt.in))
 
 			got := make([]byte, 0, hash.Size())
 			got = hash.Sum(got)
