@@ -11,14 +11,22 @@ import (
 )
 
 func createDecoderOfFixed(schema Schema, typ reflect2.Type) ValDecoder {
+	fixed := schema.(*FixedSchema)
 	switch typ.Kind() {
 	case reflect.Array:
 		arrayType := typ.(reflect2.ArrayType)
-		fixed := schema.(*FixedSchema)
 		if arrayType.Elem().Kind() != reflect.Uint8 || arrayType.Len() != fixed.Size() {
 			break
 		}
 		return &fixedCodec{arrayType: typ.(*reflect2.UnsafeArrayType)}
+
+	case reflect.Struct:
+		ls := fixed.Logical()
+		if typ.RType() != ratRType || ls == nil || ls.Type() != Decimal {
+			break
+		}
+		dec := ls.(*DecimalLogicalSchema)
+		return &fixedDecimalCodec{prec: dec.Precision(), scale: dec.Scale(), size: fixed.Size()}
 	}
 
 	return &errorDecoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s", typ.String(), schema.Type())}
@@ -74,7 +82,13 @@ type fixedDecimalCodec struct {
 }
 
 func (c *fixedDecimalCodec) Decode(ptr unsafe.Pointer, r *Reader) {
-	// TODO:
+	b := make([]byte, c.size)
+	r.Read(b)
+	i := (&big.Int{}).SetBytes(b)
+	if len(b) > 0 && b[0]&0x80 > 0 {
+		i.Sub(i, new(big.Int).Lsh(one, uint(len(b))*8))
+	}
+	*((*big.Rat)(ptr)) = *big.NewRat(i.Int64(), int64(math.Pow10(c.scale)))
 }
 
 func (c *fixedDecimalCodec) Encode(ptr unsafe.Pointer, w *Writer) {

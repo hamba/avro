@@ -2,7 +2,9 @@ package avro_test
 
 import (
 	"bytes"
+	"math/big"
 	"testing"
+	"time"
 
 	"github.com/hamba/avro"
 	"github.com/stretchr/testify/assert"
@@ -308,6 +310,182 @@ func TestDecoder_BytesInvalidSchema(t *testing.T) {
 
 	var b []byte
 	err = dec.Decode(&b)
+
+	assert.Error(t, err)
+}
+
+func TestDecoder_Time_Date(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0xAE, 0x9D, 0x02}
+	schema := `{"type":"int","logicalType":"date"}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	assert.NoError(t, err)
+
+	var got time.Time
+	err = dec.Decode(&got)
+
+	assert.NoError(t, err)
+	assert.Equal(t, time.Date(2020, 1, 2, 0, 0, 0, 0, time.UTC), got)
+}
+
+func TestDecoder_Time_TimestampMillis(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x90, 0xB2, 0xAE, 0xC3, 0xEC, 0x5B}
+	schema := `{"type":"long","logicalType":"timestamp-millis"}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	assert.NoError(t, err)
+
+	var got time.Time
+	err = dec.Decode(&got)
+
+	assert.NoError(t, err)
+	assert.Equal(t, time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC), got)
+}
+
+func TestDecoder_Time_TimestampMicros(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x80, 0xCD, 0xB7, 0xA2, 0xEE, 0xC7, 0xCD, 0x05}
+	schema := `{"type":"long","logicalType":"timestamp-micros"}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	assert.NoError(t, err)
+
+	var got time.Time
+	err = dec.Decode(&got)
+
+	assert.NoError(t, err)
+	assert.Equal(t, time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC), got)
+}
+
+func TestDecoder_TimeInvalidSchema(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x80, 0xCD, 0xB7, 0xA2, 0xEE, 0xC7, 0xCD, 0x05}
+	schema := `{"type":"long"}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	assert.NoError(t, err)
+
+	var got time.Time
+	err = dec.Decode(&got)
+
+	assert.Error(t, err)
+}
+
+func TestDecoder_Duration_TimeMillis(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0xAA, 0xB4, 0xDE, 0x75}
+	schema := `{"type":"int","logicalType":"time-millis"}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	assert.NoError(t, err)
+
+	var got time.Duration
+	err = dec.Decode(&got)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 123456789*time.Millisecond, got)
+}
+
+func TestDecoder_Duration_TimeMicros(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x86, 0xEA, 0xC8, 0xE9, 0x97, 0x07}
+	schema := `{"type":"long","logicalType":"time-micros"}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	assert.NoError(t, err)
+
+	var got time.Duration
+	err = dec.Decode(&got)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 123456789123*time.Microsecond, got)
+}
+
+func TestDecoder_DurationInvalidSchema(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x86, 0xEA, 0xC8, 0xE9, 0x97, 0x07}
+	schema := `{"type":"string"}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	assert.NoError(t, err)
+
+	var got time.Duration
+	err = dec.Decode(&got)
+
+	assert.Error(t, err)
+}
+
+func TestDecoder_BytesRat_Positive(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x6, 0x00, 0x87, 0x78}
+	schema := `{"type":"bytes","logicalType":"decimal","precision":4,"scale":2}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	assert.NoError(t, err)
+
+	got := &big.Rat{}
+	err = dec.Decode(got)
+
+	assert.NoError(t, err)
+	assert.Equal(t, big.NewRat(1734, 5), got)
+}
+
+func TestDecoder_BytesRat_Negative(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x6, 0xFF, 0x78, 0x88}
+	schema := `{"type":"bytes","logicalType":"decimal","precision":4,"scale":2}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	assert.NoError(t, err)
+
+	got := &big.Rat{}
+	err = dec.Decode(got)
+
+	assert.NoError(t, err)
+	assert.Equal(t, big.NewRat(-1734, 5), got)
+}
+
+func TestDecoder_BytesRat_Zero(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x02, 0x00}
+	schema := `{"type":"bytes","logicalType":"decimal","precision":4,"scale":2}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	assert.NoError(t, err)
+
+	got := &big.Rat{}
+	err = dec.Decode(got)
+
+	assert.NoError(t, err)
+	assert.Equal(t, big.NewRat(0, 1), got)
+}
+
+func TestDecoder_BytesRatInvalidSchema(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x02, 0x00}
+	schema := `{"type":"string"}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	assert.NoError(t, err)
+
+	got := &big.Rat{}
+	err = dec.Decode(got)
+
+	assert.Error(t, err)
+}
+
+func TestDecoder_BytesRatInvalidLogicalSchema(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x02, 0x00}
+	schema := `{"type":"string","logicalType":"uuid"}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	assert.NoError(t, err)
+
+	got := &big.Rat{}
+	err = dec.Decode(got)
 
 	assert.Error(t, err)
 }
