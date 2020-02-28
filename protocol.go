@@ -262,7 +262,7 @@ func parseMessage(namespace string, m map[string]interface{}, cache *SchemaCache
 		}
 	}
 
-	types := []Schema{NewPrimitiveSchema(String)}
+	types := []Schema{NewPrimitiveSchema(String, nil)}
 	if errs, ok := m["errors"].([]interface{}); ok {
 		for _, e := range errs {
 			schema, err := parseType(namespace, e, cache)

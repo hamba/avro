@@ -2,7 +2,9 @@ package avro_test
 
 import (
 	"bytes"
+	"math/big"
 	"testing"
+	"time"
 
 	"github.com/hamba/avro"
 	"github.com/stretchr/testify/assert"
@@ -32,10 +34,45 @@ func TestReader_ReadNext(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name:    "Int Date",
+			data:    []byte{0xAE, 0x9D, 0x02},
+			schema:  `{"type":"int","logicalType":"date"}`,
+			want:    time.Date(2020, 1, 2, 0, 0, 0, 0, time.UTC),
+			wantErr: false,
+		},
+		{
+			name:    "Int Time-Millis",
+			data:    []byte{0xAA, 0xB4, 0xDE, 0x75},
+			schema:  `{"type":"int","logicalType":"time-millis"}`,
+			want:    123456789 * time.Millisecond,
+			wantErr: false,
+		},
+		{
 			name:    "Long",
 			data:    []byte{0x36},
 			schema:  "long",
 			want:    int64(27),
+			wantErr: false,
+		},
+		{
+			name:    "Long Time-Micros",
+			data:    []byte{0x86, 0xEA, 0xC8, 0xE9, 0x97, 0x07},
+			schema:  `{"type":"long","logicalType":"time-micros"}`,
+			want:    123456789123 * time.Microsecond,
+			wantErr: false,
+		},
+		{
+			name:    "Long Timestamp-Millis",
+			data:    []byte{0x90, 0xB2, 0xAE, 0xC3, 0xEC, 0x5B},
+			schema:  `{"type":"long","logicalType":"timestamp-millis"}`,
+			want:    time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC),
+			wantErr: false,
+		},
+		{
+			name:    "Long Timestamp-Micros",
+			data:    []byte{0x80, 0xCD, 0xB7, 0xA2, 0xEE, 0xC7, 0xCD, 0x05},
+			schema:  `{"type":"long","logicalType":"timestamp-micros"}`,
+			want:    time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC),
 			wantErr: false,
 		},
 		{
@@ -64,6 +101,13 @@ func TestReader_ReadNext(t *testing.T) {
 			data:    []byte{0x08, 0xEC, 0xAB, 0x44, 0x00},
 			schema:  "bytes",
 			want:    []byte{0xEC, 0xAB, 0x44, 0x00},
+			wantErr: false,
+		},
+		{
+			name:    "Bytes Decimal",
+			data:    []byte{0x6, 0x00, 0x87, 0x78},
+			schema:  `{"type":"bytes","logicalType":"decimal","precision":4,"scale":2}`,
+			want:    big.NewRat(1734, 5),
 			wantErr: false,
 		},
 		{
@@ -143,6 +187,13 @@ func TestReader_ReadNext(t *testing.T) {
 			want:    []byte{'f', 'o', 'o', 'f', 'o', 'o'},
 			wantErr: false,
 		},
+		{
+			name:    "Fixed Decimal",
+			data:    []byte{0x00, 0x00, 0x00, 0x00, 0x87, 0x78},
+			schema:  `{"type":"fixed", "name": "test", "size": 6,"logicalType":"decimal","precision":4,"scale":2}`,
+			want:    big.NewRat(1734, 5),
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -164,7 +215,7 @@ func TestReader_ReadNext(t *testing.T) {
 }
 
 func TestReader_ReadNextUnsupportedType(t *testing.T) {
-	schema := avro.NewPrimitiveSchema(avro.Type("test"))
+	schema := avro.NewPrimitiveSchema(avro.Type("test"), nil)
 	r := avro.NewReader(bytes.NewReader([]byte{0x01}), 10)
 
 	_ = r.ReadNext(schema)

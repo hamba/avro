@@ -20,7 +20,7 @@ func TestNewEncoder_SchemaError(t *testing.T) {
 func TestEncoder_EncodeUnsupportedType(t *testing.T) {
 	defer ConfigTeardown()
 
-	schema := avro.NewPrimitiveSchema(avro.Type("test"))
+	schema := avro.NewPrimitiveSchema(avro.Type("test"), nil)
 	buf := bytes.NewBuffer([]byte{})
 	enc := avro.NewEncoderForSchema(schema, buf)
 

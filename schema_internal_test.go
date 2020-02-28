@@ -98,7 +98,7 @@ func TestIsValidDefault(t *testing.T) {
 		{
 			name: "String",
 			schemaFn: func() Schema {
-				return NewPrimitiveSchema(String)
+				return NewPrimitiveSchema(String, nil)
 			},
 			def:    "test",
 			want:   "test",
@@ -107,7 +107,7 @@ func TestIsValidDefault(t *testing.T) {
 		{
 			name: "String Invalid Type",
 			schemaFn: func() Schema {
-				return NewPrimitiveSchema(String)
+				return NewPrimitiveSchema(String, nil)
 			},
 			def:    1,
 			wantOk: false,
@@ -115,7 +115,7 @@ func TestIsValidDefault(t *testing.T) {
 		{
 			name: "Bytes",
 			schemaFn: func() Schema {
-				return NewPrimitiveSchema(Bytes)
+				return NewPrimitiveSchema(Bytes, nil)
 			},
 			def:    "test",
 			want:   "test",
@@ -124,7 +124,7 @@ func TestIsValidDefault(t *testing.T) {
 		{
 			name: "Bytes Invalid Type",
 			schemaFn: func() Schema {
-				return NewPrimitiveSchema(Bytes)
+				return NewPrimitiveSchema(Bytes, nil)
 			},
 			def:    1,
 			wantOk: false,
@@ -151,7 +151,7 @@ func TestIsValidDefault(t *testing.T) {
 		{
 			name: "Fixed",
 			schemaFn: func() Schema {
-				s, _ := NewFixedSchema("foo", "", 1)
+				s, _ := NewFixedSchema("foo", "", 1, nil)
 				return s
 			},
 			def:    "test",
@@ -161,7 +161,7 @@ func TestIsValidDefault(t *testing.T) {
 		{
 			name: "Fixed Invalid Type",
 			schemaFn: func() Schema {
-				s, _ := NewFixedSchema("foo", "", 1)
+				s, _ := NewFixedSchema("foo", "", 1, nil)
 				return s
 			},
 			def:    1,
@@ -170,7 +170,7 @@ func TestIsValidDefault(t *testing.T) {
 		{
 			name: "Boolean",
 			schemaFn: func() Schema {
-				return NewPrimitiveSchema(Boolean)
+				return NewPrimitiveSchema(Boolean, nil)
 			},
 			def:    true,
 			want:   true,
@@ -179,7 +179,7 @@ func TestIsValidDefault(t *testing.T) {
 		{
 			name: "Boolean Invalid Type",
 			schemaFn: func() Schema {
-				return NewPrimitiveSchema(Boolean)
+				return NewPrimitiveSchema(Boolean, nil)
 			},
 			def:    1,
 			wantOk: false,
@@ -187,7 +187,7 @@ func TestIsValidDefault(t *testing.T) {
 		{
 			name: "Int",
 			schemaFn: func() Schema {
-				return NewPrimitiveSchema(Int)
+				return NewPrimitiveSchema(Int, nil)
 			},
 			def:    1,
 			want:   1,
@@ -196,7 +196,7 @@ func TestIsValidDefault(t *testing.T) {
 		{
 			name: "Int Int8",
 			schemaFn: func() Schema {
-				return NewPrimitiveSchema(Int)
+				return NewPrimitiveSchema(Int, nil)
 			},
 			def:    int8(1),
 			want:   1,
@@ -205,7 +205,7 @@ func TestIsValidDefault(t *testing.T) {
 		{
 			name: "Int Int16",
 			schemaFn: func() Schema {
-				return NewPrimitiveSchema(Int)
+				return NewPrimitiveSchema(Int, nil)
 			},
 			def:    int16(1),
 			want:   1,
@@ -214,7 +214,7 @@ func TestIsValidDefault(t *testing.T) {
 		{
 			name: "Int Int32",
 			schemaFn: func() Schema {
-				return NewPrimitiveSchema(Int)
+				return NewPrimitiveSchema(Int, nil)
 			},
 			def:    int32(1),
 			want:   1,
@@ -223,7 +223,7 @@ func TestIsValidDefault(t *testing.T) {
 		{
 			name: "Int Float64",
 			schemaFn: func() Schema {
-				return NewPrimitiveSchema(Int)
+				return NewPrimitiveSchema(Int, nil)
 			},
 			def:    float64(1),
 			want:   1,
@@ -232,7 +232,7 @@ func TestIsValidDefault(t *testing.T) {
 		{
 			name: "Int Invalid Type",
 			schemaFn: func() Schema {
-				return NewPrimitiveSchema(Int)
+				return NewPrimitiveSchema(Int, nil)
 			},
 			def:    "test",
 			wantOk: false,
@@ -240,7 +240,7 @@ func TestIsValidDefault(t *testing.T) {
 		{
 			name: "Long",
 			schemaFn: func() Schema {
-				return NewPrimitiveSchema(Long)
+				return NewPrimitiveSchema(Long, nil)
 			},
 			def:    int64(1),
 			want:   int64(1),
@@ -249,7 +249,7 @@ func TestIsValidDefault(t *testing.T) {
 		{
 			name: "Long Float64",
 			schemaFn: func() Schema {
-				return NewPrimitiveSchema(Long)
+				return NewPrimitiveSchema(Long, nil)
 			},
 			def:    float64(1),
 			want:   int64(1),
@@ -258,7 +258,7 @@ func TestIsValidDefault(t *testing.T) {
 		{
 			name: "Long Invalid Type",
 			schemaFn: func() Schema {
-				return NewPrimitiveSchema(Long)
+				return NewPrimitiveSchema(Long, nil)
 			},
 			def:    "test",
 			wantOk: false,
@@ -266,7 +266,7 @@ func TestIsValidDefault(t *testing.T) {
 		{
 			name: "Float",
 			schemaFn: func() Schema {
-				return NewPrimitiveSchema(Float)
+				return NewPrimitiveSchema(Float, nil)
 			},
 			def:    float32(1),
 			want:   float32(1),
@@ -275,7 +275,7 @@ func TestIsValidDefault(t *testing.T) {
 		{
 			name: "Float Float64",
 			schemaFn: func() Schema {
-				return NewPrimitiveSchema(Float)
+				return NewPrimitiveSchema(Float, nil)
 			},
 			def:    float64(1),
 			want:   float32(1),
@@ -284,7 +284,7 @@ func TestIsValidDefault(t *testing.T) {
 		{
 			name: "Float Invalid Type",
 			schemaFn: func() Schema {
-				return NewPrimitiveSchema(Float)
+				return NewPrimitiveSchema(Float, nil)
 			},
 			def:    "test",
 			wantOk: false,
@@ -292,7 +292,7 @@ func TestIsValidDefault(t *testing.T) {
 		{
 			name: "Double",
 			schemaFn: func() Schema {
-				return NewPrimitiveSchema(Double)
+				return NewPrimitiveSchema(Double, nil)
 			},
 			def:    float64(1),
 			want:   float64(1),
@@ -301,7 +301,7 @@ func TestIsValidDefault(t *testing.T) {
 		{
 			name: "Double Invalid Type",
 			schemaFn: func() Schema {
-				return NewPrimitiveSchema(Double)
+				return NewPrimitiveSchema(Double, nil)
 			},
 			def:    "test",
 			wantOk: false,
@@ -327,7 +327,7 @@ func TestRecursionError_Error(t *testing.T) {
 }
 
 func TestSchema_FingerprintUsingCaches(t *testing.T) {
-	schema := NewPrimitiveSchema(String)
+	schema := NewPrimitiveSchema(String, nil)
 
 	want, _ := schema.FingerprintUsing(CRC64Avro)
 

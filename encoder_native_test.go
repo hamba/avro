@@ -2,7 +2,9 @@ package avro_test
 
 import (
 	"bytes"
+	"math/big"
 	"testing"
+	"time"
 
 	"github.com/hamba/avro"
 	"github.com/stretchr/testify/assert"
@@ -287,6 +289,170 @@ func TestEncoder_BytesInvalidSchema(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = enc.Encode([]byte{0xEC, 0xAB, 0x44, 0x00})
+
+	assert.Error(t, err)
+}
+
+func TestEncoder_Time_Date(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"int","logicalType":"date"}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(time.Date(2020, 1, 2, 0, 0, 0, 0, time.UTC))
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0xAE, 0x9D, 0x02}, buf.Bytes())
+}
+
+func TestEncoder_Time_TimestampMillis(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"long","logicalType":"timestamp-millis"}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC))
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x90, 0xB2, 0xAE, 0xC3, 0xEC, 0x5B}, buf.Bytes())
+}
+
+func TestEncoder_Time_TimestampMicros(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"long","logicalType":"timestamp-micros"}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC))
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x80, 0xCD, 0xB7, 0xA2, 0xEE, 0xC7, 0xCD, 0x05}, buf.Bytes())
+}
+
+func TestEncoder_TimeInvalidSchema(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"long"}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(time.Date(2020, 1, 2, 3, 4, 5, 6, time.UTC))
+
+	assert.Error(t, err)
+}
+
+func TestEncoder_Duration_TimeMillis(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"int","logicalType":"time-millis"}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(123456789 * time.Millisecond)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0xAA, 0xB4, 0xDE, 0x75}, buf.Bytes())
+}
+
+func TestEncoder_Duration_TimeMicros(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"long","logicalType":"time-micros"}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(123456789123 * time.Microsecond)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x86, 0xEA, 0xC8, 0xE9, 0x97, 0x07}, buf.Bytes())
+}
+
+func TestEncoder_DurationInvalidSchema(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"string"}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(time.Millisecond)
+
+	assert.Error(t, err)
+}
+
+func TestEncoder_BytesRat_Positive(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"bytes","logicalType":"decimal","precision":4,"scale":2}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(big.NewRat(1734, 5))
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x6, 0x00, 0x87, 0x78}, buf.Bytes())
+}
+
+func TestEncoder_BytesRat_Negative(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"bytes","logicalType":"decimal","precision":4,"scale":2}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(big.NewRat(-1734, 5))
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x6, 0xFF, 0x78, 0x88}, buf.Bytes())
+}
+
+func TestEncoder_BytesRat_Zero(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"bytes","logicalType":"decimal","precision":4,"scale":2}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(big.NewRat(0, 1))
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x02, 0x00}, buf.Bytes())
+}
+
+func TestEncoder_BytesRatInvalidSchema(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"string"}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(big.NewRat(1734, 5))
+
+	assert.Error(t, err)
+}
+
+func TestEncoder_BytesRatInvalidLogicalSchema(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"string","logicalType":"uuid"}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(big.NewRat(1734, 5))
 
 	assert.Error(t, err)
 }

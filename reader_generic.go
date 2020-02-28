@@ -2,19 +2,47 @@ package avro
 
 import (
 	"fmt"
+	"time"
 )
 
 // ReadNext reads the next Avro element as a generic interface.
 func (r *Reader) ReadNext(schema Schema) interface{} {
+	var ls LogicalSchema
+	lts, ok := schema.(LogicalTypeSchema)
+	if ok {
+		ls = lts.Logical()
+	}
+
 	switch schema.Type() {
 
 	case Boolean:
 		return r.ReadBool()
 
 	case Int:
+		if ls != nil {
+			switch ls.Type() {
+			case Date:
+				return time.Unix(0, int64(r.ReadInt())*int64(24*time.Hour)).UTC()
+
+			case TimeMillis:
+				return time.Duration(r.ReadInt()) * time.Millisecond
+			}
+		}
 		return int(r.ReadInt())
 
 	case Long:
+		if ls != nil {
+			switch ls.Type() {
+			case TimeMicros:
+				return time.Duration(r.ReadLong()) * time.Microsecond
+
+			case TimestampMillis:
+				return time.Unix(0, r.ReadLong()*int64(time.Millisecond)).UTC()
+
+			case TimestampMicros:
+				return time.Unix(0, r.ReadLong()*int64(time.Microsecond)).UTC()
+			}
+		}
 		return r.ReadLong()
 
 	case Float:
@@ -27,6 +55,10 @@ func (r *Reader) ReadNext(schema Schema) interface{} {
 		return r.ReadString()
 
 	case Bytes:
+		if ls != nil && ls.Type() == Decimal {
+			dec := ls.(*DecimalLogicalSchema)
+			return ratFromBytes(r.ReadBytes(), dec.Scale())
+		}
 		return r.ReadBytes()
 
 	case Record:
@@ -86,8 +118,13 @@ func (r *Reader) ReadNext(schema Schema) interface{} {
 		return obj
 
 	case Fixed:
-		obj := make([]byte, schema.(*FixedSchema).Size())
+		size := schema.(*FixedSchema).Size()
+		obj := make([]byte, size)
 		r.Read(obj)
+		if ls != nil && ls.Type() == Decimal {
+			dec := ls.(*DecimalLogicalSchema)
+			return ratFromBytes(obj, dec.Scale())
+		}
 		return obj
 
 	default:
