@@ -11,7 +11,8 @@ import (
 )
 
 var (
-	schemaReserved = []string{"doc", "fields", "items", "name", "namespace", "size", "symbols", "values", "type", "aliases"}
+	schemaReserved = []string{"doc", "fields", "items", "name", "namespace", "size", "symbols", "values", "type",
+		"aliases", "logicalType", "precision", "scale"}
 	fieldReserved  = []string{"default", "doc", "name", "order", "type", "aliases"}
 )
 

@@ -2,7 +2,10 @@ package avro
 
 import (
 	"fmt"
+	"math"
+	"math/big"
 	"reflect"
+	"time"
 	"unsafe"
 
 	"github.com/modern-go/reflect2"
@@ -107,10 +110,21 @@ func createEncoderOfNative(schema Schema, typ reflect2.Type) ValEncoder {
 		return &int32Codec{}
 
 	case reflect.Int64:
-		if schema.Type() != Long {
+		st := schema.Type()
+		lt := getLogicalType(schema)
+		switch {
+		case st == Int && lt == TimeMillis: // time.Duration
+			return &timeMillisCodec{}
+
+		case st == Long && lt == TimeMicros: // time.Duration
+			return &timeMicrosCodec{}
+
+		case st == Long:
+			return &int64Codec{}
+
+		default:
 			break
 		}
-		return &int64Codec{}
 
 	case reflect.Float32:
 		if schema.Type() != Float {
@@ -135,6 +149,38 @@ func createEncoderOfNative(schema Schema, typ reflect2.Type) ValEncoder {
 			break
 		}
 		return &bytesCodec{sliceType: typ.(*reflect2.UnsafeSliceType)}
+
+	case reflect.Struct:
+		st := schema.Type()
+		lt := getLogicalType(schema)
+		switch {
+		case typ.RType() == timeRType && st == Int && lt == Date:
+			return &dateCodec{}
+
+		case typ.RType() == timeRType && st == Long && lt == TimestampMillis:
+			return &timestampMillisCodec{}
+
+		case typ.RType() == timeRType && st == Long && lt == TimestampMicros:
+			return &timestampMicrosCodec{}
+
+		default:
+			break
+		}
+
+	case reflect.Ptr:
+		ptrType := typ.(*reflect2.UnsafePtrType)
+		elemType := ptrType.Elem()
+
+		ls := getLogicalSchema(schema)
+		if ls == nil {
+			break
+		}
+		if elemType.RType() != ratRType || schema.Type() != Bytes || ls.Type() != Decimal {
+			break
+		}
+		dec := ls.(*DecimalLogicalSchema)
+
+		return &bytesDecimalCodec{prec: dec.Precision(), scale: dec.Scale()}
 	}
 
 	if schema.Type() == Null {
@@ -142,6 +188,24 @@ func createEncoderOfNative(schema Schema, typ reflect2.Type) ValEncoder {
 	}
 
 	return &errorEncoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s", typ.String(), schema.Type())}
+}
+
+func getLogicalSchema(schema Schema) LogicalSchema {
+	lts, ok := schema.(LogicalTypeSchema)
+	if !ok {
+		return nil
+	}
+
+	return lts.Logical()
+}
+
+func getLogicalType(schema Schema) LogicalType {
+	ls := getLogicalSchema(schema)
+	if ls == nil {
+		return ""
+	}
+
+	return ls.Type()
 }
 
 type nullCodec struct{}
@@ -249,4 +313,93 @@ func (c *bytesCodec) Decode(ptr unsafe.Pointer, r *Reader) {
 
 func (c *bytesCodec) Encode(ptr unsafe.Pointer, w *Writer) {
 	w.WriteBytes(*((*[]byte)(ptr)))
+}
+
+type dateCodec struct{}
+
+func (c *dateCodec) Decode(ptr unsafe.Pointer, r *Reader) {
+	// TODO:
+}
+
+func (c *dateCodec) Encode(ptr unsafe.Pointer, w *Writer) {
+	t := *((*time.Time)(ptr))
+	w.WriteInt(int32(t.UnixNano() / int64(24*time.Hour)))
+}
+
+type timestampMillisCodec struct{}
+
+func (c *timestampMillisCodec) Decode(ptr unsafe.Pointer, r *Reader) {
+	// TODO:
+}
+
+func (c *timestampMillisCodec) Encode(ptr unsafe.Pointer, w *Writer) {
+	t := *((*time.Time)(ptr))
+	w.WriteLong(t.UnixNano() / int64(time.Millisecond))
+}
+
+type timestampMicrosCodec struct{}
+
+func (c *timestampMicrosCodec) Decode(ptr unsafe.Pointer, r *Reader) {
+	// TODO:
+}
+
+func (c *timestampMicrosCodec) Encode(ptr unsafe.Pointer, w *Writer) {
+	t := *((*time.Time)(ptr))
+	w.WriteLong(t.Unix()*1e6 + int64(t.Nanosecond()/1e3))
+}
+
+type timeMillisCodec struct{}
+
+func (c *timeMillisCodec) Decode(ptr unsafe.Pointer, r *Reader) {
+	// TODO:
+}
+
+func (c *timeMillisCodec) Encode(ptr unsafe.Pointer, w *Writer) {
+	d := *((*time.Duration)(ptr))
+	w.WriteInt(int32(d.Nanoseconds() / int64(time.Millisecond)))
+}
+
+type timeMicrosCodec struct{}
+
+func (c *timeMicrosCodec) Decode(ptr unsafe.Pointer, r *Reader) {
+	// TODO:
+}
+
+func (c *timeMicrosCodec) Encode(ptr unsafe.Pointer, w *Writer) {
+	d := *((*time.Duration)(ptr))
+	w.WriteLong(d.Nanoseconds() / int64(time.Microsecond))
+}
+
+var one = big.NewInt(1)
+
+type bytesDecimalCodec struct {
+	prec  int
+	scale int
+}
+
+func (c *bytesDecimalCodec) Decode(ptr unsafe.Pointer, r *Reader) {
+	// TODO:
+}
+
+func (c *bytesDecimalCodec) Encode(ptr unsafe.Pointer, w *Writer) {
+	r := *((**big.Rat)(ptr))
+	i := (&big.Int{}).Mul(r.Num(), big.NewInt(int64(math.Pow10(c.scale))))
+	i = i.Div(i, r.Denom())
+
+	var b []byte
+	switch i.Sign() {
+	case 0:
+		b = []byte{0}
+
+	case 1:
+		b = i.Bytes()
+		if b[0]&0x80 > 0 {
+			b = append([]byte{0}, b...)
+		}
+
+	case -1:
+		length := uint(i.BitLen()/8+1) * 8
+		b = i.Add(i, (&big.Int{}).Lsh(one, length)).Bytes()
+	}
+	w.WriteBytes(b)
 }

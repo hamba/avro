@@ -2,11 +2,23 @@ package avro
 
 import (
 	"fmt"
+	"math/big"
 	"reflect"
+	"time"
 	"unsafe"
 
 	"github.com/modern-go/reflect2"
 )
+
+var (
+	timeRType      uintptr
+	ratRType       uintptr
+)
+
+func init() {
+	timeRType = reflect2.TypeOf(time.Time{}).RType()
+	ratRType = reflect2.TypeOf(big.Rat{}).RType()
+}
 
 type null struct{}
 
