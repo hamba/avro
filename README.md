@@ -88,9 +88,7 @@ More examples in the [godoc](https://godoc.org/github.com/hamba/avro).
 
 ##### Unions
 
-In Go structs, the following types are accepted: `map[string]interface{}`, `*T`, 
-and a `struct` implementing `avro.UnionType`. When en/decoding to an `interface{}`, a 
-`map[string]interface{}` will always be used.
+The following union types are accepted: `map[string]interface{}`, `*T` and `interface{}`.
 
 * **map[string]interface{}:** If the union value is `nil`, a `nil` map will be en/decoded. 
 When a non-`nil` union value is encountered, a single key is en/decoded. The key is the avro
