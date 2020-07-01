@@ -105,6 +105,21 @@ func TestEncoder_UnionPtr(t *testing.T) {
 	assert.Equal(t, []byte{0x02, 0x06, 0x66, 0x6F, 0x6F}, buf.Bytes())
 }
 
+func TestEncoder_UnionPtrReversed(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `["string", "null"]`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	str := "foo"
+	err = enc.Encode(&str)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x00, 0x06, 0x66, 0x6F, 0x6F}, buf.Bytes())
+}
+
 func TestEncoder_UnionPtrNull(t *testing.T) {
 	defer ConfigTeardown()
 
@@ -118,6 +133,21 @@ func TestEncoder_UnionPtrNull(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, []byte{0x00}, buf.Bytes())
+}
+
+func TestEncoder_UnionPtrReversedNull(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `["string", "null"]`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	var str *string
+	err = enc.Encode(str)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x02}, buf.Bytes())
 }
 
 func TestEncoder_UnionPtrNotNullable(t *testing.T) {
