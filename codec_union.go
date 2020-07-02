@@ -145,9 +145,10 @@ func (e *mapUnionEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 
 func decoderOfPtrUnion(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
 	union := schema.(*UnionSchema)
+	_, typeIdx := union.Indices()
 	ptrType := typ.(*reflect2.UnsafePtrType)
 	elemType := ptrType.Elem()
-	decoder := decoderOfType(cfg, union.Types()[1], elemType)
+	decoder := decoderOfType(cfg, union.Types()[typeIdx], elemType)
 
 	return &unionPtrDecoder{
 		schema:  union,
@@ -187,27 +188,32 @@ func (d *unionPtrDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 
 func encoderOfPtrUnion(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncoder {
 	union := schema.(*UnionSchema)
+	nullIdx, typeIdx := union.Indices()
 	ptrType := typ.(*reflect2.UnsafePtrType)
-	encoder := encoderOfType(cfg, union.Types()[1], ptrType.Elem())
+	encoder := encoderOfType(cfg, union.Types()[typeIdx], ptrType.Elem())
 
 	return &unionPtrEncoder{
 		schema:  union,
 		encoder: encoder,
+		nullIdx: int64(nullIdx),
+		typeIdx: int64(typeIdx),
 	}
 }
 
 type unionPtrEncoder struct {
 	schema  *UnionSchema
 	encoder ValEncoder
+	nullIdx int64
+	typeIdx int64
 }
 
 func (e *unionPtrEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 	if *((*unsafe.Pointer)(ptr)) == nil {
-		w.WriteLong(0)
+		w.WriteLong(e.nullIdx)
 		return
 	}
 
-	w.WriteLong(1)
+	w.WriteLong(e.typeIdx)
 	e.encoder.Encode(*((*unsafe.Pointer)(ptr)), w)
 }
 

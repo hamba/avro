@@ -105,6 +105,21 @@ func TestDecoder_UnionPtr(t *testing.T) {
 	assert.Equal(t, &want, got)
 }
 
+func TestDecoder_UnionPtrReversed(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x00, 0x06, 0x66, 0x6F, 0x6F}
+	schema := `["string", "null"]`
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	var got *string
+	err := dec.Decode(&got)
+
+	want := "foo"
+	assert.NoError(t, err)
+	assert.Equal(t, &want, got)
+}
+
 func TestDecoder_UnionPtrReuseInstance(t *testing.T) {
 	defer ConfigTeardown()
 
@@ -128,6 +143,20 @@ func TestDecoder_UnionPtrNull(t *testing.T) {
 
 	data := []byte{0x00}
 	schema := `["null", "string"]`
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	var got *string
+	err := dec.Decode(&got)
+
+	assert.NoError(t, err)
+	assert.Nil(t, got)
+}
+
+func TestDecoder_UnionPtrReversedNull(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x02}
+	schema := `["string", "null"]`
 	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
 
 	var got *string

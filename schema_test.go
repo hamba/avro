@@ -694,6 +694,41 @@ func TestUnionSchema(t *testing.T) {
 	}
 }
 
+func TestUnionSchema_Indices(t *testing.T) {
+	tests := []struct {
+		name   string
+		schema string
+		want   [2]int
+	}{
+		{
+			name:   "Null First",
+			schema: `["null", "string"]`,
+			want:   [2]int{0, 1},
+		},
+		{
+			name:   "Null Second",
+			schema: `["string", "null"]`,
+			want:   [2]int{1, 0},
+		},
+		{
+			name:   "Not Nullable",
+			schema: `["null", "string", "int"]`,
+			want:   [2]int{0, 0},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s, err := avro.Parse(tt.schema)
+
+			assert.NoError(t, err)
+			null, typ := s.(*avro.UnionSchema).Indices()
+			assert.Equal(t, tt.want[0], null)
+			assert.Equal(t, tt.want[1], typ)
+		})
+	}
+}
+
 func TestFixedSchema(t *testing.T) {
 	tests := []struct {
 		name            string

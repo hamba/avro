@@ -656,11 +656,24 @@ func (s *UnionSchema) Types() Schemas {
 
 // Nullable returns the Schema if the union is nullable, otherwise nil.
 func (s *UnionSchema) Nullable() bool {
-	if len(s.types) != 2 || s.types[0].Type() != Null {
+	if len(s.types) != 2 || s.types[0].Type() != Null && s.types[1].Type() != Null {
 		return false
 	}
 
 	return true
+}
+
+// Indices returns the index of the null and type schemas for a
+// nullable schema. For non-nullable schemas 0 is returned for
+// both.
+func (s *UnionSchema) Indices() (null int, typ int) {
+	if !s.Nullable() {
+		return 0, 0
+	}
+	if s.types[0].Type() == Null {
+		return 0, 1
+	}
+	return 1, 0
 }
 
 // String returns the canonical form of the schema.
