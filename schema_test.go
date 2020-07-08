@@ -368,6 +368,11 @@ func TestRecordSchema_ValidatesDefault(t *testing.T) {
 		},
 		{
 			name:    "Union",
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": ["string", "null"]}]}`,
+			wantErr: false,
+		},
+		{
+			name:    "Union Default",
 			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": ["null", "string"], "default": null}]}`,
 			wantErr: false,
 		},

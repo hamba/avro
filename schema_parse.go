@@ -237,7 +237,12 @@ func parseField(namespace string, v interface{}, cache *SchemaCache) (*Field, er
 		return nil, err
 	}
 
-	field, err := NewField(name, typ, m["default"])
+	def, ok := m["default"]
+	if !ok {
+		def = NoDefault
+	}
+
+	field, err := NewField(name, typ, def)
 	if err != nil {
 		return nil, err
 	}

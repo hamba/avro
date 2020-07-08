@@ -414,10 +414,16 @@ func (s *RecordSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
 type Field struct {
 	properties
 
-	name string
-	typ  Schema
-	def  interface{}
+	name   string
+	typ    Schema
+	hasDef bool
+	def    interface{}
 }
+
+type noDef struct{}
+
+// NoDefault is used when no default exists for a field.
+var NoDefault = noDef{}
 
 // NewField creates a new field instance.
 func NewField(name string, typ Schema, def interface{}) (*Field, error) {
@@ -425,17 +431,22 @@ func NewField(name string, typ Schema, def interface{}) (*Field, error) {
 		return nil, err
 	}
 
-	def, err := validateDefault(name, typ, def)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Field{
+	f := &Field{
 		properties: properties{reserved: fieldReserved},
 		name:       name,
 		typ:        typ,
-		def:        def,
-	}, nil
+	}
+
+	if def != NoDefault {
+		def, err := validateDefault(name, typ, def)
+		if err != nil {
+			return nil, err
+		}
+		f.def = def
+		f.hasDef = true
+	}
+
+	return f, nil
 }
 
 // Name returns the name of a field.
@@ -450,7 +461,7 @@ func (s *Field) Type() Schema {
 
 // HasDefault determines if the field has a default value.
 func (s *Field) HasDefault() bool {
-	return s.def != nil
+	return s.hasDef
 }
 
 // Default returns the default of a field or nil.
