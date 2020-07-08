@@ -203,6 +203,38 @@ func TestEncoder_RecordMap(t *testing.T) {
 	assert.Equal(t, []byte{0x36, 0x06, 0x66, 0x6f, 0x6f}, buf.Bytes())
 }
 
+func TestEncoder_RecordMapNested(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{
+	"type": "record",
+	"name": "parent",
+	"fields" : [
+		{"name": "a", "type": {
+			"type": "record",
+			"name": "test",
+			"fields" : [
+				{"name": "a", "type": "long"},
+	    		{"name": "b", "type": "string"}
+			]}
+		},
+	    {"name": "b", "type": "string"}
+	]
+}`
+	obj := map[string]interface{}{"a": map[string]interface{}{
+		"a": int64(27),
+		"b": "bar",
+	}, "b": "foo"}
+	buf := &bytes.Buffer{}
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(obj)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x36, 0x6, 0x62, 0x61, 0x72, 0x6, 0x66, 0x6f, 0x6f}, buf.Bytes())
+}
+
 func TestEncoder_RecordMapNilValue(t *testing.T) {
 	defer ConfigTeardown()
 
@@ -287,6 +319,50 @@ func TestEncoder_RecordMapWithNullDefault(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, []byte{0x06, 0x66, 0x6f, 0x6f}, buf.Bytes())
+}
+
+func TestEncoder_RecordMapWithUnionNullDefault(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{
+	"type": "record",
+	"name": "test",
+	"fields" : [
+		{"name": "a", "type": ["null", "string"], "default": null},
+	    {"name": "b", "type": "string"}
+	]
+}`
+	obj := map[string]interface{}{"b": "foo"}
+	buf := &bytes.Buffer{}
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(obj)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x00, 0x06, 0x66, 0x6f, 0x6f}, buf.Bytes())
+}
+
+func TestEncoder_RecordMapWithUnionStringDefault(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{
+	"type": "record",
+	"name": "test",
+	"fields" : [
+		{"name": "a", "type": ["string", "null"], "default": "test"},
+	    {"name": "b", "type": "string"}
+	]
+}`
+	obj := map[string]interface{}{"b": "foo"}
+	buf := &bytes.Buffer{}
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(obj)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x0, 0x8, 0x74, 0x65, 0x73, 0x74, 0x6, 0x66, 0x6f, 0x6f}, buf.Bytes())
 }
 
 func TestEncoder_RecordMapInvalidKeyType(t *testing.T) {

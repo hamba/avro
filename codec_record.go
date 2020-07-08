@@ -251,9 +251,22 @@ func encoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEnc
 			encoder: encoderOfType(cfg, field.Type(), mapType.Elem()),
 		}
 
-		if field.Default() != nil {
-			defaultType := reflect2.TypeOf(field.Default())
+		if field.HasDefault() {
+			switch {
+			case field.Type().Type() == Union:
+				union := field.Type().(*UnionSchema)
+				fields[i].def = map[string]interface{}{
+					string(union.Types()[0].Type()): field.Default(),
+				}
+			case field.Default() == nil:
+				continue
+			}
+
+			defaultType := reflect2.TypeOf(fields[i].def)
 			fields[i].defEncoder = encoderOfType(cfg, field.Type(), defaultType)
+			if defaultType.LikePtr() {
+				fields[i].defEncoder = &onePtrEncoder{fields[i].defEncoder}
+			}
 		}
 	}
 
