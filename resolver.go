@@ -32,6 +32,7 @@ func NewTypeResolver() *TypeResolver {
 	r.Register(string(Double), float64(0))
 	r.Register(string(String), "")
 	r.Register(string(Bytes), []byte{})
+	r.Register(string(Boolean), bool(true))
 
 	return r
 }
