@@ -242,6 +242,20 @@ func TestDecoder_UnionInterfaceInMap(t *testing.T) {
 	assert.Equal(t, map[string]interface{}{"foo": 27}, got)
 }
 
+func TestDecoder_UnionInterfaceInMapWithBool(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x01, 0x0c, 0x06, 0x66, 0x6F, 0x6F, 0x02, 0x01, 0x00}
+	schema := `{"type":"map", "values": ["null", "boolean"]}`
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	var got map[string]interface{}
+	err := dec.Decode(&got)
+
+	assert.NoError(t, err)
+	assert.Equal(t, map[string]interface{}{"foo": true}, got)
+}
+
 func TestDecoder_UnionInterfaceMap(t *testing.T) {
 	defer ConfigTeardown()
 

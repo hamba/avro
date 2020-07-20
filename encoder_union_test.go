@@ -230,6 +230,20 @@ func TestEncoder_UnionInterfaceMap(t *testing.T) {
 	assert.Equal(t, []byte{0x02, 0x01, 0x0a, 0x06, 0x66, 0x6f, 0x6f, 0x36, 0x00}, buf.Bytes())
 }
 
+func TestEncoder_UnionInterfaceInMapWithBool(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"map", "values": ["null", "boolean"]}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(map[string]interface{}{"foo": true})
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x01, 0x0c, 0x06, 0x66, 0x6F, 0x6F, 0x02, 0x01, 0x00}, buf.Bytes())
+}
+
 func TestEncoder_UnionInterfaceArray(t *testing.T) {
 	defer ConfigTeardown()
 
