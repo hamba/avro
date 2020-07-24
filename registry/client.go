@@ -42,6 +42,9 @@ type Registry interface {
 	// GetLatestSchema gets the latest schema for a subject.
 	GetLatestSchema(subject string) (avro.Schema, error)
 
+	// GetLatestSchemaInfo gets the latest schema and schema metadata for a subject.
+	GetLatestSchemaInfo(subject string) (SchemaInfo, error)
+
 	// CreateSchema creates a schema in the registry, returning the schema id.
 	CreateSchema(subject string, schema string) (int, avro.Schema, error)
 
@@ -60,6 +63,31 @@ type idPayload struct {
 type credentials struct {
 	username string
 	password string
+}
+
+type schemaInfoPayload struct {
+	Schema  string `json:"schema"`
+	ID      int    `json:"id"`
+	Version int    `json:"version"`
+	Subject string `json:"subject"`
+}
+
+func (s *schemaInfoPayload) Parse() (SchemaInfo, error) {
+	info := SchemaInfo{
+		ID: s.ID,
+		Version: s.Version,
+		Subject: s.Subject,
+	}
+	schema, err := avro.Parse(s.Schema)
+	info.Schema = schema
+	return info, err
+}
+
+type SchemaInfo struct {
+	Schema  avro.Schema
+	ID      int
+	Version int
+	Subject string
 }
 
 var defaultClient = &http.Client{
@@ -188,6 +216,17 @@ func (c *Client) GetLatestSchema(subject string) (avro.Schema, error) {
 	}
 
 	return avro.Parse(payload.Schema)
+}
+
+// GetLatestSchemaInfo gets the latest schema and schema metadata for a subject.
+func (c *Client) GetLatestSchemaInfo(subject string) (SchemaInfo, error) {
+	var payload schemaInfoPayload
+	err := c.request(http.MethodGet, "/subjects/"+subject+"/versions/latest", nil, &payload)
+	if err != nil {
+		return SchemaInfo{}, err
+	}
+
+	return payload.Parse()
 }
 
 // CreateSchema creates a schema in the registry, returning the schema id.
