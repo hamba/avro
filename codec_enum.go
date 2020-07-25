@@ -9,8 +9,7 @@ import (
 )
 
 func createDecoderOfEnum(schema Schema, typ reflect2.Type) ValDecoder {
-	switch typ.Kind() {
-	case reflect.String:
+	if typ.Kind() == reflect.String {
 		return &enumCodec{symbols: schema.(*EnumSchema).Symbols()}
 	}
 
@@ -18,8 +17,7 @@ func createDecoderOfEnum(schema Schema, typ reflect2.Type) ValDecoder {
 }
 
 func createEncoderOfEnum(schema Schema, typ reflect2.Type) ValEncoder {
-	switch typ.Kind() {
-	case reflect.String:
+	if typ.Kind() == reflect.String {
 		return &enumCodec{symbols: schema.(*EnumSchema).Symbols()}
 	}
 

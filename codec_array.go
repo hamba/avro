@@ -10,8 +10,7 @@ import (
 )
 
 func createDecoderOfArray(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
-	switch typ.Kind() {
-	case reflect.Slice:
+	if typ.Kind() == reflect.Slice {
 		return decoderOfArray(cfg, schema, typ)
 	}
 
@@ -19,8 +18,7 @@ func createDecoderOfArray(cfg *frozenConfig, schema Schema, typ reflect2.Type) V
 }
 
 func createEncoderOfArray(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncoder {
-	switch typ.Kind() {
-	case reflect.Slice:
+	if typ.Kind() == reflect.Slice {
 		return encoderOfArray(cfg, schema, typ)
 	}
 

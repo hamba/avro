@@ -47,7 +47,6 @@ func createEncoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) 
 
 	case reflect.Ptr:
 		return encoderOfPtr(cfg, schema, typ)
-
 	}
 
 	return &errorEncoder{err: fmt.Errorf("avro: %s is unsupported for avro %s", typ.String(), schema.Type())}
@@ -57,7 +56,7 @@ func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 	rec := schema.(*RecordSchema)
 	structDesc := describeStruct(cfg.getTagKey(), typ)
 
-	var fields []*structFieldDecoder
+	fields := make([]*structFieldDecoder, 0, len(rec.Fields()))
 	for _, field := range rec.Fields() {
 		sf := structDesc.Fields.Get(field.Name())
 
@@ -114,7 +113,7 @@ func encoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEnc
 	rec := schema.(*RecordSchema)
 	structDesc := describeStruct(cfg.getTagKey(), typ)
 
-	var fields []*structFieldEncoder
+	fields := make([]*structFieldEncoder, 0, len(rec.Fields()))
 	for _, field := range rec.Fields() {
 		sf := structDesc.Fields.Get(field.Name())
 

@@ -1,7 +1,8 @@
 /*
 Package registry implements a Confluent Schema Registry compliant client.
 
-See the Confluent Schema Registry docs for an understanding of the API: https://docs.confluent.io/current/schema-registry/docs/api.html
+See the Confluent Schema Registry docs for an understanding of the
+API: https://docs.confluent.io/current/schema-registry/docs/api.html
 
 */
 package registry
@@ -17,7 +18,7 @@ import (
 	"time"
 
 	"github.com/hamba/avro"
-	"github.com/json-iterator/go"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/modern-go/concurrent"
 )
 
@@ -72,10 +73,10 @@ type schemaInfoPayload struct {
 }
 
 // Parse converts the string schema registry response into a
-// SchemaInfo object with an avro.Schema schema
+// SchemaInfo object with an avro.Schema schema.
 func (s *schemaInfoPayload) Parse() (info SchemaInfo, err error) {
 	info = SchemaInfo{
-		ID: s.ID,
+		ID:      s.ID,
 		Version: s.Version,
 	}
 	info.Schema, err = avro.Parse(s.Schema)
@@ -117,7 +118,7 @@ func WithBasicAuth(username string, password string) ClientFunc {
 	}
 }
 
-// Client is an HTTP registry client
+// Client is an HTTP registry client.
 type Client struct {
 	client *http.Client
 	base   string

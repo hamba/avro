@@ -7,12 +7,14 @@ import (
 	"math"
 	"strings"
 
-	"github.com/json-iterator/go"
+	jsoniter "github.com/json-iterator/go"
 )
 
 var (
-	schemaReserved = []string{"doc", "fields", "items", "name", "namespace", "size", "symbols", "values", "type",
-		"aliases", "logicalType", "precision", "scale"}
+	schemaReserved = []string{
+		"doc", "fields", "items", "name", "namespace", "size", "symbols",
+		"values", "type", "aliases", "logicalType", "precision", "scale",
+	}
 	fieldReserved = []string{"default", "doc", "name", "order", "type", "aliases"}
 )
 
