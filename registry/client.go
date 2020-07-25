@@ -71,7 +71,9 @@ type schemaInfoPayload struct {
 	Version int    `json:"version"`
 }
 
-func (s *schemaInfoPayload) Parse() (info SchemaInfo, err error) {
+// Parse converts the string schema registry response into a
+// SchemaInfo object with an avro.Schema schema
+func (s *schemaInfoPayload) parse() (info SchemaInfo, err error) {
 	info = SchemaInfo{
 		ID: s.ID,
 		Version: s.Version,
@@ -223,7 +225,7 @@ func (c *Client) GetLatestSchemaInfo(subject string) (SchemaInfo, error) {
 		return SchemaInfo{}, err
 	}
 
-	return payload.Parse()
+	return payload.parse()
 }
 
 // CreateSchema creates a schema in the registry, returning the schema id.
