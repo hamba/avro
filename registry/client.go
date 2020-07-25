@@ -72,14 +72,13 @@ type schemaInfoPayload struct {
 	Subject string `json:"subject"`
 }
 
-func (s *schemaInfoPayload) Parse() (SchemaInfo, error) {
-	info := SchemaInfo{
+func (s *schemaInfoPayload) Parse() (info SchemaInfo, err error) {
+	info = SchemaInfo{
 		ID: s.ID,
 		Version: s.Version,
 		Subject: s.Subject,
 	}
-	schema, err := avro.Parse(s.Schema)
-	info.Schema = schema
+	info.Schema, err = avro.Parse(s.Schema)
 	return info, err
 }
 
