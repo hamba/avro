@@ -69,24 +69,22 @@ type schemaInfoPayload struct {
 	Schema  string `json:"schema"`
 	ID      int    `json:"id"`
 	Version int    `json:"version"`
-	Subject string `json:"subject"`
 }
 
 func (s *schemaInfoPayload) Parse() (info SchemaInfo, err error) {
 	info = SchemaInfo{
 		ID: s.ID,
 		Version: s.Version,
-		Subject: s.Subject,
 	}
 	info.Schema, err = avro.Parse(s.Schema)
 	return info, err
 }
 
+// Type to hold the response from Client.GetLatestSchemaInfo()
 type SchemaInfo struct {
 	Schema  avro.Schema
 	ID      int
 	Version int
-	Subject string
 }
 
 var defaultClient = &http.Client{
