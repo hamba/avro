@@ -327,6 +327,8 @@ func TestClient_GetLatestSchemaInfo(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, `["null","string","int"]`, schemaInfo.Schema.String())
+	assert.Equal(t, 2, schemaInfo.ID)
+	assert.Equal(t, 1, schemaInfo.Version)
 }
 
 func TestClient_GetLatestSchemaInfoRequestError(t *testing.T) {
