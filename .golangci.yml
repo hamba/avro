@@ -1,0 +1,24 @@
+run:
+  tests: false
+  timeout: 5m
+linters:
+  enable-all: true
+  disable:
+    - exhaustive
+    - funlen
+    - gochecknoglobals
+    - gochecknoinits
+    - gocognit
+    - gocyclo
+    - goerr113
+    - gomnd
+    - nestif
+    - noctx
+    - scopelint
+    - testpackage
+    - wsl
+issues:
+  exclude-rules:
+  - path: (schema|protocol)\.go
+    linters:
+      - gosec
