@@ -73,7 +73,7 @@ type schemaInfoPayload struct {
 
 // Parse converts the string schema registry response into a
 // SchemaInfo object with an avro.Schema schema
-func (s *schemaInfoPayload) parse() (info SchemaInfo, err error) {
+func (s *schemaInfoPayload) Parse() (info SchemaInfo, err error) {
 	info = SchemaInfo{
 		ID: s.ID,
 		Version: s.Version,
@@ -82,7 +82,7 @@ func (s *schemaInfoPayload) parse() (info SchemaInfo, err error) {
 	return info, err
 }
 
-// Type to hold the response from Client.GetLatestSchemaInfo()
+// SchemaInfo represents a schema and metadata information.
 type SchemaInfo struct {
 	Schema  avro.Schema
 	ID      int
