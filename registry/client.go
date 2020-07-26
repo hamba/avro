@@ -225,7 +225,7 @@ func (c *Client) GetLatestSchemaInfo(subject string) (SchemaInfo, error) {
 		return SchemaInfo{}, err
 	}
 
-	return payload.parse()
+	return payload.Parse()
 }
 
 // CreateSchema creates a schema in the registry, returning the schema id.
