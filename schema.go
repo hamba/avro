@@ -13,10 +13,12 @@ import (
 	"github.com/modern-go/concurrent"
 )
 
-var emptyFgpt = [32]byte{}
-var nullDefault = struct{}{}
+var (
+	emptyFgpt   = [32]byte{}
+	nullDefault = struct{}{}
+)
 
-// Type is a schema type
+// Type is a schema type.
 type Type string
 
 // Schema type constants.
@@ -107,7 +109,7 @@ func (s Schemas) Get(name string) (Schema, int) {
 	return nil, -1
 }
 
-// Schema represents an Avro schema
+// Schema represents an Avro schema.
 type Schema interface {
 	// Type returns the type of the schema.
 	Type() Type
@@ -235,7 +237,7 @@ func (f *fingerprinter) FingerprintUsing(typ FingerprintType, stringer fmt.Strin
 
 	h, ok := fingerprinters[typ]
 	if !ok {
-		return nil, fmt.Errorf("avro: unknown fingerprint alogrithm %s", typ)
+		return nil, fmt.Errorf("avro: unknown fingerprint algorithm %s", typ)
 	}
 
 	h.Reset()

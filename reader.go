@@ -6,8 +6,10 @@ import (
 	"unsafe"
 )
 
-const maxIntBufSize = 5
-const maxLongBufSize = 10
+const (
+	maxIntBufSize  = 5
+	maxLongBufSize = 10
+)
 
 // ReaderFunc is a function used to customize the Reader.
 type ReaderFunc func(r *Reader)
@@ -201,7 +203,6 @@ func (r *Reader) ReadDouble() float64 {
 	float := *(*float64)(unsafe.Pointer(&buf[0]))
 
 	return float
-
 }
 
 // ReadBytes reads Bytes from the Reader.

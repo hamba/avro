@@ -73,7 +73,9 @@ func (p *Protocol) String() string {
 		messages = messages[:len(messages)-1]
 	}
 
-	return `{"protocol":"` + p.Name() + `","namespace":"` + p.Namespace() + `","types":[` + types + `],"messages":{` + messages + `}}`
+	return `{"protocol":"` + p.Name() +
+		`","namespace":"` + p.Namespace() +
+		`","types":[` + types + `],"messages":{` + messages + `}}`
 }
 
 // Message is an Avro protocol message.

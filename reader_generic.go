@@ -14,7 +14,6 @@ func (r *Reader) ReadNext(schema Schema) interface{} {
 	}
 
 	switch schema.Type() {
-
 	case Boolean:
 		return r.ReadBool()
 

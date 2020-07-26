@@ -10,11 +10,7 @@ import (
 )
 
 func createDecoderOfMap(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
-	switch typ.Kind() {
-	case reflect.Map:
-		if typ.(reflect2.MapType).Key().Kind() != reflect.String {
-			break
-		}
+	if typ.Kind() == reflect.Map && typ.(reflect2.MapType).Key().Kind() == reflect.String {
 		return decoderOfMap(cfg, schema, typ)
 	}
 
@@ -22,11 +18,7 @@ func createDecoderOfMap(cfg *frozenConfig, schema Schema, typ reflect2.Type) Val
 }
 
 func createEncoderOfMap(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncoder {
-	switch typ.Kind() {
-	case reflect.Map:
-		if typ.(reflect2.MapType).Key().Kind() != reflect.String {
-			break
-		}
+	if typ.Kind() == reflect.Map && typ.(reflect2.MapType).Key().Kind() == reflect.String {
 		return encoderOfMap(cfg, schema, typ)
 	}
 

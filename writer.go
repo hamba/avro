@@ -121,7 +121,7 @@ func (w *Writer) encodeInt(i uint64) {
 
 	for i > 0 {
 		b := byte(i) & 0x7F
-		i = i >> 7
+		i >>= 7
 
 		if i != 0 {
 			b |= 0x80

@@ -160,7 +160,7 @@ type encoderConfig struct {
 	Metadata    map[string][]byte
 }
 
-// EncoderFunc represents an configuration function for Encoder
+// EncoderFunc represents an configuration function for Encoder.
 type EncoderFunc func(cfg *encoderConfig)
 
 // WithBlockLength sets the block length on the encoder.
