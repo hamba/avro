@@ -138,12 +138,14 @@ func createEncoderOfNative(schema Schema, typ reflect2.Type) ValEncoder {
 		return &int16Codec{}
 
 	case reflect.Int32:
-		if schema.Type() == Long {
+		switch schema.Type() {
+		case Long:
 			return &int32LongCodec{}
-		} else if schema.Type() == Int {
+		case Int:
 			return &int32Codec{}
+		default:
+			break
 		}
-		break
 
 	case reflect.Int64:
 		st := schema.Type()
@@ -163,12 +165,14 @@ func createEncoderOfNative(schema Schema, typ reflect2.Type) ValEncoder {
 		}
 
 	case reflect.Float32:
-		if schema.Type() == Double {
+		switch schema.Type() {
+		case Double:
 			return &float32DoubleCodec{}
-		} else if schema.Type() == Float {
+		case Float:
 			return &float32Codec{}
+		default:
+			break
 		}
-		break
 
 	case reflect.Float64:
 		if schema.Type() != Double {
