@@ -2,6 +2,8 @@ package avro_test
 
 import (
 	"bytes"
+	"encoding/binary"
+	"math"
 	"math/big"
 	"testing"
 	"time"
@@ -172,6 +174,20 @@ func TestEncoder_Int64(t *testing.T) {
 	assert.Equal(t, []byte{0x36}, buf.Bytes())
 }
 
+func TestEncoder_Int64FromInt32(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := "long"
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(int32(27))
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x36}, buf.Bytes())
+}
+
 func TestEncoder_Int64InvalidSchema(t *testing.T) {
 	defer ConfigTeardown()
 
@@ -224,6 +240,22 @@ func TestEncoder_Float64(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, []byte{0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0xF2, 0x3F}, buf.Bytes())
+}
+
+func TestEncoder_Float64FromFloat32(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := "double"
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(float32(1.15))
+
+	assert.NoError(t, err)
+	expectedBytes := []byte{0x0, 0x0, 0x0, 0x60, 0x66, 0x66, 0xf2, 0x3f}
+	assert.Equal(t, expectedBytes, buf.Bytes())
+	assert.InDelta(t, 1.15, math.Float64frombits(binary.LittleEndian.Uint64(expectedBytes)), 0.0000001)
 }
 
 func TestEncoder_Float64InvalidSchema(t *testing.T) {
