@@ -2,8 +2,6 @@ package avro_test
 
 import (
 	"bytes"
-	"encoding/binary"
-	"math"
 	"math/big"
 	"testing"
 	"time"
@@ -253,9 +251,7 @@ func TestEncoder_Float64FromFloat32(t *testing.T) {
 	err = enc.Encode(float32(1.15))
 
 	assert.NoError(t, err)
-	expectedBytes := []byte{0x0, 0x0, 0x0, 0x60, 0x66, 0x66, 0xf2, 0x3f}
-	assert.Equal(t, expectedBytes, buf.Bytes())
-	assert.InDelta(t, 1.15, math.Float64frombits(binary.LittleEndian.Uint64(expectedBytes)), 0.0000001)
+	assert.Equal(t, []byte{0x0, 0x0, 0x0, 0x60, 0x66, 0x66, 0xf2, 0x3f}, buf.Bytes())
 }
 
 func TestEncoder_Float64InvalidSchema(t *testing.T) {
