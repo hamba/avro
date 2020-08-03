@@ -141,10 +141,9 @@ func createEncoderOfNative(schema Schema, typ reflect2.Type) ValEncoder {
 		switch schema.Type() {
 		case Long:
 			return &int32LongCodec{}
+
 		case Int:
 			return &int32Codec{}
-		default:
-			break
 		}
 
 	case reflect.Int64:
@@ -168,10 +167,9 @@ func createEncoderOfNative(schema Schema, typ reflect2.Type) ValEncoder {
 		switch schema.Type() {
 		case Double:
 			return &float32DoubleCodec{}
+
 		case Float:
 			return &float32Codec{}
-		default:
-			break
 		}
 
 	case reflect.Float64:
