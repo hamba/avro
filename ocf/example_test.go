@@ -72,7 +72,11 @@ func ExampleNewEncoder() {
 		log.Fatal(err)
 	}
 
-	if err := enc.Close(); err != nil {
+	if err := enc.Flush(); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := f.Sync(); err != nil {
 		log.Fatal(err)
 	}
 }
