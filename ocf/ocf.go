@@ -259,8 +259,8 @@ func (e *Encoder) Encode(v interface{}) error {
 	return e.writer.Error
 }
 
-// Close closes the encoder, flushing the writer.
-func (e *Encoder) Close() error {
+// Flush flushes the underlying writer.
+func (e *Encoder) Flush() error {
 	if e.count == 0 {
 		return nil
 	}
@@ -270,6 +270,11 @@ func (e *Encoder) Close() error {
 	}
 
 	return e.writer.Error
+}
+
+// Close closes the encoder, flushing the writer.
+func (e *Encoder) Close() error {
+	return e.Flush()
 }
 
 func (e *Encoder) writerBlock() error {
