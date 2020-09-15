@@ -158,6 +158,7 @@ type encoderConfig struct {
 	BlockLength int
 	CodecName   CodecName
 	Metadata    map[string][]byte
+	API         avro.API
 }
 
 // EncoderFunc represents an configuration function for Encoder.
@@ -181,6 +182,13 @@ func WithCodec(codec CodecName) EncoderFunc {
 func WithMetadata(meta map[string][]byte) EncoderFunc {
 	return func(cfg *encoderConfig) {
 		cfg.Metadata = meta
+	}
+}
+
+// WithWriterConfig sets the config for the internal writer.
+func WithWriterConfig(api avro.API) EncoderFunc {
+	return func(cfg *encoderConfig) {
+		cfg.API = api
 	}
 }
 
@@ -208,12 +216,13 @@ func NewEncoder(s string, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
 		BlockLength: 100,
 		CodecName:   Null,
 		Metadata:    map[string][]byte{},
+		API:         avro.DefaultConfig,
 	}
 	for _, opt := range opts {
 		opt(&cfg)
 	}
 
-	writer := avro.NewWriter(w, 512)
+	writer := avro.NewWriter(w, 512, avro.WithWriterConfig(cfg.API))
 
 	cfg.Metadata[schemaKey] = []byte(schema.String())
 	cfg.Metadata[codecKey] = []byte(cfg.CodecName)
