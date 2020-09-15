@@ -243,7 +243,7 @@ func NewEncoder(s string, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
 	e := &Encoder{
 		writer:      writer,
 		buf:         buf,
-		encoder:     avro.NewEncoderForSchema(schema, buf),
+		encoder:     cfg.API.NewEncoder(schema, buf),
 		sync:        header.Sync,
 		codec:       codec,
 		blockLength: cfg.BlockLength,
