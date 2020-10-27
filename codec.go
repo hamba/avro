@@ -86,6 +86,10 @@ func (c *frozenConfig) DecoderOf(schema Schema, typ reflect2.Type) ValDecoder {
 }
 
 func decoderOfType(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
+	if dec := createDecoderOfMarshaler(cfg, schema, typ); dec != nil {
+		return dec
+	}
+
 	// Handle eface case when it isnt a union
 	if typ.Kind() == reflect.Interface && schema.Type() != Union {
 		if _, ok := typ.(*reflect2.UnsafeIFaceType); !ok {
@@ -152,6 +156,10 @@ func (e *onePtrEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 }
 
 func encoderOfType(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncoder {
+	if enc := createEncoderOfMarshaler(cfg, schema, typ); enc != nil {
+		return enc
+	}
+
 	if typ.Kind() == reflect.Interface {
 		return &interfaceEncoder{schema: schema, typ: typ}
 	}
