@@ -462,7 +462,7 @@ func TestEncoder_BytesRat_Zero(t *testing.T) {
 func TestEncoder_BytesRatInvalidSchema(t *testing.T) {
 	defer ConfigTeardown()
 
-	schema := `{"type":"string"}`
+	schema := `{"type":"int"}`
 	buf := bytes.NewBuffer([]byte{})
 	enc, err := avro.NewEncoder(schema, buf)
 	assert.NoError(t, err)
@@ -475,7 +475,7 @@ func TestEncoder_BytesRatInvalidSchema(t *testing.T) {
 func TestEncoder_BytesRatInvalidLogicalSchema(t *testing.T) {
 	defer ConfigTeardown()
 
-	schema := `{"type":"string","logicalType":"uuid"}`
+	schema := `{"type":"int","logicalType":"date"}`
 	buf := bytes.NewBuffer([]byte{})
 	enc, err := avro.NewEncoder(schema, buf)
 	assert.NoError(t, err)

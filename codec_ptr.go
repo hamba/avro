@@ -56,3 +56,11 @@ func (d *dereferenceEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 
 	d.encoder.Encode(*((*unsafe.Pointer)(ptr)), w)
 }
+
+type referenceDecoder struct {
+	decoder ValDecoder
+}
+
+func (decoder *referenceDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
+	decoder.decoder.Decode(unsafe.Pointer(&ptr), r)
+}

@@ -102,6 +102,12 @@ case of arrays and maps the enclosed schema type or name is postfix to the type
 with a `:` separator, e.g `"map:string"`. If any type cannot be resolved the map type above is used unless
 `Config.UnionResolutionError` is set to `true` in which case an error is returned.
 
+##### TextMarshaler and TextUnmarshaler
+
+The interfaces `TextMarshaler` and `TextUnmarshaler` are supported for a `string` schema type. The object will
+be tested first for implementation of these interfaces, in the case of a `string` schema, before trying regular
+encoding and decoding. 
+
 ## Benchmark
 
 Benchmark source code can be found at: [https://github.com/nrwiersma/avro-benchmarks](https://github.com/nrwiersma/avro-benchmarks)
