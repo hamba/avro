@@ -349,6 +349,34 @@ func TestEncoder_Time_TimestampMillis(t *testing.T) {
 	assert.Equal(t, []byte{0x90, 0xB2, 0xAE, 0xC3, 0xEC, 0x5B}, buf.Bytes())
 }
 
+func TestEncoder_Time_TimestampMillisZero(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"long","logicalType":"timestamp-millis"}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(time.Time{})
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0xff, 0xdf, 0xe6, 0xa2, 0xe2, 0xa0, 0x1c}, buf.Bytes())
+}
+
+func TestEncoder_Time_TimestampMillisOneMillis(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"long","logicalType":"timestamp-millis"}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(time.Date(1970, 1, 1, 0, 0, 0, 1e6, time.UTC))
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x2}, buf.Bytes())
+}
+
 func TestEncoder_Time_TimestampMicros(t *testing.T) {
 	defer ConfigTeardown()
 
@@ -361,6 +389,34 @@ func TestEncoder_Time_TimestampMicros(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, []byte{0x80, 0xCD, 0xB7, 0xA2, 0xEE, 0xC7, 0xCD, 0x05}, buf.Bytes())
+}
+
+func TestEncoder_Time_TimestampMicrosZero(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"long","logicalType":"timestamp-micros"}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(time.Time{})
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0xff, 0xff, 0xdd, 0xf2, 0xdf, 0xff, 0xdf, 0xdc, 0x1}, buf.Bytes())
+}
+
+func TestEncoder_Time_TimestampMillisOneMicros(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"long","logicalType":"timestamp-micros"}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(time.Date(1970, 1, 1, 0, 0, 0, 1e3, time.UTC))
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x2}, buf.Bytes())
 }
 
 func TestEncoder_TimeInvalidSchema(t *testing.T) {
