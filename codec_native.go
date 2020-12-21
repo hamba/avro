@@ -53,6 +53,15 @@ func createDecoderOfNative(schema Schema, typ reflect2.Type) ValDecoder {
 		case st == Long && lt == TimeMicros: // time.Duration
 			return &timeMicrosCodec{}
 
+		case st == Int && lt == Date:
+			return &dateCodec{}
+
+		case st == Long && lt == TimestampMillis:
+			return &timestampMillisCodec{}
+
+		case st == Long && lt == TimestampMicros:
+			return &timestampMicrosCodec{}
+
 		case st == Long:
 			return &int64Codec{}
 

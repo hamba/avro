@@ -3,6 +3,7 @@ package avro_test
 import (
 	"bytes"
 	"testing"
+	"time"
 
 	"github.com/hamba/avro"
 	"github.com/stretchr/testify/assert"
@@ -404,6 +405,20 @@ func TestDecoder_UnionInterfaceUnresolvableType(t *testing.T) {
 	assert.IsType(t, map[string]interface{}{}, m["test"])
 	assert.Equal(t, int64(27), m["test"].(map[string]interface{})["a"])
 	assert.Equal(t, "foo", m["test"].(map[string]interface{})["b"])
+}
+
+func TestDecoder_UnionInterfaceUnresolvableTypeWithTime(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x02, 0x80, 0xCD, 0xB7, 0xA2, 0xEE, 0xC7, 0xCD, 0x05}
+	schema := `{"type": "record", "name": "test", "fields" : [{"name": "a", "type": ["null", {"type": "long", "logicalType": "timestamp-micros"}]}]}`
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	var got map[string]interface{}
+	err := dec.Decode(&got)
+
+	assert.NoError(t, err)
+	assert.Equal(t, time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC), got["a"])
 }
 
 func TestDecoder_UnionInterfaceUnresolvableTypeWithError(t *testing.T) {
