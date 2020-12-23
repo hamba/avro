@@ -439,8 +439,8 @@ func TestDecoder_UnionInterfaceUnresolvableTypeWithDuration(t *testing.T) {
 func TestDecoder_UnionInterfaceUnresolvableTypeWithDecimal(t *testing.T) {
 	defer ConfigTeardown()
 
-	data := []byte{0x02, 0x00, 0x00, 0x00, 0x00, 0x87, 0x78}
-	schema := `{"type": "record", "name": "test", "fields" : [{"name": "a", "type": ["null", {"type": "fixed", "name": "a", "logicalType": "decimal", "size": 6, "precision": 4, "scale": 2}]}]}`
+	data := []byte{0x02, 0x6, 0x00, 0x87, 0x78}
+	schema := `{"type": "record", "name": "test", "fields" : [{"name": "a", "type": ["null", {"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}]}]}`
 	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
 
 	var got map[string]interface{}

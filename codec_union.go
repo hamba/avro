@@ -303,10 +303,6 @@ func (d *unionResolvedDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 }
 
 func unionResolutionName(schema Schema) string {
-	if name := getLogicalTypeName(schema); name != "" {
-		return name
-	}
-
 	name := schemaTypeName(schema)
 	switch schema.Type() {
 	case Map:

@@ -248,15 +248,6 @@ func getLogicalType(schema Schema) LogicalType {
 	return ls.Type()
 }
 
-func getLogicalTypeName(schema Schema) string {
-	lt := getLogicalType(schema)
-	if lt == "" {
-		return ""
-	}
-
-	return string(schema.Type()) + "." + string(lt)
-}
-
 type nullCodec struct{}
 
 func (*nullCodec) Encode(ptr unsafe.Pointer, w *Writer) {}

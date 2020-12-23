@@ -1061,5 +1061,10 @@ func schemaTypeName(schema Schema) string {
 		return n.FullName()
 	}
 
-	return string(schema.Type())
+	name := string(schema.Type())
+	if lt := getLogicalType(schema); lt != "" {
+		name += "." + string(lt)
+	}
+
+	return name
 }
