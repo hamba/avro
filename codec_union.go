@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"time"
 	"unsafe"
 
 	"github.com/modern-go/reflect2"
@@ -227,28 +226,6 @@ func decoderOfResolvedUnion(cfg *frozenConfig, schema Schema) ValDecoder {
 		name := unionResolutionName(schema)
 		if typ, err := cfg.resolver.Type(name); err == nil {
 			decoder := decoderOfType(cfg, schema, typ)
-
-			if typ.Kind() == reflect.Int64 {
-				st := schema.Type()
-				lt := getLogicalType(schema)
-				switch {
-				case st == Int && lt == TimeMillis:
-					typ = reflect2.TypeOf(time.Duration(0))
-
-				case st == Long && lt == TimeMicros:
-					typ = reflect2.TypeOf(time.Duration(0))
-
-				case st == Int && lt == Date:
-					typ = reflect2.TypeOf(time.Time{})
-
-				case st == Long && lt == TimestampMillis:
-					typ = reflect2.TypeOf(time.Time{})
-
-				case st == Long && lt == TimestampMicros:
-					typ = reflect2.TypeOf(time.Time{})
-				}
-			}
-
 			decoders[i] = decoder
 			types[i] = typ
 			continue
@@ -326,6 +303,10 @@ func (d *unionResolvedDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 }
 
 func unionResolutionName(schema Schema) string {
+	if name := getLogicalTypeName(schema); name != "" {
+		return name
+	}
+
 	name := schemaTypeName(schema)
 	switch schema.Type() {
 	case Map:

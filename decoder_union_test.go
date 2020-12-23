@@ -2,6 +2,7 @@ package avro_test
 
 import (
 	"bytes"
+	"math/big"
 	"testing"
 	"time"
 
@@ -419,6 +420,35 @@ func TestDecoder_UnionInterfaceUnresolvableTypeWithTime(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC), got["a"])
+}
+
+func TestDecoder_UnionInterfaceUnresolvableTypeWithDuration(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x02, 0xAA, 0xB4, 0xDE, 0x75}
+	schema := `{"type": "record", "name": "test", "fields" : [{"name": "a", "type": ["null", {"type": "int", "logicalType": "time-millis"}]}]}`
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	var got map[string]interface{}
+	err := dec.Decode(&got)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 123456789*time.Millisecond, got["a"])
+}
+
+func TestDecoder_UnionInterfaceUnresolvableTypeWithDecimal(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x02, 0x00, 0x00, 0x00, 0x00, 0x87, 0x78}
+	schema := `{"type": "record", "name": "test", "fields" : [{"name": "a", "type": ["null", {"type": "fixed", "name": "a", "logicalType": "decimal", "size": 6, "precision": 4, "scale": 2}]}]}`
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	var got map[string]interface{}
+	err := dec.Decode(&got)
+	expected := big.NewRat(1734, 5)
+
+	assert.NoError(t, err)
+	assert.Equal(t, *expected, got["a"])
 }
 
 func TestDecoder_UnionInterfaceUnresolvableTypeWithError(t *testing.T) {

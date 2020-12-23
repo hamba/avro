@@ -53,15 +53,6 @@ func createDecoderOfNative(schema Schema, typ reflect2.Type) ValDecoder {
 		case st == Long && lt == TimeMicros: // time.Duration
 			return &timeMicrosCodec{}
 
-		case st == Int && lt == Date:
-			return &dateCodec{}
-
-		case st == Long && lt == TimestampMillis:
-			return &timestampMillisCodec{}
-
-		case st == Long && lt == TimestampMicros:
-			return &timestampMicrosCodec{}
-
 		case st == Long:
 			return &int64Codec{}
 
@@ -255,6 +246,15 @@ func getLogicalType(schema Schema) LogicalType {
 	}
 
 	return ls.Type()
+}
+
+func getLogicalTypeName(schema Schema) string {
+	lt := getLogicalType(schema)
+	if lt == "" {
+		return ""
+	}
+
+	return string(schema.Type()) + "." + string(lt)
 }
 
 type nullCodec struct{}

@@ -2,6 +2,8 @@ package avro
 
 import (
 	"fmt"
+	"math/big"
+	"time"
 
 	"github.com/modern-go/concurrent"
 	"github.com/modern-go/reflect2"
@@ -33,6 +35,16 @@ func NewTypeResolver() *TypeResolver {
 	r.Register(string(String), "")
 	r.Register(string(Bytes), []byte{})
 	r.Register(string(Boolean), bool(true))
+
+	// Register logical types
+	r.Register(string(Int)+"."+string(Date), time.Time{})
+	r.Register(string(Int)+"."+string(TimeMillis), time.Duration(0))
+	r.Register(string(Long)+"."+string(TimestampMillis), time.Time{})
+	r.Register(string(Long)+"."+string(TimestampMicros), time.Time{})
+	r.Register(string(Long)+"."+string(TimeMicros), time.Duration(0))
+	r.Register(string(Bytes)+"."+string(Decimal), big.Rat{})
+	r.Register(string(Fixed)+"."+string(Decimal), big.Rat{})
+	r.Register(string(Fixed)+"."+string(Duration), time.Duration(0))
 
 	return r
 }
