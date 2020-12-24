@@ -408,7 +408,7 @@ func TestDecoder_UnionInterfaceUnresolvableType(t *testing.T) {
 	assert.Equal(t, "foo", m["test"].(map[string]interface{})["b"])
 }
 
-func TestDecoder_UnionInterfaceUnresolvableTypeWithTime(t *testing.T) {
+func TestDecoder_UnionInterfaceWithTime(t *testing.T) {
 	defer ConfigTeardown()
 
 	data := []byte{0x02, 0x80, 0xCD, 0xB7, 0xA2, 0xEE, 0xC7, 0xCD, 0x05}
@@ -422,7 +422,7 @@ func TestDecoder_UnionInterfaceUnresolvableTypeWithTime(t *testing.T) {
 	assert.Equal(t, time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC), got["a"])
 }
 
-func TestDecoder_UnionInterfaceUnresolvableTypeWithDuration(t *testing.T) {
+func TestDecoder_UnionInterfaceWithDuration(t *testing.T) {
 	defer ConfigTeardown()
 
 	data := []byte{0x02, 0xAA, 0xB4, 0xDE, 0x75}
@@ -436,7 +436,7 @@ func TestDecoder_UnionInterfaceUnresolvableTypeWithDuration(t *testing.T) {
 	assert.Equal(t, 123456789*time.Millisecond, got["a"])
 }
 
-func TestDecoder_UnionInterfaceUnresolvableTypeWithDecimal(t *testing.T) {
+func TestDecoder_UnionInterfaceWithDecimal(t *testing.T) {
 	defer ConfigTeardown()
 
 	data := []byte{0x02, 0x6, 0x00, 0x87, 0x78}
