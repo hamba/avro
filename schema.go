@@ -8,15 +8,13 @@ import (
 	"hash"
 	"strconv"
 	"strings"
+	"sync/atomic"
 
 	"github.com/hamba/avro/pkg/crc64"
 	"github.com/modern-go/concurrent"
 )
 
-var (
-	emptyFgpt   = [32]byte{}
-	nullDefault = struct{}{}
-)
+var nullDefault = struct{}{}
 
 // Type is a schema type.
 type Type string
@@ -211,28 +209,25 @@ func (n name) FullName() string {
 }
 
 type fingerprinter struct {
-	fingerprint [32]byte
-	cache       map[FingerprintType][]byte
+	fingerprint atomic.Value   // [32]byte
+	cache       concurrent.Map // map[FingerprintType][]byte
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
 func (f *fingerprinter) Fingerprint(stringer fmt.Stringer) [32]byte {
-	if f.fingerprint != emptyFgpt {
-		return f.fingerprint
+	if v := f.fingerprint.Load(); v != nil {
+		return v.([32]byte)
 	}
 
-	f.fingerprint = sha256.Sum256([]byte(stringer.String()))
-	return f.fingerprint
+	fingerprint := sha256.Sum256([]byte(stringer.String()))
+	f.fingerprint.Store(fingerprint)
+	return fingerprint
 }
 
 // FingerprintUsing returns the fingerprint of the schema using the given algorithm or an error.
 func (f *fingerprinter) FingerprintUsing(typ FingerprintType, stringer fmt.Stringer) ([]byte, error) {
-	if f.cache == nil {
-		f.cache = map[FingerprintType][]byte{}
-	}
-
-	if b, ok := f.cache[typ]; ok {
-		return b, nil
+	if v, ok := f.cache.Load(typ); ok {
+		return v.([]byte), nil
 	}
 
 	h, ok := fingerprinters[typ]
@@ -243,7 +238,7 @@ func (f *fingerprinter) FingerprintUsing(typ FingerprintType, stringer fmt.Strin
 	h.Reset()
 	_, _ = h.Write([]byte(stringer.String()))
 	fingerprint := h.Sum(make([]byte, 0, h.Size()))
-	f.cache[typ] = fingerprint
+	f.cache.Store(typ, fingerprint)
 	return fingerprint, nil
 }
 

@@ -333,6 +333,8 @@ func TestSchema_FingerprintUsingCaches(t *testing.T) {
 
 	got, _ := schema.FingerprintUsing(CRC64Avro)
 
-	assert.Equal(t, want, schema.cache[CRC64Avro])
+	value, ok := schema.cache.Load(CRC64Avro)
+	assert.True(t, ok)
+	assert.Equal(t, want, value)
 	assert.Equal(t, want, got)
 }
