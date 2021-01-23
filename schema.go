@@ -8,7 +8,6 @@ import (
 	"hash"
 	"strconv"
 	"strings"
-	"sync"
 	"sync/atomic"
 
 	"github.com/hamba/avro/pkg/crc64"
@@ -210,8 +209,8 @@ func (n name) FullName() string {
 }
 
 type fingerprinter struct {
-	fingerprint atomic.Value
-	cache       sync.Map
+	fingerprint atomic.Value   // [32]byte
+	cache       concurrent.Map // map[FingerprintType][]byte
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
