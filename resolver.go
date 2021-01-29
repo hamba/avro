@@ -44,6 +44,9 @@ func NewTypeResolver() *TypeResolver {
 	r.Register(string(Long)+"."+string(TimeMicros), time.Duration(0))
 	r.Register(string(Bytes)+"."+string(Decimal), big.Rat{})
 
+	// Register array type
+	r.Register(string(Array), []interface{}{})
+
 	return r
 }
 
