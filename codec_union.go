@@ -140,7 +140,12 @@ func (e *mapUnionEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 
 	elemType := reflect2.TypeOf(val)
 	elemPtr := reflect2.PtrOf(val)
-	encoderOfType(e.cfg, schema, elemType).Encode(elemPtr, w)
+
+	encoder := encoderOfType(e.cfg, schema, elemType)
+	if elemType.LikePtr() {
+		encoder = &onePtrEncoder{encoder}
+	}
+	encoder.Encode(elemPtr, w)
 }
 
 func decoderOfPtrUnion(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
