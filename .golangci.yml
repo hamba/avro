@@ -4,7 +4,9 @@ run:
 linters:
   enable-all: true
   disable:
+    - errorlint
     - exhaustive
+    - exhaustivestruct
     - funlen
     - gochecknoglobals
     - gochecknoinits
@@ -17,6 +19,7 @@ linters:
     - nlreturn
     - scopelint
     - testpackage
+    - wrapcheck
     - wsl
 issues:
   exclude-rules:
