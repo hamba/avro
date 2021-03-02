@@ -106,6 +106,20 @@ func createDecoderOfNative(schema Schema, typ reflect2.Type) ValDecoder {
 		default:
 			break
 		}
+	case reflect.Ptr:
+		ptrType := typ.(*reflect2.UnsafePtrType)
+		elemType := ptrType.Elem()
+
+		ls := getLogicalSchema(schema)
+		if ls == nil {
+			break
+		}
+		if elemType.RType() != ratRType || schema.Type() != Bytes || ls.Type() != Decimal {
+			break
+		}
+		dec := ls.(*DecimalLogicalSchema)
+
+		return &bytesDecimalPtrCodec{prec: dec.Precision(), scale: dec.Scale()}
 	}
 
 	return &errorDecoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s", typ.String(), schema.Type())}
@@ -475,4 +489,17 @@ func (c *bytesDecimalCodec) Encode(ptr unsafe.Pointer, w *Writer) {
 		b = i.Add(i, (&big.Int{}).Lsh(one, length)).Bytes()
 	}
 	w.WriteBytes(b)
+}
+
+type bytesDecimalPtrCodec struct {
+	prec  int
+	scale int
+}
+
+func (c *bytesDecimalPtrCodec) Decode(ptr unsafe.Pointer, r *Reader) {
+	b := r.ReadBytes()
+	if i := (&big.Int{}).SetBytes(b); len(b) > 0 && b[0]&0x80 > 0 {
+		i.Sub(i, new(big.Int).Lsh(one, uint(len(b))*8))
+	}
+	*((**big.Rat)(ptr)) = ratFromBytes(b, c.scale)
 }
