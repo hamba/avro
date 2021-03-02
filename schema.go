@@ -95,11 +95,7 @@ type Schemas []Schema
 // Get gets a schema and position by type or name if it is a named schema.
 func (s Schemas) Get(name string) (Schema, int) {
 	for i, schema := range s {
-		if string(schema.Type()) == name {
-			return schema, i
-		}
-
-		if namedSchema, ok := schema.(NamedSchema); ok && namedSchema.FullName() == name {
+		if schemaTypeName(schema) == name {
 			return schema, i
 		}
 	}
