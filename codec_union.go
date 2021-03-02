@@ -331,18 +331,24 @@ func unionResolutionName(schema Schema) string {
 func encoderOfResolverUnion(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncoder {
 	union := schema.(*UnionSchema)
 
-	name, err := cfg.resolver.Name(typ)
+	names, err := cfg.resolver.Name(typ)
 	if err != nil {
 		return &errorEncoder{err: err}
 	}
 
-	if idx := strings.Index(name, ":"); idx > 0 {
-		name = name[:idx]
-	}
+	var pos int
+	for _, name := range names {
+		if idx := strings.Index(name, ":"); idx > 0 {
+			name = name[:idx]
+		}
 
-	schema, pos := union.Types().Get(name)
+		schema, pos = union.Types().Get(name)
+		if schema != nil {
+			break
+		}
+	}
 	if schema == nil {
-		return &errorEncoder{err: fmt.Errorf("avro: unknown union type %s", name)}
+		return &errorEncoder{err: fmt.Errorf("avro: unknown union type %s", names[0])}
 	}
 
 	encoder := encoderOfType(cfg, schema, typ)

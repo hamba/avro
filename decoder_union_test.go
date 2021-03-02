@@ -492,6 +492,20 @@ func TestDecoder_UnionInterfaceWithDecimal(t *testing.T) {
 	assert.Equal(t, big.NewRat(1734, 5), got)
 }
 
+func TestDecoder_UnionInterfaceWithDecimal_Negative(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x02, 0x6, 0xFF, 0x78, 0x88}
+	schema := `["null", {"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}]`
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	var got interface{}
+	err := dec.Decode(&got)
+
+	assert.NoError(t, err)
+	assert.Equal(t, big.NewRat(-1734, 5), got)
+}
+
 func TestDecoder_UnionInterfaceUnresolvableTypeWithError(t *testing.T) {
 	defer ConfigTeardown()
 

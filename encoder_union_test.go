@@ -2,7 +2,9 @@ package avro_test
 
 import (
 	"bytes"
+	"math/big"
 	"testing"
+	"time"
 
 	"github.com/hamba/avro"
 	"github.com/stretchr/testify/assert"
@@ -83,6 +85,57 @@ func TestEncoder_UnionMapMultipleEntries(t *testing.T) {
 	err = enc.Encode(map[string]interface{}{"string": "foo", "int": 27})
 
 	assert.Error(t, err)
+}
+
+func TestEncoder_UnionMapWithTime(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `["null", {"type": "long", "logicalType": "timestamp-micros"}]`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	m := map[string]interface{}{
+		"long.timestamp-micros": time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC),
+	}
+	err = enc.Encode(m)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x02, 0x80, 0xCD, 0xB7, 0xA2, 0xEE, 0xC7, 0xCD, 0x05}, buf.Bytes())
+}
+
+func TestEncoder_UnionMapWithDuration(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `["null", {"type": "int", "logicalType": "time-millis"}]`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	m := map[string]interface{}{
+		"int.time-millis": 123456789*time.Millisecond,
+	}
+	err = enc.Encode(m)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x02, 0xAA, 0xB4, 0xDE, 0x75}, buf.Bytes())
+}
+
+func TestEncoder_UnionMapWithDecimal(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `["null", {"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}]`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	m := map[string]interface{}{
+		"bytes.decimal": big.NewRat(1734, 5),
+	}
+	err = enc.Encode(m)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x02, 0x6, 0x00, 0x87, 0x78}, buf.Bytes())
 }
 
 func TestEncoder_UnionMapInvalidType(t *testing.T) {
@@ -311,6 +364,51 @@ func TestEncoder_UnionInterfaceNamed(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, []byte{0x02, 0x02}, buf.Bytes())
+}
+
+func TestEncoder_UnionInterfaceWithTime(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `["null", {"type": "long", "logicalType": "timestamp-micros"}]`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	var val interface{} = time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
+	err = enc.Encode(val)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x02, 0x80, 0xCD, 0xB7, 0xA2, 0xEE, 0xC7, 0xCD, 0x05}, buf.Bytes())
+}
+
+func TestEncoder_UnionInterfaceWithDuration(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `["null", {"type": "int", "logicalType": "time-millis"}]`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	var val interface{} = 123456789 * time.Millisecond
+	err = enc.Encode(val)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x02, 0xAA, 0xB4, 0xDE, 0x75}, buf.Bytes())
+}
+
+func TestEncoder_UnionInterfaceWithDecimal(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `["null", {"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}]`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	var val interface{} = big.NewRat(1734, 5)
+	err = enc.Encode(val)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x02, 0x6, 0x00, 0x87, 0x78}, buf.Bytes())
 }
 
 func TestEncoder_UnionInterfaceUnregisteredType(t *testing.T) {

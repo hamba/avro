@@ -217,6 +217,12 @@ func createEncoderOfNative(schema Schema, typ reflect2.Type) ValEncoder {
 		case typ.RType() == timeRType && st == Long && lt == TimestampMicros:
 			return &timestampMicrosCodec{}
 
+		case typ.RType() == ratRType && st != Bytes || lt == Decimal:
+			ls := getLogicalSchema(schema)
+			dec := ls.(*DecimalLogicalSchema)
+
+			return &bytesDecimalCodec{prec: dec.Precision(), scale: dec.Scale()}
+
 		default:
 			break
 		}
@@ -234,7 +240,7 @@ func createEncoderOfNative(schema Schema, typ reflect2.Type) ValEncoder {
 		}
 		dec := ls.(*DecimalLogicalSchema)
 
-		return &bytesDecimalCodec{prec: dec.Precision(), scale: dec.Scale()}
+		return &bytesDecimalPtrCodec{prec: dec.Precision(), scale: dec.Scale()}
 	}
 
 	if schema.Type() == Null {
@@ -469,7 +475,7 @@ func ratFromBytes(b []byte, scale int) *big.Rat {
 }
 
 func (c *bytesDecimalCodec) Encode(ptr unsafe.Pointer, w *Writer) {
-	r := *((**big.Rat)(ptr))
+	r := (*big.Rat)(ptr)
 	i := (&big.Int{}).Mul(r.Num(), big.NewInt(int64(math.Pow10(c.scale))))
 	i = i.Div(i, r.Denom())
 
@@ -502,4 +508,27 @@ func (c *bytesDecimalPtrCodec) Decode(ptr unsafe.Pointer, r *Reader) {
 		i.Sub(i, new(big.Int).Lsh(one, uint(len(b))*8))
 	}
 	*((**big.Rat)(ptr)) = ratFromBytes(b, c.scale)
+}
+
+func (c *bytesDecimalPtrCodec) Encode(ptr unsafe.Pointer, w *Writer) {
+	r := *((**big.Rat)(ptr))
+	i := (&big.Int{}).Mul(r.Num(), big.NewInt(int64(math.Pow10(c.scale))))
+	i = i.Div(i, r.Denom())
+
+	var b []byte
+	switch i.Sign() {
+	case 0:
+		b = []byte{0}
+
+	case 1:
+		b = i.Bytes()
+		if b[0]&0x80 > 0 {
+			b = append([]byte{0}, b...)
+		}
+
+	case -1:
+		length := uint(i.BitLen()/8+1) * 8
+		b = i.Add(i, (&big.Int{}).Lsh(one, length)).Bytes()
+	}
+	w.WriteBytes(b)
 }
