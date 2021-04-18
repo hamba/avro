@@ -470,7 +470,60 @@ func (s *Field) Default() interface{} {
 
 // String returns the canonical form of a field.
 func (s *Field) String() string {
+	defStr := ""
+	if s.HasDefault() {
+		defStr = defaultString(s.Type(), s.Default())
+		if defStr != "" {
+			return `{"name":"` + s.name + `","type":` + s.typ.String() + `,"default":` + defStr + `}`
+		}
+	}
 	return `{"name":"` + s.name + `","type":` + s.typ.String() + `}`
+}
+
+func defaultString(schema Schema, def interface{}) string {
+	switch schema.Type() {
+	case Null:
+		return "null"
+
+	case String, Bytes, Enum, Fixed:
+		return `"` + def.(string) + `"`
+
+	case Boolean:
+		if def.(bool) {
+			return "true"
+		}
+		return "false"
+
+	case Int, Long:
+		if i, ok := def.(int8); ok {
+			return strconv.Itoa(int(i))
+		}
+		if i, ok := def.(int16); ok {
+			return strconv.Itoa(int(i))
+		}
+		if i, ok := def.(int32); ok {
+			return strconv.Itoa(int(i))
+		}
+		if i, ok := def.(int); ok {
+			return strconv.Itoa(i)
+		}
+		if i, ok := def.(int64); ok {
+			return strconv.FormatInt(i, 10)
+		}
+		if f, ok := def.(float64); ok {
+			return strconv.FormatFloat(f, 'g', -1, 64)
+		}
+
+	case Float, Double:
+		if f, ok := def.(float64); ok {
+			return strconv.FormatFloat(f, 'g', -1, 64)
+		}
+
+	case Union:
+		unionSchema := schema.(*UnionSchema)
+		return defaultString(unionSchema.Types()[0], def)
+	}
+	return ""
 }
 
 // EnumSchema is an Avro enum type schema.

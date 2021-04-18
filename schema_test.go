@@ -459,6 +459,42 @@ func TestRecordSchema_WithReference(t *testing.T) {
 	assert.Equal(t, s.Fingerprint(), s.(*avro.RecordSchema).Fields()[1].Type().Fingerprint())
 }
 
+func TestRecordSchema_String(t *testing.T) {
+	tests := []struct {
+		name   string
+		schema string
+		want   string
+	}{
+		{
+			name:   "Namespace",
+			schema: `{"type":"record","name":"test", "namespace":"org.hamba.avro","fields":[]}`,
+			want:   `{"name":"org.hamba.avro.test","type":"record","fields":[]}`,
+		},
+		{
+			name:   "Primitive fields",
+			schema: `{"type":"record", "name":"test", "fields":[{"name":"i", "type":"int"}, {"name":"bs", "type":"bytes"}, {"name":"s", "type":"string"}, {"name":"l", "type":"long"}, {"name":"f", "type":"float"}, {"name":"d", "type":"double"}, {"name":"bl", "type":"boolean"}, {"name":"n", "type":"null"}]}`,
+			want:   `{"name":"test","type":"record","fields":[{"name":"i","type":"int"},{"name":"bs","type":"bytes"},{"name":"s","type":"string"},{"name":"l","type":"long"},{"name":"f","type":"float"},{"name":"d","type":"double"},{"name":"bl","type":"boolean"},{"name":"n","type":"null"}]}`,
+		},
+		{
+			name:   "Default value",
+			schema: `{"type":"record", "name":"test", "fields":[{"name":"i", "type":"int", "default":1}, {"name":"d1", "type":"double", "default": 6.125}, {"name":"d2", "type":"double", "default": 11111111111}, {"name":"s1", "type":"string", "default": "test"}, {"name":"s2", "type":["null", "string"], "default": null}]}`,
+			want:   `{"name":"test","type":"record","fields":[{"name":"i","type":"int","default":1},{"name":"d1","type":"double","default":6.125},{"name":"d2","type":"double","default":1.1111111111e+10},{"name":"s1","type":"string","default":"test"},{"name":"s2","type":["null","string"],"default":null}]}`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s, err := avro.Parse(tt.schema)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			if got := s.String(); got != tt.want {
+				t.Errorf("RecordSchema.String() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestEnumSchema(t *testing.T) {
 	tests := []struct {
 		name     string
