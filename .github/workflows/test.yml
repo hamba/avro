@@ -39,7 +39,7 @@ jobs:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
 
       - name: Run tests
-        run: go test -covermode=count -coverprofile=coverage.out
+        run: go test -covermode=count -coverprofile=coverage.out ./...
 
       - name: Convert coverage.out to coverage.lcov
         uses: jandelgado/gcov2lcov-action@v1.0.6
