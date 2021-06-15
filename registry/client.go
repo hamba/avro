@@ -130,8 +130,7 @@ type Client struct {
 
 // NewClient creates a schema registry Client with the given base url.
 func NewClient(baseURL string, opts ...ClientFunc) (*Client, error) {
-	_, err := url.Parse(baseURL)
-	if err != nil {
+	if _, err := url.Parse(baseURL); err != nil {
 		return nil, err
 	}
 	baseURL = strings.TrimSuffix(baseURL, "/")
