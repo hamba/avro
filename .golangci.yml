@@ -4,20 +4,26 @@ run:
 linters:
   enable-all: true
   disable:
+    - cyclop
     - errorlint
     - exhaustive
     - exhaustivestruct
+    - forcetypeassert
     - funlen
     - gochecknoglobals
     - gochecknoinits
     - gocognit
     - gocyclo
     - goerr113
+    - golint
     - gomnd
+    - interfacer
+    - maligned
     - nestif
     - noctx
     - nlreturn
     - scopelint
+    - tagliatelle
     - testpackage
     - wrapcheck
     - wsl

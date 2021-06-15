@@ -101,8 +101,7 @@ func (c *frozenConfig) Marshal(schema Schema, v interface{}) ([]byte, error) {
 	writer := c.borrowWriter()
 
 	writer.WriteVal(schema, v)
-	err := writer.Error
-	if err != nil {
+	if err := writer.Error; err != nil {
 		c.returnWriter(writer)
 		return nil, err
 	}
