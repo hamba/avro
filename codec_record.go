@@ -68,7 +68,7 @@ func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 			continue
 		}
 
-		dec := decoderOfType(cfg, field.Type(), sf.Field.Type())
+		dec := decoderOfType(cfg, field.Type(), sf.Field[len(sf.Field)-1].Type())
 		fields = append(fields, &structFieldDecoder{
 			field:   sf.Field,
 			decoder: dec,
@@ -90,7 +90,7 @@ func (d *structDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 }
 
 type structFieldDecoder struct {
-	field   *reflect2.UnsafeStructField
+	field   []*reflect2.UnsafeStructField
 	decoder ValDecoder
 }
 
@@ -101,11 +101,29 @@ func (d *structFieldDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		return
 	}
 
-	fieldPtr := d.field.UnsafeGet(ptr)
+	fieldPtr := ptr
+	for i, f := range d.field {
+		fieldPtr = f.UnsafeGet(fieldPtr)
+
+		if i == len(d.field)-1 {
+			break
+		}
+
+		if f.Type().Kind() == reflect.Ptr {
+			if *((*unsafe.Pointer)(ptr)) == nil {
+				newPtr := f.Type().UnsafeNew()
+				*((*unsafe.Pointer)(fieldPtr)) = newPtr
+			}
+
+			fieldPtr = *((*unsafe.Pointer)(fieldPtr))
+		}
+	}
 	d.decoder.Decode(fieldPtr, r)
 
 	if r.Error != nil && r.Error != io.EOF {
-		r.Error = fmt.Errorf("%s: %s", d.field.Name(), r.Error.Error())
+		for _, f := range d.field {
+			r.Error = fmt.Errorf("%s: %s", f.Name(), r.Error.Error())
+		}
 	}
 }
 
@@ -120,7 +138,7 @@ func encoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEnc
 		if sf == nil {
 			if !field.HasDefault() {
 				// In all other cases, this is a required field
-				return &errorEncoder{err: fmt.Errorf("avro: record %s is missing required field %s", rec.FullName(), field.Name())}
+				return &errorEncoder{err: fmt.Errorf("avro: record %s is missing required field %q", rec.FullName(), field.Name())}
 			}
 
 			def := field.Default()
@@ -151,7 +169,7 @@ func encoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEnc
 
 		fields = append(fields, &structFieldEncoder{
 			field:   sf.Field,
-			encoder: encoderOfType(cfg, field.Type(), sf.Field.Type()),
+			encoder: encoderOfType(cfg, field.Type(), sf.Field[len(sf.Field)-1].Type()),
 		})
 	}
 
@@ -170,7 +188,7 @@ func (e *structEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 }
 
 type structFieldEncoder struct {
-	field      *reflect2.UnsafeStructField
+	field      []*reflect2.UnsafeStructField
 	defaultPtr unsafe.Pointer
 	encoder    ValEncoder
 }
@@ -182,11 +200,29 @@ func (e *structFieldEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 		return
 	}
 
-	fieldPtr := e.field.UnsafeGet(ptr)
+	fieldPtr := ptr
+	for i, f := range e.field {
+		fieldPtr = f.UnsafeGet(fieldPtr)
+
+		if i == len(e.field)-1 {
+			break
+		}
+
+		if f.Type().Kind() == reflect.Ptr {
+			if *((*unsafe.Pointer)(ptr)) == nil {
+				w.Error = fmt.Errorf("embedded field %q is nil", f.Name())
+				return
+			}
+
+			fieldPtr = *((*unsafe.Pointer)(fieldPtr))
+		}
+	}
 	e.encoder.Encode(fieldPtr, w)
 
 	if w.Error != nil && w.Error != io.EOF {
-		w.Error = fmt.Errorf("%s: %s", e.field.Name(), w.Error.Error())
+		for _, f := range e.field {
+			w.Error = fmt.Errorf("%s: %s", f.Name(), w.Error.Error())
+		}
 	}
 }
 
@@ -345,24 +381,68 @@ func (sf structFields) Get(name string) *structField {
 }
 
 type structField struct {
-	Field *reflect2.UnsafeStructField
 	Name  string
+	Field []*reflect2.UnsafeStructField
+
+	anon *reflect2.UnsafeStructType
 }
 
 func describeStruct(tagKey string, typ reflect2.Type) *structDescriptor {
 	structType := typ.(*reflect2.UnsafeStructType)
 	fields := structFields{}
-	for i := 0; i < structType.NumField(); i++ {
-		field := structType.Field(i).(*reflect2.UnsafeStructField)
-		fieldName := field.Name()
-		if tag, ok := field.Tag().Lookup(tagKey); ok {
-			fieldName = tag
-		}
 
-		fields = append(fields, &structField{
-			Field: field,
-			Name:  fieldName,
-		})
+	var curr []structField
+	next := []structField{{anon: structType}}
+
+	visited := map[uintptr]bool{}
+
+	for len(next) > 0 {
+		curr, next = next, curr[:0]
+
+		for _, f := range curr {
+			rtype := f.anon.RType()
+			if visited[f.anon.RType()] {
+				continue
+			}
+			visited[rtype] = true
+
+			for i := 0; i < f.anon.NumField(); i++ {
+				field := f.anon.Field(i).(*reflect2.UnsafeStructField)
+				isUnexported := field.PkgPath() != ""
+
+				chain := make([]*reflect2.UnsafeStructField, len(f.Field)+1)
+				copy(chain, f.Field)
+				chain[len(f.Field)] = field
+
+				if field.Anonymous() {
+					t := field.Type()
+					if t.Kind() == reflect.Ptr {
+						t = t.(*reflect2.UnsafePtrType).Elem()
+					}
+					if t.Kind() != reflect.Struct {
+						continue
+					}
+
+					next = append(next, structField{Field: chain, anon: t.(*reflect2.UnsafeStructType)})
+					continue
+				}
+
+				// Ignore unexported fields.
+				if isUnexported {
+					continue
+				}
+
+				fieldName := field.Name()
+				if tag, ok := field.Tag().Lookup(tagKey); ok {
+					fieldName = tag
+				}
+
+				fields = append(fields, &structField{
+					Name:  fieldName,
+					Field: chain,
+				})
+			}
+		}
 	}
 
 	return &structDescriptor{

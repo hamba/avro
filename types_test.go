@@ -25,3 +25,19 @@ type TestNestedRecord struct {
 type TestUnion struct {
 	A interface{} `avro:"a"`
 }
+
+type TestEmbeddedRecord struct {
+	TestEmbed
+
+	B string `avro:"b"`
+}
+
+type TestEmbeddedPtrRecord struct {
+	*TestEmbed
+
+	B string `avro:"b"`
+}
+
+type TestEmbed struct {
+	A int64  `avro:"a"`
+}
