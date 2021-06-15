@@ -41,3 +41,16 @@ type TestEmbeddedPtrRecord struct {
 type TestEmbed struct {
 	A int64 `avro:"a"`
 }
+
+type TestEmbedInt int
+
+type TestEmbeddedIntRecord struct {
+	TestEmbedInt
+
+	B string `avro:"b"`
+}
+
+type TestUnexportedRecord struct {
+	A int64  `avro:"a"`
+	b string `avro:"b"`
+}
