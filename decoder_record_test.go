@@ -117,6 +117,50 @@ func TestDecoder_RecordStructInvalidData(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestDecoder_RecordEmbeddedStruct(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x36, 0x06, 0x66, 0x6f, 0x6f}
+	schema := `{
+	"type": "record",
+	"name": "test",
+	"fields" : [
+		{"name": "a", "type": "long"},
+	    {"name": "b", "type": "string"}
+	]
+}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	assert.NoError(t, err)
+
+	var got TestEmbeddedRecord
+	err = dec.Decode(&got)
+
+	assert.NoError(t, err)
+	assert.Equal(t, TestEmbeddedRecord{TestEmbed: TestEmbed{A: 27}, B: "foo"}, got)
+}
+
+func TestDecoder_RecordEmbeddedPtrStruct(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x36, 0x06, 0x66, 0x6f, 0x6f}
+	schema := `{
+	"type": "record",
+	"name": "test",
+	"fields" : [
+		{"name": "a", "type": "long"},
+	    {"name": "b", "type": "string"}
+	]
+}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	assert.NoError(t, err)
+
+	var got TestEmbeddedPtrRecord
+	err = dec.Decode(&got)
+
+	assert.NoError(t, err)
+	assert.Equal(t, TestEmbeddedPtrRecord{TestEmbed: &TestEmbed{A: 27}, B: "foo"}, got)
+}
+
 func TestDecoder_RecordMap(t *testing.T) {
 	defer ConfigTeardown()
 

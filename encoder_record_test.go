@@ -181,6 +181,113 @@ func TestEncoder_RecordStructFieldError(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestEncoder_RecordEmbeddedStruct(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{
+	"type": "record",
+	"name": "test",
+	"fields" : [
+		{"name": "a", "type": "long"},
+	    {"name": "b", "type": "string"}
+	]
+}`
+	obj := TestEmbeddedRecord{TestEmbed: TestEmbed{A: 27}, B: "foo"}
+	buf := &bytes.Buffer{}
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(obj)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x36, 0x06, 0x66, 0x6f, 0x6f}, buf.Bytes())
+}
+
+func TestEncoder_RecordEmbeddedPtrStruct(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{
+	"type": "record",
+	"name": "test",
+	"fields" : [
+		{"name": "a", "type": "long"},
+	    {"name": "b", "type": "string"}
+	]
+}`
+	obj := TestEmbeddedPtrRecord{TestEmbed: &TestEmbed{A: 27}, B: "foo"}
+	buf := &bytes.Buffer{}
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(obj)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x36, 0x06, 0x66, 0x6f, 0x6f}, buf.Bytes())
+}
+
+func TestEncoder_RecordEmbeddedPtrStructNull(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{
+	"type": "record",
+	"name": "test",
+	"fields" : [
+		{"name": "a", "type": "long"},
+	    {"name": "b", "type": "string"}
+	]
+}`
+	obj := TestEmbeddedPtrRecord{B: "foo"}
+	buf := &bytes.Buffer{}
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(obj)
+
+	assert.Error(t, err)
+}
+
+func TestEncoder_RecordEmbeddedIntStruct(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{
+	"type": "record",
+	"name": "test",
+	"fields" : [
+		{"name": "a", "type": "long"},
+	    {"name": "b", "type": "string"}
+	]
+}`
+	obj := TestEmbeddedIntRecord{TestEmbedInt: 27, B: "foo"}
+	buf := &bytes.Buffer{}
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(obj)
+
+	assert.Error(t, err)
+}
+
+func TestEncoder_RecordUnexportedStruct(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{
+	"type": "record",
+	"name": "test",
+	"fields" : [
+		{"name": "a", "type": "long"},
+	    {"name": "b", "type": "string"}
+	]
+}`
+	obj := TestUnexportedRecord{A: 27, b: "foo"}
+	buf := &bytes.Buffer{}
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	err = enc.Encode(obj)
+
+	assert.Error(t, err)
+}
+
 func TestEncoder_RecordMap(t *testing.T) {
 	defer ConfigTeardown()
 

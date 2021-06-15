@@ -158,8 +158,7 @@ func (c *Client) GetSchema(id int) (avro.Schema, error) {
 	}
 
 	var payload schemaPayload
-	err := c.request(http.MethodGet, "/schemas/ids/"+strconv.Itoa(id), nil, &payload)
-	if err != nil {
+	if err := c.request(http.MethodGet, "/schemas/ids/"+strconv.Itoa(id), nil, &payload); err != nil {
 		return nil, err
 	}
 
