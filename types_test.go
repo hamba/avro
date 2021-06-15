@@ -39,5 +39,5 @@ type TestEmbeddedPtrRecord struct {
 }
 
 type TestEmbed struct {
-	A int64  `avro:"a"`
+	A int64 `avro:"a"`
 }

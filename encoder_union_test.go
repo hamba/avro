@@ -113,7 +113,7 @@ func TestEncoder_UnionMapWithDuration(t *testing.T) {
 	assert.NoError(t, err)
 
 	m := map[string]interface{}{
-		"int.time-millis": 123456789*time.Millisecond,
+		"int.time-millis": 123456789 * time.Millisecond,
 	}
 	err = enc.Encode(m)
 
