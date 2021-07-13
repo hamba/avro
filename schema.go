@@ -1048,6 +1048,10 @@ func isValidDefault(schema Schema, def interface{}) (interface{}, bool) {
 }
 
 func schemaTypeName(schema Schema) string {
+	if schema.Type() == Ref {
+		schema = schema.(*RefSchema).Schema()
+	}
+
 	if n, ok := schema.(NamedSchema); ok {
 		return n.FullName()
 	}
