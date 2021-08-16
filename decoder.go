@@ -1,6 +1,7 @@
 package avro
 
 import (
+	"errors"
 	"io"
 )
 
@@ -35,7 +36,7 @@ func (d *Decoder) Decode(obj interface{}) error {
 
 	d.r.ReadVal(d.s, obj)
 
-	if d.r.Error == io.EOF {
+	if errors.Is(d.r.Error, io.EOF) {
 		return nil
 	}
 

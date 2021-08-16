@@ -1,6 +1,7 @@
 package avro
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -58,8 +59,8 @@ func (d *arrayDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		}
 	}
 
-	if r.Error != nil && r.Error != io.EOF {
-		r.Error = fmt.Errorf("%v: %s", d.typ, r.Error.Error())
+	if r.Error != nil && !errors.Is(r.Error, io.EOF) {
+		r.Error = fmt.Errorf("%v: %w", d.typ, r.Error)
 	}
 }
 
@@ -100,7 +101,7 @@ func (e *arrayEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 
 	w.WriteBlockHeader(0, 0)
 
-	if w.Error != nil && w.Error != io.EOF {
-		w.Error = fmt.Errorf("%v: %s", e.typ, w.Error.Error())
+	if w.Error != nil && !errors.Is(w.Error, io.EOF) {
+		w.Error = fmt.Errorf("%v: %w", e.typ, w.Error)
 	}
 }

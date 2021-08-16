@@ -62,7 +62,7 @@ func NewDecoder(r io.Reader) (*Decoder, error) {
 	var h Header
 	reader.ReadVal(HeaderSchema, &h)
 	if reader.Error != nil {
-		return nil, fmt.Errorf("decoder: unexpected error: %v", reader.Error)
+		return nil, fmt.Errorf("decoder: unexpected error: %w", reader.Error)
 	}
 
 	if h.Magic != magicBytes {
@@ -122,7 +122,7 @@ func (d *Decoder) Decode(v interface{}) error {
 
 // Error returns the last reader error.
 func (d *Decoder) Error() error {
-	if d.reader.Error == io.EOF {
+	if errors.Is(d.reader.Error, io.EOF) {
 		return nil
 	}
 
@@ -147,7 +147,7 @@ func (d *Decoder) readBlock() int64 {
 
 	var sync [16]byte
 	d.reader.Read(sync[:])
-	if d.sync != sync && d.reader.Error != io.EOF {
+	if d.sync != sync && !errors.Is(d.reader.Error, io.EOF) {
 		d.reader.Error = errors.New("decoder: invalid block")
 	}
 

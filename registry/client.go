@@ -47,10 +47,10 @@ type Registry interface {
 	GetLatestSchemaInfo(subject string) (SchemaInfo, error)
 
 	// CreateSchema creates a schema in the registry, returning the schema id.
-	CreateSchema(subject string, schema string) (int, avro.Schema, error)
+	CreateSchema(subject, schema string) (int, avro.Schema, error)
 
 	// IsRegistered determines of the schema is registered.
-	IsRegistered(subject string, schema string) (int, avro.Schema, error)
+	IsRegistered(subject, schema string) (int, avro.Schema, error)
 }
 
 type schemaPayload struct {
@@ -112,7 +112,7 @@ func WithHTTPClient(client *http.Client) ClientFunc {
 }
 
 // WithBasicAuth sets the credentials to perform http basic auth.
-func WithBasicAuth(username string, password string) ClientFunc {
+func WithBasicAuth(username, password string) ClientFunc {
 	return func(c *Client) {
 		c.creds = credentials{username: username, password: password}
 	}
@@ -228,7 +228,7 @@ func (c *Client) GetLatestSchemaInfo(subject string) (SchemaInfo, error) {
 }
 
 // CreateSchema creates a schema in the registry, returning the schema id.
-func (c *Client) CreateSchema(subject string, schema string) (int, avro.Schema, error) {
+func (c *Client) CreateSchema(subject, schema string) (int, avro.Schema, error) {
 	var payload idPayload
 	err := c.request(http.MethodPost, "/subjects/"+subject+"/versions", schemaPayload{Schema: schema}, &payload)
 	if err != nil {
@@ -240,7 +240,7 @@ func (c *Client) CreateSchema(subject string, schema string) (int, avro.Schema, 
 }
 
 // IsRegistered determines of the schema is registered.
-func (c *Client) IsRegistered(subject string, schema string) (int, avro.Schema, error) {
+func (c *Client) IsRegistered(subject, schema string) (int, avro.Schema, error) {
 	var payload idPayload
 	err := c.request(http.MethodPost, "/subjects/"+subject, schemaPayload{Schema: schema}, &payload)
 	if err != nil {
@@ -269,7 +269,10 @@ func (c *Client) request(method, uri string, in, out interface{}) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode >= 400 {
 		err := Error{StatusCode: resp.StatusCode}

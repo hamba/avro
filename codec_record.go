@@ -1,6 +1,7 @@
 package avro
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -120,9 +121,9 @@ func (d *structFieldDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 	}
 	d.decoder.Decode(fieldPtr, r)
 
-	if r.Error != nil && r.Error != io.EOF {
+	if r.Error != nil && !errors.Is(r.Error, io.EOF) {
 		for _, f := range d.field {
-			r.Error = fmt.Errorf("%s: %s", f.Name(), r.Error.Error())
+			r.Error = fmt.Errorf("%s: %w", f.Name(), r.Error)
 		}
 	}
 }
@@ -219,9 +220,9 @@ func (e *structFieldEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 	}
 	e.encoder.Encode(fieldPtr, w)
 
-	if w.Error != nil && w.Error != io.EOF {
+	if w.Error != nil && !errors.Is(w.Error, io.EOF) {
 		for _, f := range e.field {
-			w.Error = fmt.Errorf("%s: %s", f.Name(), w.Error.Error())
+			w.Error = fmt.Errorf("%s: %w", f.Name(), w.Error)
 		}
 	}
 }
@@ -268,8 +269,8 @@ func (d *recordMapDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		d.mapType.UnsafeSetIndex(ptr, reflect2.PtrOf(field), elem)
 	}
 
-	if r.Error != nil && r.Error != io.EOF {
-		r.Error = fmt.Errorf("%v: %s", d.mapType, r.Error.Error())
+	if r.Error != nil && !errors.Is(r.Error, io.EOF) {
+		r.Error = fmt.Errorf("%v: %w", d.mapType, r.Error)
 	}
 }
 

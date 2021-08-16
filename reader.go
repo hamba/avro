@@ -1,6 +1,7 @@
 package avro
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"unsafe"
@@ -59,8 +60,8 @@ func (r *Reader) Reset(b []byte) *Reader {
 }
 
 // ReportError record a error in iterator instance with current position.
-func (r *Reader) ReportError(operation string, msg string) {
-	if r.Error != nil && r.Error != io.EOF {
+func (r *Reader) ReportError(operation, msg string) {
+	if r.Error != nil && !errors.Is(r.Error, io.EOF) {
 		return
 	}
 

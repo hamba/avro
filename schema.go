@@ -670,7 +670,7 @@ func (s *UnionSchema) Nullable() bool {
 // Indices returns the index of the null and type schemas for a
 // nullable schema. For non-nullable schemas 0 is returned for
 // both.
-func (s *UnionSchema) Indices() (null int, typ int) {
+func (s *UnionSchema) Indices() (null, typ int) {
 	if !s.Nullable() {
 		return 0, 0
 	}

@@ -160,7 +160,7 @@ func (w *Writer) WriteString(s string) {
 }
 
 // WriteBlockHeader writes a Block Header to the Writer.
-func (w *Writer) WriteBlockHeader(l int64, s int64) {
+func (w *Writer) WriteBlockHeader(l, s int64) {
 	if s > 0 {
 		w.WriteLong(-l)
 		w.WriteLong(s)
