@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math"
+	"path/filepath"
 	"strings"
 
 	jsoniter "github.com/json-iterator/go"
@@ -52,7 +53,7 @@ func MustParse(schema string) Schema {
 func ParseFiles(paths ...string) (Schema, error) {
 	var schema Schema
 	for _, path := range paths {
-		s, err := ioutil.ReadFile(path)
+		s, err := ioutil.ReadFile(filepath.Clean(path))
 		if err != nil {
 			return nil, err
 		}

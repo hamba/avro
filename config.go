@@ -1,6 +1,7 @@
 package avro
 
 import (
+	"errors"
 	"io"
 	"sync"
 
@@ -134,7 +135,7 @@ func (c *frozenConfig) Unmarshal(schema Schema, data []byte, v interface{}) erro
 	err := reader.Error
 	c.returnReader(reader)
 
-	if err == io.EOF {
+	if errors.Is(err, io.EOF) {
 		return nil
 	}
 

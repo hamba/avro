@@ -1,6 +1,7 @@
 package avro
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -63,8 +64,8 @@ func (d *mapDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		}
 	}
 
-	if r.Error != nil && r.Error != io.EOF {
-		r.Error = fmt.Errorf("%v: %s", d.mapType, r.Error.Error())
+	if r.Error != nil && !errors.Is(r.Error, io.EOF) {
+		r.Error = fmt.Errorf("%v: %w", d.mapType, r.Error)
 	}
 }
 
@@ -108,7 +109,7 @@ func (e *mapEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 		}
 	}
 
-	if w.Error != nil && w.Error != io.EOF {
-		w.Error = fmt.Errorf("%v: %s", e.mapType, w.Error.Error())
+	if w.Error != nil && !errors.Is(w.Error, io.EOF) {
+		w.Error = fmt.Errorf("%v: %w", e.mapType, w.Error)
 	}
 }

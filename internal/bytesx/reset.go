@@ -1,3 +1,4 @@
+// Package bytesx implements bytes extensions.
 package bytesx
 
 import "io"

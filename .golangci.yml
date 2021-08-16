@@ -1,11 +1,19 @@
 run:
   tests: false
-  timeout: 5m
+  deadline: 5m
+
+linters-settings:
+  gofumpt:
+    extra-rules: true
+
 linters:
   enable-all: true
   disable:
+    - interfacer # deprecated
+    - scopelint # deprecated
+    - maligned # deprecated
+    - golint # deprecated
     - cyclop
-    - errorlint
     - exhaustive
     - exhaustivestruct
     - forcetypeassert
@@ -15,19 +23,18 @@ linters:
     - gocognit
     - gocyclo
     - goerr113
-    - golint
     - gomnd
-    - interfacer
-    - maligned
     - nestif
-    - noctx
     - nlreturn
-    - scopelint
+    - noctx # until registry client gets context
     - tagliatelle
-    - testpackage
     - wrapcheck
     - wsl
+
 issues:
+  exclude-use-default: false
+  exclude:
+    - 'G103: Use of unsafe calls should be audited'
   exclude-rules:
   - path: (schema|protocol)\.go
     linters:
