@@ -1,6 +1,6 @@
 module github.com/hamba/avro
 
-go 1.16
+go 1.11
 
 require (
 	github.com/golang/snappy v0.0.4
