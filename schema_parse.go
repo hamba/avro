@@ -194,7 +194,6 @@ func parseRecord(typ Type, namespace string, m map[string]interface{}, cache *Sc
 	switch typ {
 	case Record:
 		rec, err = NewRecordSchema(name, namespace, fields)
-
 	case Error:
 		rec, err = NewErrorRecordSchema(name, namespace, fields)
 	}
@@ -234,7 +233,6 @@ func parseField(namespace string, v interface{}, cache *SchemaCache) (*Field, er
 	if _, ok := m["type"]; !ok {
 		return nil, errors.New("avro: field requires a type")
 	}
-
 	typ, err := parseType(namespace, m["type"], cache)
 	if err != nil {
 		return nil, err

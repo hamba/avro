@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 
 	"github.com/hamba/avro/pkg/crc64"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/modern-go/concurrent"
 )
 
@@ -311,6 +312,11 @@ func (s *PrimitiveSchema) String() string {
 	return `{"type":"` + string(s.typ) + `",` + s.logical.String() + `}`
 }
 
+// MarshalJSON marshals the schema to json.
+func (s *PrimitiveSchema) MarshalJSON() ([]byte, error) {
+	return []byte(s.String()), nil
+}
+
 // Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *PrimitiveSchema) Fingerprint() [32]byte {
 	return s.fingerprinter.Fingerprint(s)
@@ -393,6 +399,26 @@ func (s *RecordSchema) String() string {
 	return `{"name":"` + s.FullName() + `","type":"` + typ + `","fields":[` + fields + `]}`
 }
 
+// MarshalJSON marshals the schema to json.
+func (s *RecordSchema) MarshalJSON() ([]byte, error) {
+	typ := "record"
+	if s.isError {
+		typ = "error"
+	}
+
+	ss := struct {
+		Name   string   `json:"name"`
+		Type   string   `json:"type"`
+		Fields []*Field `json:"fields"`
+	}{
+		Name:   s.FullName(),
+		Type:   typ,
+		Fields: s.fields,
+	}
+
+	return jsoniter.Marshal(ss)
+}
+
 // Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *RecordSchema) Fingerprint() [32]byte {
 	return s.fingerprinter.Fingerprint(s)
@@ -443,34 +469,50 @@ func NewField(name string, typ Schema, def interface{}) (*Field, error) {
 }
 
 // Name returns the name of a field.
-func (s *Field) Name() string {
-	return s.name
+func (f *Field) Name() string {
+	return f.name
 }
 
 // Type returns the schema of a field.
-func (s *Field) Type() Schema {
-	return s.typ
+func (f *Field) Type() Schema {
+	return f.typ
 }
 
 // HasDefault determines if the field has a default value.
-func (s *Field) HasDefault() bool {
-	return s.hasDef
+func (f *Field) HasDefault() bool {
+	return f.hasDef
 }
 
 // Default returns the default of a field or nil.
 //
 // The only time a nil default is valid is for a Null Type.
-func (s *Field) Default() interface{} {
-	if s.def == nullDefault {
+func (f *Field) Default() interface{} {
+	if f.def == nullDefault {
 		return nil
 	}
 
-	return s.def
+	return f.def
 }
 
 // String returns the canonical form of a field.
-func (s *Field) String() string {
-	return `{"name":"` + s.name + `","type":` + s.typ.String() + `}`
+func (f *Field) String() string {
+	return `{"name":"` + f.name + `","type":` + f.typ.String() + `}`
+}
+
+// MarshalJSON marshals the schema to json.
+func (f *Field) MarshalJSON() ([]byte, error) {
+	s := struct {
+		Name    string      `json:"name"`
+		Type    Schema      `json:"type"`
+		Default interface{} `json:"default,omitempty"`
+	}{
+		Name: f.name,
+		Type: f.typ,
+	}
+	if f.hasDef {
+		s.Default = f.def
+	}
+	return jsoniter.Marshal(s)
 }
 
 // EnumSchema is an Avro enum type schema.
@@ -480,6 +522,7 @@ type EnumSchema struct {
 	fingerprinter
 
 	symbols []string
+	def     string
 }
 
 // NewEnumSchema creates a new enum schema instance.
@@ -493,7 +536,7 @@ func NewEnumSchema(name, namespace string, symbols []string) (*EnumSchema, error
 		return nil, errors.New("avro: enum must have a non-empty array of symbols")
 	}
 	for _, symbol := range symbols {
-		if err := validateName(symbol); err != nil {
+		if err = validateName(symbol); err != nil {
 			return nil, fmt.Errorf("avro: invalid symnol %s", symbol)
 		}
 	}
@@ -526,6 +569,22 @@ func (s *EnumSchema) String() string {
 	}
 
 	return `{"name":"` + s.FullName() + `","type":"enum","symbols":[` + symbols + `]}`
+}
+
+// MarshalJSON marshals the schema to json.
+func (s *EnumSchema) MarshalJSON() ([]byte, error) {
+	ss := struct {
+		Name    string   `json:"name"`
+		Type    string   `json:"type"`
+		Symbols []string `json:"symbols"`
+		Default string   `json:"default,omitempty"`
+	}{
+		Name:    s.FullName(),
+		Type:    "enum",
+		Symbols: s.symbols,
+		Default: s.def,
+	}
+	return jsoniter.Marshal(ss)
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
@@ -569,6 +628,18 @@ func (s *ArraySchema) String() string {
 	return `{"type":"array","items":` + s.items.String() + `}`
 }
 
+// MarshalJSON marshals the schema to json.
+func (s *ArraySchema) MarshalJSON() ([]byte, error) {
+	ss := struct {
+		Type  string `json:"type"`
+		Items Schema `json:"items"`
+	}{
+		Type:  "array",
+		Items: s.items,
+	}
+	return jsoniter.Marshal(ss)
+}
+
 // Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *ArraySchema) Fingerprint() [32]byte {
 	return s.fingerprinter.Fingerprint(s)
@@ -608,6 +679,18 @@ func (s *MapSchema) Values() Schema {
 // String returns the canonical form of the schema.
 func (s *MapSchema) String() string {
 	return `{"type":"map","values":` + s.values.String() + `}`
+}
+
+// MarshalJSON marshals the schema to json.
+func (s *MapSchema) MarshalJSON() ([]byte, error) {
+	ss := struct {
+		Type   string `json:"type"`
+		Values Schema `json:"values"`
+	}{
+		Type:   "map",
+		Values: s.values,
+	}
+	return jsoniter.Marshal(ss)
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
@@ -693,6 +776,11 @@ func (s *UnionSchema) String() string {
 	return `[` + types + `]`
 }
 
+// MarshalJSON marshals the schema to json.
+func (s *UnionSchema) MarshalJSON() ([]byte, error) {
+	return jsoniter.Marshal(s.types)
+}
+
 // Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *UnionSchema) Fingerprint() [32]byte {
 	return s.fingerprinter.Fingerprint(s)
@@ -755,6 +843,11 @@ func (s *FixedSchema) String() string {
 	return `{"name":"` + s.FullName() + `","type":"fixed","size":` + size + logical + `}`
 }
 
+// MarshalJSON marshals the schema to json.
+func (s *FixedSchema) MarshalJSON() ([]byte, error) {
+	return []byte(s.String()), nil
+}
+
 // Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *FixedSchema) Fingerprint() [32]byte {
 	return s.fingerprinter.Fingerprint(s)
@@ -778,6 +871,11 @@ func (s *NullSchema) Type() Type {
 // String returns the canonical form of the schema.
 func (s *NullSchema) String() string {
 	return `"null"`
+}
+
+// MarshalJSON marshals the schema to json.
+func (s *NullSchema) MarshalJSON() ([]byte, error) {
+	return []byte(`"null"`), nil
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
@@ -815,6 +913,11 @@ func (s *RefSchema) Schema() Schema {
 // String returns the canonical form of the schema.
 func (s *RefSchema) String() string {
 	return `"` + s.actual.FullName() + `"`
+}
+
+// MarshalJSON marshals the schema to json.
+func (s *RefSchema) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + s.actual.FullName() + `"`), nil
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.

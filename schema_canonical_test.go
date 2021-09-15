@@ -1,10 +1,12 @@
 package avro_test
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/hamba/avro"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Test cases are taken from the reference implementation here:
@@ -260,10 +262,13 @@ func TestSchema_Canonical(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		s, err := avro.Parse(tt.input)
+	for i, test := range tests {
+		test := test
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			s, err := avro.Parse(test.input)
 
-		assert.NoError(t, err)
-		assert.Equal(t, tt.canonical, s.String())
+			require.NoError(t, err)
+			assert.Equal(t, test.canonical, s.String())
+		})
 	}
 }
