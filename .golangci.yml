@@ -26,7 +26,6 @@ linters:
     - gomnd
     - nestif
     - nlreturn
-    - noctx # until registry client gets context
     - tagliatelle
     - wrapcheck
     - wsl
