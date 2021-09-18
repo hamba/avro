@@ -15,6 +15,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -123,7 +124,7 @@ func WithBasicAuth(username, password string) ClientFunc {
 // Client is an HTTP registry client.
 type Client struct {
 	client *http.Client
-	base   string
+	base   *url.URL
 
 	creds credentials
 
@@ -132,14 +133,17 @@ type Client struct {
 
 // NewClient creates a schema registry Client with the given base url.
 func NewClient(baseURL string, opts ...ClientFunc) (*Client, error) {
-	if _, err := url.Parse(baseURL); err != nil {
+	u, err := url.Parse(baseURL)
+	if err != nil {
 		return nil, err
 	}
-	baseURL = strings.TrimSuffix(baseURL, "/")
+	if !strings.HasSuffix(u.Path, "/") {
+		u.Path += "/"
+	}
 
 	c := &Client{
 		client: defaultClient,
-		base:   baseURL,
+		base:   u,
 		cache:  concurrent.NewMap(),
 	}
 
@@ -160,7 +164,8 @@ func (c *Client) GetSchema(ctx context.Context, id int) (avro.Schema, error) {
 	}
 
 	var payload schemaPayload
-	if err := c.request(ctx, http.MethodGet, "/schemas/ids/"+strconv.Itoa(id), nil, &payload); err != nil {
+	p := path.Join("schemas", "ids", strconv.Itoa(id))
+	if err := c.request(ctx, http.MethodGet, p, nil, &payload); err != nil {
 		return nil, err
 	}
 
@@ -177,7 +182,7 @@ func (c *Client) GetSchema(ctx context.Context, id int) (avro.Schema, error) {
 // GetSubjects gets the registry subjects.
 func (c *Client) GetSubjects(ctx context.Context) ([]string, error) {
 	var subjects []string
-	err := c.request(ctx, http.MethodGet, "/subjects", nil, &subjects)
+	err := c.request(ctx, http.MethodGet, "subjects", nil, &subjects)
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +193,8 @@ func (c *Client) GetSubjects(ctx context.Context) ([]string, error) {
 // GetVersions gets the schema versions for a subject.
 func (c *Client) GetVersions(ctx context.Context, subject string) ([]int, error) {
 	var versions []int
-	err := c.request(ctx, http.MethodGet, "/subjects/"+subject+"/versions", nil, &versions)
+	p := path.Join("subjects", subject, "versions")
+	err := c.request(ctx, http.MethodGet, p, nil, &versions)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +205,8 @@ func (c *Client) GetVersions(ctx context.Context, subject string) ([]int, error)
 // GetSchemaByVersion gets the schema by version.
 func (c *Client) GetSchemaByVersion(ctx context.Context, subject string, version int) (avro.Schema, error) {
 	var payload schemaPayload
-	err := c.request(ctx, http.MethodGet, "/subjects/"+subject+"/versions/"+strconv.Itoa(version), nil, &payload)
+	p := path.Join("subjects", subject, "versions", strconv.Itoa(version))
+	err := c.request(ctx, http.MethodGet, p, nil, &payload)
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +217,8 @@ func (c *Client) GetSchemaByVersion(ctx context.Context, subject string, version
 // GetLatestSchema gets the latest schema for a subject.
 func (c *Client) GetLatestSchema(ctx context.Context, subject string) (avro.Schema, error) {
 	var payload schemaPayload
-	err := c.request(ctx, http.MethodGet, "/subjects/"+subject+"/versions/latest", nil, &payload)
+	p := path.Join("subjects", subject, "versions", "latest")
+	err := c.request(ctx, http.MethodGet, p, nil, &payload)
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +229,8 @@ func (c *Client) GetLatestSchema(ctx context.Context, subject string) (avro.Sche
 // GetLatestSchemaInfo gets the latest schema and schema metadata for a subject.
 func (c *Client) GetLatestSchemaInfo(ctx context.Context, subject string) (SchemaInfo, error) {
 	var payload schemaInfoPayload
-	err := c.request(ctx, http.MethodGet, "/subjects/"+subject+"/versions/latest", nil, &payload)
+	p := path.Join("subjects", subject, "versions", "latest")
+	err := c.request(ctx, http.MethodGet, p, nil, &payload)
 	if err != nil {
 		return SchemaInfo{}, err
 	}
@@ -232,7 +241,8 @@ func (c *Client) GetLatestSchemaInfo(ctx context.Context, subject string) (Schem
 // CreateSchema creates a schema in the registry, returning the schema id.
 func (c *Client) CreateSchema(ctx context.Context, subject, schema string) (int, avro.Schema, error) {
 	var payload idPayload
-	err := c.request(ctx, http.MethodPost, "/subjects/"+subject+"/versions", schemaPayload{Schema: schema}, &payload)
+	p := path.Join("subjects", subject, "versions")
+	err := c.request(ctx, http.MethodPost, p, schemaPayload{Schema: schema}, &payload)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -244,7 +254,8 @@ func (c *Client) CreateSchema(ctx context.Context, subject, schema string) (int,
 // IsRegistered determines of the schema is registered.
 func (c *Client) IsRegistered(ctx context.Context, subject, schema string) (int, avro.Schema, error) {
 	var payload idPayload
-	err := c.request(ctx, http.MethodPost, "/subjects/"+subject, schemaPayload{Schema: schema}, &payload)
+	p := path.Join("subjects", subject)
+	err := c.request(ctx, http.MethodPost, p, schemaPayload{Schema: schema}, &payload)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -253,17 +264,16 @@ func (c *Client) IsRegistered(ctx context.Context, subject, schema string) (int,
 	return payload.ID, sch, err
 }
 
-func (c *Client) request(ctx context.Context, method, uri string, in, out interface{}) error {
+func (c *Client) request(ctx context.Context, method, path string, in, out interface{}) error {
 	var body io.Reader
 	if in != nil {
 		b, _ := jsoniter.Marshal(in)
 		body = bytes.NewReader(b)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, method, c.base+uri, body)
-	if err != nil {
-		return fmt.Errorf("could not create request: %w", err)
-	}
+	// These errors are not possible as we have already parse the base URL.
+	u, _ := c.base.Parse(path)
+	req, _ := http.NewRequestWithContext(ctx, method, u.String(), body)
 	req.Header.Set("Content-Type", contentType)
 
 	if len(c.creds.username) > 0 || len(c.creds.password) > 0 {
