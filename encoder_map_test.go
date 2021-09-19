@@ -6,6 +6,7 @@ import (
 
 	"github.com/hamba/avro"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEncoder_MapInvalidType(t *testing.T) {
@@ -14,7 +15,7 @@ func TestEncoder_MapInvalidType(t *testing.T) {
 	schema := `{"type":"map", "values": "string"}`
 	buf := bytes.NewBuffer([]byte{})
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode("test")
 
@@ -27,11 +28,11 @@ func TestEncoder_Map(t *testing.T) {
 	schema := `{"type":"map", "values": "string"}`
 	buf := bytes.NewBuffer([]byte{})
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(map[string]string{})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte{0x00}, buf.Bytes())
 }
 
@@ -41,11 +42,11 @@ func TestEncoder_MapEmpty(t *testing.T) {
 	schema := `{"type":"map", "values": "string"}`
 	buf := bytes.NewBuffer([]byte{})
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(map[string]string{"foo": "foo"})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte{0x01, 0x10, 0x06, 0x66, 0x6F, 0x6F, 0x06, 0x66, 0x6F, 0x6F, 0x00}, buf.Bytes())
 }
 
@@ -55,11 +56,11 @@ func TestEncoder_MapOfStruct(t *testing.T) {
 	schema := `{"type":"map", "values": {"type": "record", "name": "test", "fields" : [{"name": "a", "type": "long"}, {"name": "b", "type": "string"}]}}`
 	buf := bytes.NewBuffer([]byte{})
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(map[string]TestRecord{"foo": {A: 27, B: "foo"}})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte{0x01, 0x12, 0x06, 0x66, 0x6F, 0x6F, 0x36, 0x06, 0x66, 0x6f, 0x6f, 0x0}, buf.Bytes())
 }
 
@@ -69,7 +70,7 @@ func TestEncoder_MapInvalidKeyType(t *testing.T) {
 	schema := `{"type":"map", "values": "string"}`
 	buf := bytes.NewBuffer([]byte{})
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(map[int]string{1: "foo"})
 
@@ -82,7 +83,7 @@ func TestEncoder_MapError(t *testing.T) {
 	schema := `{"type":"map", "values": "string"}`
 	buf := bytes.NewBuffer([]byte{})
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(map[string]int{"foo": 1})
 
@@ -99,11 +100,11 @@ func TestEncoder_MapWithMoreThanBlockLengthKeys(t *testing.T) {
 	schema := `{"type":"map", "values": "int"}`
 	buf := bytes.NewBuffer([]byte{})
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(map[string]int{"foo": 1, "bar": 2})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Condition(t, func() bool {
 		// {"foo": 1, "bar": 2}
 		foobar := bytes.Equal([]byte{0x01, 0x0a, 0x06, 0x66, 0x6F, 0x6F, 0x02, 0x01, 0x0a, 0x06, 0x62, 0x61, 0x72, 0x04, 0x0}, buf.Bytes())

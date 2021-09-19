@@ -7,12 +7,13 @@ import (
 
 	"github.com/hamba/avro/registry"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewClient(t *testing.T) {
 	client, err := registry.NewClient("http://example.com")
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Implements(t, (*registry.Registry)(nil), client)
 }
 
@@ -71,7 +72,7 @@ func TestClient_GetSchema(t *testing.T) {
 
 	schema, err := client.GetSchema(5)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, `["null","string","int"]`, schema.String())
 }
 
@@ -139,7 +140,7 @@ func TestClient_GetSubjects(t *testing.T) {
 
 	subs, err := client.GetSubjects()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, subs, 1)
 	assert.Equal(t, "foobar", subs[0])
 }
@@ -180,7 +181,7 @@ func TestClient_GetVersions(t *testing.T) {
 
 	vers, err := client.GetVersions("foobar")
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, vers, 1)
 	assert.Equal(t, 10, vers[0])
 }
@@ -221,7 +222,7 @@ func TestClient_GetSchemaByVersion(t *testing.T) {
 
 	schema, err := client.GetSchemaByVersion("foobar", 5)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, `["null","string","int"]`, schema.String())
 }
 
@@ -273,7 +274,7 @@ func TestClient_GetLatestSchema(t *testing.T) {
 
 	schema, err := client.GetLatestSchema("foobar")
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, `["null","string","int"]`, schema.String())
 }
 
@@ -325,7 +326,7 @@ func TestClient_GetLatestSchemaInfo(t *testing.T) {
 
 	schemaInfo, err := client.GetLatestSchemaInfo("foobar")
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, `["null","string","int"]`, schemaInfo.Schema.String())
 	assert.Equal(t, 2, schemaInfo.ID)
 	assert.Equal(t, 1, schemaInfo.Version)
@@ -379,7 +380,7 @@ func TestClient_CreateSchema(t *testing.T) {
 
 	id, schema, err := client.CreateSchema("foobar", "[\"null\",\"string\",\"int\"]")
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 10, id)
 	assert.Equal(t, `["null","string","int"]`, schema.String())
 }
@@ -432,7 +433,7 @@ func TestClient_IsRegistered(t *testing.T) {
 
 	id, schema, err := client.IsRegistered("test", "[\"null\",\"string\",\"int\"]")
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 10, id)
 	assert.Equal(t, `["null","string","int"]`, schema.String())
 }

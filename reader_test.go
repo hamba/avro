@@ -7,6 +7,7 @@ import (
 
 	"github.com/hamba/avro"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewReader(t *testing.T) {
@@ -56,161 +57,192 @@ func TestReader_ReadDelayedReader(t *testing.T) {
 
 	i := r.ReadInt()
 
-	assert.NoError(t, r.Error)
+	require.NoError(t, r.Error)
 	assert.Equal(t, int32(27), i)
 }
 
 func TestReader_Read(t *testing.T) {
 	tests := []struct {
+		name    string
 		data    []byte
 		want    []byte
 		wantErr bool
 	}{
 		{
+			name:    "valid",
 			data:    []byte{0xAC, 0xDC, 0x01, 0x00, 0x10, 0x0F},
 			want:    make([]byte, 6),
 			wantErr: false,
 		},
 		{
+			name:    "eof",
 			data:    []byte{0xAC}, // io.EOF
 			want:    make([]byte, 6),
 			wantErr: true,
 		},
 	}
 
-	for _, tt := range tests {
-		r := avro.NewReader(bytes.NewReader(tt.data), 2)
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			r := avro.NewReader(bytes.NewReader(test.data), 2)
 
-		r.Read(tt.want)
+			r.Read(test.want)
 
-		if tt.wantErr {
-			assert.Error(t, r.Error)
-			continue
-		}
+			if test.wantErr {
+				assert.Error(t, r.Error)
+				return
+			}
 
-		assert.NoError(t, r.Error)
-		assert.Equal(t, tt.want, tt.data)
+			require.NoError(t, r.Error)
+			assert.Equal(t, test.want, test.data)
+		})
 	}
 }
 
 func TestReader_ReadBool(t *testing.T) {
 	tests := []struct {
+		name    string
 		data    []byte
 		want    bool
 		wantErr bool
 	}{
 		{
+			name:    "false",
 			data:    []byte{0x00},
 			want:    false,
 			wantErr: false,
 		},
 		{
+			name:    "true",
 			data:    []byte{0x01},
 			want:    true,
 			wantErr: false,
 		},
 		{
-			data:    []byte{0x02}, // Invalid Bool
+			name:    "invalid bool",
+			data:    []byte{0x02},
 			want:    false,
 			wantErr: true,
 		},
 		{
+			name:    "eof",
 			data:    []byte(nil), // io.EOF
 			want:    false,
 			wantErr: true,
 		},
 	}
 
-	for _, tt := range tests {
-		r := avro.NewReader(bytes.NewReader(tt.data), 10)
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
 
-		got := r.ReadBool()
+			r := avro.NewReader(bytes.NewReader(test.data), 10)
 
-		if tt.wantErr {
-			assert.Error(t, r.Error)
-			continue
-		}
+			got := r.ReadBool()
 
-		assert.NoError(t, r.Error)
-		assert.Equal(t, tt.want, got)
+			if test.wantErr {
+				assert.Error(t, r.Error)
+				return
+			}
+
+			require.NoError(t, r.Error)
+			assert.Equal(t, test.want, got)
+		})
 	}
 }
 
 func TestReader_ReadInt(t *testing.T) {
 	tests := []struct {
+		name    string
 		data    []byte
 		want    int32
 		wantErr bool
 	}{
 		{
+			name:    "positive int",
 			data:    []byte{0x36},
 			want:    27,
 			wantErr: false,
 		},
 		{
+			name:    "negative int",
 			data:    []byte{0x0F},
 			want:    -8,
 			wantErr: false,
 		},
 		{
+			name:    "negative int",
 			data:    []byte{0x01},
 			want:    -1,
 			wantErr: false,
 		},
 		{
+			name:    "zero",
 			data:    []byte{0x00},
 			want:    0,
 			wantErr: false,
 		},
 		{
+			name:    "one",
 			data:    []byte{0x02},
 			want:    1,
 			wantErr: false,
 		},
 		{
+			name:    "negative 64",
 			data:    []byte{0x7F},
 			want:    -64,
 			wantErr: false,
 		},
 		{
+			name:    "multi byte int",
 			data:    []byte{0x80, 0x01},
 			want:    64,
 			wantErr: false,
 		},
 		{
+			name:    "large int",
 			data:    []byte{0xAA, 0xB4, 0xDE, 0x75},
 			want:    123456789,
 			wantErr: false,
 		},
 		{
+			name:    "larger int",
 			data:    []byte{0xE2, 0xA2, 0xF3, 0xAD, 0x07},
 			want:    987654321,
 			wantErr: false,
 		},
 		{
-			data:    []byte{0xE2, 0xA2, 0xF3, 0xAD, 0xAD, 0xAD}, // Overflow
+			name:    "overflow",
+			data:    []byte{0xE2, 0xA2, 0xF3, 0xAD, 0xAD, 0xAD},
 			want:    0,
 			wantErr: true,
 		},
 		{
-			data:    []byte{0xE2}, // io.EOF
+			name:    "eof",
+			data:    []byte{0xE2},
 			want:    0,
 			wantErr: true,
 		},
 	}
 
-	for _, tt := range tests {
-		r := avro.NewReader(bytes.NewReader(tt.data), 10)
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
 
-		got := r.ReadInt()
+			r := avro.NewReader(bytes.NewReader(test.data), 10)
 
-		if tt.wantErr {
-			assert.Error(t, r.Error)
-			continue
-		}
+			got := r.ReadInt()
 
-		assert.NoError(t, r.Error)
-		assert.Equal(t, tt.want, got)
+			if test.wantErr {
+				assert.Error(t, r.Error)
+				return
+			}
+
+			require.NoError(t, r.Error)
+			assert.Equal(t, test.want, got)
+		})
 	}
 }
 
@@ -292,18 +324,18 @@ func TestReader_ReadLong(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		r := avro.NewReader(bytes.NewReader(tt.data), 10)
+	for _, test := range tests {
+		r := avro.NewReader(bytes.NewReader(test.data), 10)
 
 		got := r.ReadLong()
 
-		if tt.wantErr {
+		if test.wantErr {
 			assert.Error(t, r.Error)
 			continue
 		}
 
-		assert.NoError(t, r.Error)
-		assert.Equal(t, tt.want, got)
+		require.NoError(t, r.Error)
+		assert.Equal(t, test.want, got)
 	}
 }
 
@@ -350,18 +382,18 @@ func TestReader_ReadFloat(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		r := avro.NewReader(bytes.NewReader(tt.data), 2)
+	for _, test := range tests {
+		r := avro.NewReader(bytes.NewReader(test.data), 2)
 
 		got := r.ReadFloat()
 
-		if tt.wantErr {
+		if test.wantErr {
 			assert.Error(t, r.Error)
 			continue
 		}
 
-		assert.NoError(t, r.Error)
-		assert.Equal(t, tt.want, got)
+		require.NoError(t, r.Error)
+		assert.Equal(t, test.want, got)
 	}
 }
 
@@ -428,18 +460,18 @@ func TestReader_ReadDouble(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		r := avro.NewReader(bytes.NewReader(tt.data), 4)
+	for _, test := range tests {
+		r := avro.NewReader(bytes.NewReader(test.data), 4)
 
 		got := r.ReadDouble()
 
-		if tt.wantErr {
+		if test.wantErr {
 			assert.Error(t, r.Error)
 			continue
 		}
 
-		assert.NoError(t, r.Error)
-		assert.Equal(t, tt.want, got)
+		require.NoError(t, r.Error)
+		assert.Equal(t, test.want, got)
 	}
 }
 
@@ -486,18 +518,18 @@ func TestReader_ReadBytes(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		r := avro.NewReader(bytes.NewReader(tt.data), 10)
+	for _, test := range tests {
+		r := avro.NewReader(bytes.NewReader(test.data), 10)
 
 		got := r.ReadBytes()
 
-		if tt.wantErr {
+		if test.wantErr {
 			assert.Error(t, r.Error)
 			continue
 		}
 
-		assert.NoError(t, r.Error)
-		assert.Equal(t, tt.want, got)
+		require.NoError(t, r.Error)
+		assert.Equal(t, test.want, got)
 	}
 }
 
@@ -564,18 +596,18 @@ func TestReader_ReadString(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		r := avro.NewReader(bytes.NewReader(tt.data), 10)
+	for _, test := range tests {
+		r := avro.NewReader(bytes.NewReader(test.data), 10)
 
 		got := r.ReadString()
 
-		if tt.wantErr {
+		if test.wantErr {
 			assert.Error(t, r.Error)
 			continue
 		}
 
-		assert.NoError(t, r.Error)
-		assert.Equal(t, tt.want, got)
+		require.NoError(t, r.Error)
+		assert.Equal(t, test.want, got)
 	}
 }
 
@@ -586,7 +618,7 @@ func TestReader_ReadStringFastPathIsntBoundToBuffer(t *testing.T) {
 	got1 := r.ReadString()
 	got2 := r.ReadString()
 
-	assert.NoError(t, r.Error)
+	require.NoError(t, r.Error)
 	assert.Equal(t, "foo", got1)
 	assert.Equal(t, "avro", got2)
 }
@@ -609,14 +641,14 @@ func TestReader_ReadBlockHeader(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		r := avro.NewReader(bytes.NewReader(tt.data), 10)
+	for _, test := range tests {
+		r := avro.NewReader(bytes.NewReader(test.data), 10)
 
 		gotLen, gotSize := r.ReadBlockHeader()
 
-		assert.NoError(t, r.Error)
-		assert.Equal(t, tt.len, gotLen)
-		assert.Equal(t, tt.size, gotSize)
+		require.NoError(t, r.Error)
+		assert.Equal(t, test.len, gotLen)
+		assert.Equal(t, test.size, gotSize)
 	}
 }
 
