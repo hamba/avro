@@ -4,15 +4,39 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io/ioutil"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/mitchellh/mapstructure"
 )
 
 var (
 	protocolReserved = []string{"doc", "types", "messages", "protocol", "namespace"}
 	messageReserved  = []string{"doc", "response", "request", "errors", "one-way"}
 )
+
+type protocolConfig struct {
+	doc   string
+	props map[string]interface{}
+}
+
+// ProtocolOption is a function that sets a protocol option.
+type ProtocolOption func(*protocolConfig)
+
+// WithProtoDoc sets the doc on a protocol.
+func WithProtoDoc(doc string) ProtocolOption {
+	return func(opts *protocolConfig) {
+		opts.doc = doc
+	}
+}
+
+// WithProtoProps sets the properties on a protocol.
+func WithProtoProps(props map[string]interface{}) ProtocolOption {
+	return func(opts *protocolConfig) {
+		opts.props = props
+	}
+}
 
 // Protocol is an Avro protocol.
 type Protocol struct {
@@ -22,21 +46,29 @@ type Protocol struct {
 	types    []NamedSchema
 	messages map[string]*Message
 
+	doc string
+
 	hash string
 }
 
 // NewProtocol creates a protocol instance.
-func NewProtocol(name, space string, types []NamedSchema, messages map[string]*Message) (*Protocol, error) {
-	n, err := newName(name, space)
+func NewProtocol(name, namepsace string, types []NamedSchema, messages map[string]*Message, opts ...ProtocolOption) (*Protocol, error) {
+	var cfg protocolConfig
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
+	n, err := newName(name, namepsace, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	p := &Protocol{
 		name:       n,
-		properties: properties{reserved: protocolReserved},
+		properties: newProperties(cfg.props, protocolReserved),
 		types:      types,
 		messages:   messages,
+		doc:        cfg.doc,
 	}
 
 	b := md5.Sum([]byte(p.String()))
@@ -48,6 +80,11 @@ func NewProtocol(name, space string, types []NamedSchema, messages map[string]*M
 // Message returns a message with the given name or nil.
 func (p *Protocol) Message(name string) *Message {
 	return p.messages[name]
+}
+
+// Doc returns the protocol doc.
+func (p *Protocol) Doc() string {
+	return p.doc
 }
 
 // Hash returns the MD5 hash of the protocol.
@@ -86,16 +123,24 @@ type Message struct {
 	resp   Schema
 	errs   *UnionSchema
 	oneWay bool
+
+	doc string
 }
 
 // NewMessage creates a protocol message instance.
-func NewMessage(req *RecordSchema, resp Schema, errors *UnionSchema, oneWay bool) *Message {
+func NewMessage(req *RecordSchema, resp Schema, errors *UnionSchema, oneWay bool, opts ...ProtocolOption) *Message {
+	var cfg protocolConfig
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
 	return &Message{
-		properties: properties{reserved: messageReserved},
+		properties: newProperties(cfg.props, messageReserved),
 		req:        req,
 		resp:       resp,
 		errs:       errors,
 		oneWay:     oneWay,
+		doc:        cfg.doc,
 	}
 }
 
@@ -117,6 +162,11 @@ func (m *Message) Errors() *UnionSchema {
 // OneWay determines of the message is a one way message.
 func (m *Message) OneWay() bool {
 	return m.oneWay
+}
+
+// Doc returns the message doc.
+func (m *Message) Doc() string {
+	return m.doc
 }
 
 // String returns the canonical form of the message.
@@ -173,28 +223,46 @@ func ParseProtocol(protocol string) (*Protocol, error) {
 		return nil, err
 	}
 
-	name, err := resolveProtocolName(m)
-	if err != nil {
+	return parseProtocol(m, cache)
+}
+
+type protocol struct {
+	Protocol  string                            `mapstructure:"protocol"`
+	Namespace string                            `mapstructure:"namespace"`
+	Doc       string                            `mapstructure:"doc"`
+	Types     []interface{}                     `mapstructure:"types"`
+	Messages  map[string]map[string]interface{} `mapstructure:"messages"`
+	Props     map[string]interface{}            `mapstructure:",remain"`
+}
+
+func parseProtocol(m map[string]interface{}, cache *SchemaCache) (*Protocol, error) {
+	var (
+		p    protocol
+		meta mapstructure.Metadata
+	)
+	if err := decodeMap(m, &p, &meta); err != nil {
+		return nil, fmt.Errorf("avro: error decoding protocol: %w", err)
+	}
+
+	if err := checkParsedName(p.Protocol, p.Namespace, hasKey(meta.Keys, "namespace")); err != nil {
 		return nil, err
 	}
 
-	var types []NamedSchema
-	if ts, ok := m["types"].([]interface{}); ok {
-		types, err = parseProtocolTypes(name.space, ts, cache)
+	var (
+		types []NamedSchema
+		err   error
+	)
+	if len(p.Types) > 0 {
+		types, err = parseProtocolTypes(p.Namespace, p.Types, cache)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	messages := map[string]*Message{}
-	if msgs, ok := m["messages"].(map[string]interface{}); ok {
-		for k, msg := range msgs {
-			m, ok := msg.(map[string]interface{})
-			if !ok {
-				return nil, errors.New("avro: message must be an object")
-			}
-
-			message, err := parseMessage(name.space, m, cache)
+	if len(p.Messages) > 0 {
+		for k, msg := range p.Messages {
+			message, err := parseMessage(p.Namespace, msg, cache)
 			if err != nil {
 				return nil, err
 			}
@@ -203,13 +271,7 @@ func ParseProtocol(protocol string) (*Protocol, error) {
 		}
 	}
 
-	proto, _ := NewProtocol(name.name, name.space, types, messages)
-
-	for k, v := range m {
-		proto.AddProp(k, v)
-	}
-
-	return proto, nil
+	return NewProtocol(p.Protocol, p.Namespace, types, messages, WithProtoDoc(p.Doc), WithProtoProps(p.Props))
 }
 
 func parseProtocolTypes(namespace string, types []interface{}, cache *SchemaCache) ([]NamedSchema, error) {
@@ -231,30 +293,41 @@ func parseProtocolTypes(namespace string, types []interface{}, cache *SchemaCach
 	return ts, nil
 }
 
+type message struct {
+	Doc      string                   `mapstructure:"doc"`
+	Request  []map[string]interface{} `mapstructure:"request"`
+	Response interface{}              `mapstructure:"response"`
+	Errors   []interface{}            `mapstructure:"errors"`
+	OneWay   bool                     `mapstructure:"one-way"`
+	Props    map[string]interface{}   `mapstructure:",remain"`
+}
+
 func parseMessage(namespace string, m map[string]interface{}, cache *SchemaCache) (*Message, error) {
-	req, ok := m["request"].([]interface{})
-	if !ok {
-		return nil, errors.New("avro: request must have an array of fields")
+	var (
+		msg  message
+		meta mapstructure.Metadata
+	)
+	if err := decodeMap(m, &msg, &meta); err != nil {
+		return nil, fmt.Errorf("avro: error decoding message: %w", err)
 	}
 
-	fields := make([]*Field, len(req))
-	for i, f := range req {
+	fields := make([]*Field, len(msg.Request))
+	for i, f := range msg.Request {
 		field, err := parseField(namespace, f, cache)
 		if err != nil {
 			return nil, err
 		}
-
 		fields[i] = field
 	}
 	request := &RecordSchema{
 		name:       name{},
-		properties: properties{reserved: schemaReserved},
+		properties: properties{},
 		fields:     fields,
 	}
 
 	var response Schema
-	if res, ok := m["response"]; ok {
-		schema, err := parseType(namespace, res, cache)
+	if msg.Response != nil {
+		schema, err := parseType(namespace, msg.Response, cache)
 		if err != nil {
 			return nil, err
 		}
@@ -265,8 +338,8 @@ func parseMessage(namespace string, m map[string]interface{}, cache *SchemaCache
 	}
 
 	types := []Schema{NewPrimitiveSchema(String, nil)}
-	if errs, ok := m["errors"].([]interface{}); ok {
-		for _, e := range errs {
+	if len(msg.Errors) > 0 {
+		for _, e := range msg.Errors {
 			schema, err := parseType(namespace, e, cache)
 			if err != nil {
 				return nil, err
@@ -284,41 +357,13 @@ func parseMessage(namespace string, m map[string]interface{}, cache *SchemaCache
 		return nil, err
 	}
 
-	oneWay := false
-	if o, ok := m["one-way"].(bool); ok {
-		oneWay = o
-		if oneWay && (len(errs.Types()) > 1 || response != nil) {
-			return nil, errors.New("avro: one-way messages cannot not have a response or errors")
-		}
+	oneWay := msg.OneWay
+	if hasKey(meta.Keys, "one-way") && oneWay && (len(errs.Types()) > 1 || response != nil) {
+		return nil, errors.New("avro: one-way messages cannot not have a response or errors")
 	}
-
 	if !oneWay && len(errs.Types()) <= 1 && response == nil {
 		oneWay = true
 	}
 
-	msg := NewMessage(request, response, errs, oneWay)
-
-	for k, v := range m {
-		msg.AddProp(k, v)
-	}
-
-	return msg, nil
-}
-
-func resolveProtocolName(m map[string]interface{}) (name, error) {
-	proto, ok := m["protocol"].(string)
-	if !ok {
-		return name{}, errors.New("avro: protocol key required")
-	}
-
-	space := ""
-	if namespace, ok := m["namespace"].(string); ok {
-		if namespace == "" {
-			return name{}, errors.New("avro: namespace key must be non-empty or omitted")
-		}
-
-		space = namespace
-	}
-
-	return newName(proto, space)
+	return NewMessage(request, response, errs, oneWay, WithProtoDoc(msg.Doc), WithProtoProps(msg.Props)), nil
 }
