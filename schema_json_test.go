@@ -145,15 +145,15 @@ func TestSchema_JSON(t *testing.T) {
 		},
 		{
 			input: `{"fields":[], "type":"record", "name":"foo", "doc":"Useful info"}`,
-			json:  `{"name":"foo","type":"record","fields":[]}`,
+			json:  `{"name":"foo","doc":"Useful info","type":"record","fields":[]}`,
 		},
 		{
 			input: `{"fields":[], "type":"record", "name":"foo", "aliases":["foo","bar"]}`,
-			json:  `{"name":"foo","type":"record","fields":[]}`,
+			json:  `{"name":"foo","aliases":["foo","bar"],"type":"record","fields":[]}`,
 		},
 		{
 			input: `{"fields":[], "type":"record", "name":"foo", "doc":"foo", "aliases":["foo","bar"]}`,
-			json:  `{"name":"foo","type":"record","fields":[]}`,
+			json:  `{"name":"foo","aliases":["foo","bar"],"doc":"foo","type":"record","fields":[]}`,
 		},
 		{
 			input: `{"fields":[{"type":{"type":"boolean"}, "name":"f1"}], "type":"record", "name":"foo"}`,
@@ -161,11 +161,11 @@ func TestSchema_JSON(t *testing.T) {
 		},
 		{
 			input: `
-{ "fields":[{"type":"boolean", "aliases":[], "name":"f1", "default":true},
+{ "fields":[{"type":"boolean", "aliases":["foo"], "name":"f1", "default":true},
            {"order":"descending","name":"f2","doc":"Hello","type":"int"}],
  "type":"record", "name":"foo"
 }`,
-			json: `{"name":"foo","type":"record","fields":[{"name":"f1","type":"boolean","default":true},{"name":"f2","type":"int"}]}`,
+			json: `{"name":"foo","type":"record","fields":[{"name":"f1","aliases":["foo"],"type":"boolean","default":true},{"name":"f2","doc":"Hello","type":"int","order":"descending"}]}`,
 		},
 		{
 			input: `{"type":"enum", "name":"foo", "symbols":["A1"]}`,
@@ -173,7 +173,7 @@ func TestSchema_JSON(t *testing.T) {
 		},
 		{
 			input: `{"namespace":"x.y.z", "type":"enum", "name":"foo", "doc":"foo bar", "symbols":["A1", "A2"]}`,
-			json:  `{"name":"x.y.z.foo","type":"enum","symbols":["A1","A2"]}`,
+			json:  `{"name":"x.y.z.foo","doc":"foo bar","type":"enum","symbols":["A1","A2"]}`,
 		},
 		{
 			input: `{"name":"foo","type":"fixed","size":15}`,
@@ -192,7 +192,7 @@ func TestSchema_JSON(t *testing.T) {
 			json:  `{"name":"foo","type":"fixed","size":12,"logicalType":"decimal","precision":4}`,
 		},
 		{
-			input: `{"namespace":"x.y.z", "type":"fixed", "name":"foo", "doc":"foo bar", "size":32}`,
+			input: `{"namespace":"x.y.z", "type":"fixed", "name":"foo", "size":32}`,
 			json:  `{"name":"x.y.z.foo","type":"fixed","size":32}`,
 		},
 		{
