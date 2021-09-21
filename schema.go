@@ -17,6 +17,14 @@ import (
 
 var nullDefault = struct{}{}
 
+var (
+	schemaReserved = []string{
+		"doc", "fields", "items", "name", "namespace", "size", "symbols",
+		"values", "type", "aliases", "logicalType", "precision", "scale",
+	}
+	fieldReserved = []string{"default", "doc", "name", "order", "type", "aliases"}
+)
+
 // Type is a schema type.
 type Type string
 
@@ -38,6 +46,16 @@ const (
 	Double  Type = "double"
 	Boolean Type = "boolean"
 	Null    Type = "null"
+)
+
+// Order is a field order.
+type Order string
+
+// Field orders.
+const (
+	Asc    Order = "ascending"
+	Desc   Order = "descending"
+	Ignore Order = "ignore"
 )
 
 // LogicalType is a schema logical type.
@@ -130,11 +148,6 @@ type LogicalSchema interface {
 
 // PropertySchema represents a schema with properties.
 type PropertySchema interface {
-	// AddProp adds a property to the schema.
-	//
-	// AddProp will not overwrite existing properties.
-	AddProp(name string, value interface{})
-
 	// Prop gets a property from the schema.
 	Prop(string) interface{}
 }
@@ -161,32 +174,56 @@ type LogicalTypeSchema interface {
 }
 
 type name struct {
-	name  string
-	space string
-	full  string
+	name      string
+	namespace string
+	full      string
+	aliases   []string
 }
 
-func newName(n, s string) (name, error) {
+func newName(n, ns string, aliases []string) (name, error) {
 	if idx := strings.LastIndexByte(n, '.'); idx > -1 {
-		s = n[:idx]
+		ns = n[:idx]
 		n = n[idx+1:]
 	}
 
 	full := n
-	if s != "" {
-		full = s + "." + n
+	if ns != "" {
+		full = ns + "." + n
 	}
 
 	for _, part := range strings.Split(full, ".") {
 		if err := validateName(part); err != nil {
-			return name{}, err
+			return name{}, fmt.Errorf("avro: invalid name part %q in name %q: %w", full, part, err)
 		}
 	}
 
+	a := make([]string, 0, len(aliases))
+	for _, alias := range aliases {
+		if !strings.Contains(alias, ".") {
+			if err := validateName(alias); err != nil {
+				return name{}, fmt.Errorf("avro: invalid name %q: %w", alias, err)
+			}
+			if ns == "" {
+				a = append(a, alias)
+				continue
+			}
+			a = append(a, ns+"."+alias)
+			continue
+		}
+
+		for _, part := range strings.Split(alias, ".") {
+			if err := validateName(part); err != nil {
+				return name{}, fmt.Errorf("avro: invalid name part %q in name %q: %w", full, part, err)
+			}
+		}
+		a = append(a, alias)
+	}
+
 	return name{
-		name:  n,
-		space: s,
-		full:  full,
+		name:      n,
+		namespace: ns,
+		full:      full,
+		aliases:   a,
 	}, nil
 }
 
@@ -197,12 +234,17 @@ func (n name) Name() string {
 
 // Namespace returns the namespace of a schema.
 func (n name) Namespace() string {
-	return n.space
+	return n.namespace
 }
 
-// FullName returns the full qualified name of a schema.
+// FullName returns the fully qualified name of a schema.
 func (n name) FullName() string {
 	return n.full
+}
+
+// Aliases returns the fully qualified aliases of a schema.
+func (n name) Aliases() []string {
+	return n.aliases
 }
 
 type fingerprinter struct {
@@ -240,41 +282,82 @@ func (f *fingerprinter) FingerprintUsing(typ FingerprintType, stringer fmt.Strin
 }
 
 type properties struct {
-	reserved []string
-	props    map[string]interface{}
+	props map[string]interface{}
 }
 
-// AddProp adds a property to the schema.
-//
-// AddProp will not overwrite existing properties.
-func (p *properties) AddProp(name string, value interface{}) {
-	// Create the props is needed.
-	if p.props == nil {
-		p.props = map[string]interface{}{}
+func newProperties(props map[string]interface{}, res []string) properties {
+	p := properties{props: map[string]interface{}{}}
+	for k, v := range props {
+		if isReserved(res, k) {
+			continue
+		}
+		p.props[k] = v
 	}
+	return p
+}
 
-	// Dont allow reserved properties
-	for _, res := range p.reserved {
-		if name == res {
-			return
+func isReserved(res []string, k string) bool {
+	for _, r := range res {
+		if k == r {
+			return true
 		}
 	}
-
-	// Dont overwrite a property
-	if _, ok := p.props[name]; ok {
-		return
-	}
-
-	p.props[name] = value
+	return false
 }
 
 // Prop gets a property from the schema.
-func (p *properties) Prop(name string) interface{} {
+func (p properties) Prop(name string) interface{} {
 	if p.props == nil {
 		return nil
 	}
 
 	return p.props[name]
+}
+
+type schemaConfig struct {
+	aliases []string
+	doc     string
+	def     interface{}
+	order   Order
+	props   map[string]interface{}
+}
+
+// SchemaOption is a function that sets a schema option.
+type SchemaOption func(*schemaConfig)
+
+// WithAliases sets the aliases on a schema.
+func WithAliases(aliases []string) SchemaOption {
+	return func(opts *schemaConfig) {
+		opts.aliases = aliases
+	}
+}
+
+// WithDoc sets the doc on a schema.
+func WithDoc(doc string) SchemaOption {
+	return func(opts *schemaConfig) {
+		opts.doc = doc
+	}
+}
+
+// WithDefault sets the default on a schema.
+func WithDefault(def interface{}) SchemaOption {
+	return func(opts *schemaConfig) {
+		opts.def = def
+	}
+}
+
+// WithOrder sets the order on a schema.
+func WithOrder(order Order) SchemaOption {
+	return func(opts *schemaConfig) {
+		opts.order = order
+	}
+}
+
+// WithProps sets the properties on a schema.
+func WithProps(props map[string]interface{}) SchemaOption {
+	return func(opts *schemaConfig) {
+		opts.props = props
+	}
 }
 
 // PrimitiveSchema is an Avro primitive type schema.
@@ -335,35 +418,40 @@ type RecordSchema struct {
 
 	isError bool
 	fields  []*Field
+
+	doc string
 }
 
 // NewRecordSchema creates a new record schema instance.
-func NewRecordSchema(name, space string, fields []*Field) (*RecordSchema, error) {
-	n, err := newName(name, space)
+func NewRecordSchema(name, namespace string, fields []*Field, opts ...SchemaOption) (*RecordSchema, error) {
+	var cfg schemaConfig
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
+	n, err := newName(name, namespace, cfg.aliases)
 	if err != nil {
 		return nil, err
 	}
 
 	return &RecordSchema{
 		name:       n,
-		properties: properties{reserved: schemaReserved},
+		properties: newProperties(cfg.props, schemaReserved),
 		fields:     fields,
+		doc:        cfg.doc,
 	}, nil
 }
 
 // NewErrorRecordSchema creates a new error record schema instance.
-func NewErrorRecordSchema(name, space string, fields []*Field) (*RecordSchema, error) {
-	n, err := newName(name, space)
+func NewErrorRecordSchema(name, namespace string, fields []*Field, opts ...SchemaOption) (*RecordSchema, error) {
+	rec, err := NewRecordSchema(name, namespace, fields, opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	return &RecordSchema{
-		name:       n,
-		properties: properties{reserved: schemaReserved},
-		isError:    true,
-		fields:     fields,
-	}, nil
+	rec.isError = true
+
+	return rec, nil
 }
 
 // Type returns the type of the schema.
@@ -379,6 +467,11 @@ func (s *RecordSchema) IsError() bool {
 // Fields returns the fields of a record.
 func (s *RecordSchema) Fields() []*Field {
 	return s.fields
+}
+
+// Doc returns the record doc.
+func (s *RecordSchema) Doc() string {
+	return s.doc
 }
 
 // String returns the canonical form of the schema.
@@ -407,13 +500,17 @@ func (s *RecordSchema) MarshalJSON() ([]byte, error) {
 	}
 
 	ss := struct {
-		Name   string   `json:"name"`
-		Type   string   `json:"type"`
-		Fields []*Field `json:"fields"`
+		Name    string   `json:"name"`
+		Aliases []string `json:"aliases,omitempty"`
+		Doc     string   `json:"doc,omitempty"`
+		Type    string   `json:"type"`
+		Fields  []*Field `json:"fields"`
 	}{
-		Name:   s.FullName(),
-		Type:   typ,
-		Fields: s.fields,
+		Name:    s.full,
+		Aliases: s.aliases,
+		Doc:     s.doc,
+		Type:    typ,
+		Fields:  s.fields,
 	}
 
 	return jsoniter.Marshal(ss)
@@ -433,10 +530,13 @@ func (s *RecordSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
 type Field struct {
 	properties
 
-	name   string
-	typ    Schema
-	hasDef bool
-	def    interface{}
+	name    string
+	aliases []string
+	doc     string
+	typ     Schema
+	hasDef  bool
+	def     interface{}
+	order   Order
 }
 
 type noDef struct{}
@@ -445,19 +545,40 @@ type noDef struct{}
 var NoDefault = noDef{}
 
 // NewField creates a new field instance.
-func NewField(name string, typ Schema, def interface{}) (*Field, error) {
+func NewField(name string, typ Schema, opts ...SchemaOption) (*Field, error) {
+	var cfg schemaConfig
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
 	if err := validateName(name); err != nil {
 		return nil, err
 	}
-
-	f := &Field{
-		properties: properties{reserved: fieldReserved},
-		name:       name,
-		typ:        typ,
+	for _, a := range cfg.aliases {
+		if err := validateName(a); err != nil {
+			return nil, err
+		}
 	}
 
-	if def != NoDefault {
-		def, err := validateDefault(name, typ, def)
+	switch cfg.order {
+	case "":
+		cfg.order = Asc
+	case Asc, Desc, Ignore:
+	default:
+		return nil, fmt.Errorf("avro: field %q order %q is invalid", name, cfg.order)
+	}
+
+	f := &Field{
+		properties: newProperties(cfg.props, fieldReserved),
+		name:       name,
+		aliases:    cfg.aliases,
+		doc:        cfg.doc,
+		typ:        typ,
+		order:      cfg.order,
+	}
+
+	if cfg.def != NoDefault {
+		def, err := validateDefault(name, typ, cfg.def)
 		if err != nil {
 			return nil, err
 		}
@@ -473,9 +594,19 @@ func (f *Field) Name() string {
 	return f.name
 }
 
+// Aliases return the field aliases.
+func (f *Field) Aliases() []string {
+	return f.aliases
+}
+
 // Type returns the schema of a field.
 func (f *Field) Type() Schema {
 	return f.typ
+}
+
+// Doc returns the field doc.
+func (f *Field) Doc() string {
+	return f.doc
 }
 
 // HasDefault determines if the field has a default value.
@@ -494,6 +625,11 @@ func (f *Field) Default() interface{} {
 	return f.def
 }
 
+// Order returns the field order.
+func (f *Field) Order() Order {
+	return f.order
+}
+
 // String returns the canonical form of a field.
 func (f *Field) String() string {
 	return `{"name":"` + f.name + `","type":` + f.typ.String() + `}`
@@ -503,14 +639,22 @@ func (f *Field) String() string {
 func (f *Field) MarshalJSON() ([]byte, error) {
 	s := struct {
 		Name    string      `json:"name"`
+		Aliases []string    `json:"aliases,omitempty"`
+		Doc     string      `json:"doc,omitempty"`
 		Type    Schema      `json:"type"`
 		Default interface{} `json:"default,omitempty"`
+		Order   string      `json:"order,omitempty"`
 	}{
-		Name: f.name,
-		Type: f.typ,
+		Name:    f.name,
+		Aliases: f.aliases,
+		Doc:     f.doc,
+		Type:    f.typ,
 	}
 	if f.hasDef {
 		s.Default = f.def
+	}
+	if f.order != Asc {
+		s.Order = string(f.order)
 	}
 	return jsoniter.Marshal(s)
 }
@@ -523,11 +667,18 @@ type EnumSchema struct {
 
 	symbols []string
 	def     string
+
+	doc string
 }
 
 // NewEnumSchema creates a new enum schema instance.
-func NewEnumSchema(name, namespace string, symbols []string) (*EnumSchema, error) {
-	n, err := newName(name, namespace)
+func NewEnumSchema(name, namespace string, symbols []string, opts ...SchemaOption) (*EnumSchema, error) {
+	var cfg schemaConfig
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
+	n, err := newName(name, namespace, cfg.aliases)
 	if err != nil {
 		return nil, err
 	}
@@ -535,17 +686,36 @@ func NewEnumSchema(name, namespace string, symbols []string) (*EnumSchema, error
 	if len(symbols) == 0 {
 		return nil, errors.New("avro: enum must have a non-empty array of symbols")
 	}
-	for _, symbol := range symbols {
-		if err = validateName(symbol); err != nil {
-			return nil, fmt.Errorf("avro: invalid symnol %s", symbol)
+	for _, sym := range symbols {
+		if err = validateName(sym); err != nil {
+			return nil, fmt.Errorf("avro: invalid symnol %q", sym)
 		}
+	}
+
+	var def string
+	if d, ok := cfg.def.(string); ok && d != "" {
+		if !hasSymbol(symbols, d) {
+			return nil, fmt.Errorf("avro: symbol default %q must be a symbol", d)
+		}
+		def = d
 	}
 
 	return &EnumSchema{
 		name:       n,
-		properties: properties{reserved: schemaReserved},
+		properties: newProperties(cfg.props, schemaReserved),
 		symbols:    symbols,
+		def:        def,
+		doc:        cfg.doc,
 	}, nil
+}
+
+func hasSymbol(symbols []string, sym string) bool {
+	for _, s := range symbols {
+		if s == sym {
+			return true
+		}
+	}
+	return false
 }
 
 // Type returns the type of the schema.
@@ -553,9 +723,19 @@ func (s *EnumSchema) Type() Type {
 	return Enum
 }
 
+// Doc returns the schema doc.
+func (s *EnumSchema) Doc() string {
+	return s.doc
+}
+
 // Symbols returns the symbols of an enum.
 func (s *EnumSchema) Symbols() []string {
 	return s.symbols
+}
+
+// Default returns the default of an enum or an empty string.
+func (s *EnumSchema) Default() string {
+	return s.def
 }
 
 // String returns the canonical form of the schema.
@@ -575,11 +755,15 @@ func (s *EnumSchema) String() string {
 func (s *EnumSchema) MarshalJSON() ([]byte, error) {
 	ss := struct {
 		Name    string   `json:"name"`
+		Aliases []string `json:"aliases,omitempty"`
+		Doc     string   `json:"doc,omitempty"`
 		Type    string   `json:"type"`
 		Symbols []string `json:"symbols"`
 		Default string   `json:"default,omitempty"`
 	}{
-		Name:    s.FullName(),
+		Name:    s.full,
+		Aliases: s.aliases,
+		Doc:     s.doc,
 		Type:    "enum",
 		Symbols: s.symbols,
 		Default: s.def,
@@ -606,9 +790,14 @@ type ArraySchema struct {
 }
 
 // NewArraySchema creates an array schema instance.
-func NewArraySchema(items Schema) *ArraySchema {
+func NewArraySchema(items Schema, opts ...SchemaOption) *ArraySchema {
+	var cfg schemaConfig
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
 	return &ArraySchema{
-		properties: properties{reserved: schemaReserved},
+		properties: newProperties(cfg.props, schemaReserved),
 		items:      items,
 	}
 }
@@ -659,9 +848,14 @@ type MapSchema struct {
 }
 
 // NewMapSchema creates a map schema instance.
-func NewMapSchema(values Schema) *MapSchema {
+func NewMapSchema(values Schema, opts ...SchemaOption) *MapSchema {
+	var cfg schemaConfig
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
 	return &MapSchema{
-		properties: properties{reserved: schemaReserved},
+		properties: newProperties(cfg.props, schemaReserved),
 		values:     values,
 	}
 }
@@ -727,7 +921,7 @@ func NewUnionSchema(types []Schema) (*UnionSchema, error) {
 	}
 
 	return &UnionSchema{
-		types: Schemas(types),
+		types: types,
 	}, nil
 }
 
@@ -802,15 +996,25 @@ type FixedSchema struct {
 }
 
 // NewFixedSchema creates a new fixed schema instance.
-func NewFixedSchema(name, namespace string, size int, logical LogicalSchema) (*FixedSchema, error) {
-	n, err := newName(name, namespace)
+func NewFixedSchema(
+	name, namespace string,
+	size int,
+	logical LogicalSchema,
+	opts ...SchemaOption,
+) (*FixedSchema, error) {
+	var cfg schemaConfig
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
+	n, err := newName(name, namespace, cfg.aliases)
 	if err != nil {
 		return nil, err
 	}
 
 	return &FixedSchema{
 		name:       n,
-		properties: properties{reserved: schemaReserved},
+		properties: newProperties(cfg.props, schemaReserved),
 		size:       size,
 		logical:    logical,
 	}, nil
@@ -845,7 +1049,28 @@ func (s *FixedSchema) String() string {
 
 // MarshalJSON marshals the schema to json.
 func (s *FixedSchema) MarshalJSON() ([]byte, error) {
-	return []byte(s.String()), nil
+	ss := struct {
+		Name    string   `json:"name"`
+		Aliases []string `json:"aliases,omitempty"`
+		Type    string   `json:"type"`
+		Size    int      `json:"size"`
+	}{
+		Name:    s.full,
+		Aliases: s.aliases,
+		Type:    "fixed",
+		Size:    s.size,
+	}
+	json, err := jsoniter.MarshalToString(ss)
+	if err != nil {
+		return nil, err
+	}
+
+	var logical string
+	if s.logical != nil {
+		logical = "," + s.logical.String()
+	}
+
+	return []byte(json[:len(json)-1] + logical + "}"), nil
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
@@ -1001,15 +1226,15 @@ func invalidNameOtherChar(r rune) bool {
 }
 
 func validateName(name string) error {
-	if len(name) == 0 {
-		return errors.New("avro: name must be a non-empty")
+	if name == "" {
+		return errors.New("name must be a non-empty")
 	}
 
 	if strings.IndexFunc(name[:1], invalidNameFirstChar) > -1 {
-		return fmt.Errorf("avro: invalid name %s", name)
+		return fmt.Errorf("invalid name %s", name)
 	}
 	if strings.IndexFunc(name[1:], invalidNameOtherChar) > -1 {
-		return fmt.Errorf("avro: invalid name %s", name)
+		return fmt.Errorf("invalid name %s", name)
 	}
 
 	return nil

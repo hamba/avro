@@ -5,6 +5,7 @@ import (
 
 	"github.com/hamba/avro"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParse_InvalidType(t *testing.T) {
@@ -35,7 +36,7 @@ func TestMustParse_PanicsOnError(t *testing.T) {
 func TestParseFiles(t *testing.T) {
 	s, err := avro.ParseFiles("testdata/schema.avsc")
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, avro.String, s.Type())
 }
 
@@ -60,7 +61,7 @@ func TestNullSchema(t *testing.T) {
 	for _, schm := range schemas {
 		schema, err := avro.Parse(schm)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, avro.Null, schema.Type())
 		want := [32]byte{0xf0, 0x72, 0xcb, 0xec, 0x3b, 0xf8, 0x84, 0x18, 0x71, 0xd4, 0x28, 0x42, 0x30, 0xc5, 0xe9, 0x83, 0xdc, 0x21, 0x1a, 0x56, 0x83, 0x7a, 0xed, 0x86, 0x24, 0x87, 0x14, 0x8f, 0x94, 0x7d, 0x1a, 0x1f}
 		assert.Equal(t, want, schema.Fingerprint())
@@ -145,13 +146,14 @@ func TestPrimitiveSchema(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.schema, func(t *testing.T) {
-			s, err := avro.Parse(tt.schema)
+	for _, test := range tests {
+		test := test
+		t.Run(test.schema, func(t *testing.T) {
+			s, err := avro.Parse(test.schema)
 
-			assert.NoError(t, err)
-			assert.Equal(t, tt.want, s.Type())
-			assert.Equal(t, tt.wantFingerprint, s.Fingerprint())
+			require.NoError(t, err)
+			assert.Equal(t, test.want, s.Type())
+			assert.Equal(t, test.wantFingerprint, s.Fingerprint())
 		})
 	}
 }
@@ -218,6 +220,11 @@ func TestRecordSchema(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name:    "Invalid Alias",
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "field", "aliases": ["test+"], "type": "int"}]}`,
+			wantErr: true,
+		},
+		{
 			name:    "No Field Type",
 			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "field"}]}`,
 			wantErr: true,
@@ -229,16 +236,17 @@ func TestRecordSchema(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s, err := avro.Parse(tt.schema)
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			s, err := avro.Parse(test.schema)
 
-			if tt.wantErr {
+			if test.wantErr {
 				assert.Error(t, err)
 				return
 			}
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, avro.Record, s.Type())
 		})
 	}
@@ -287,17 +295,18 @@ func TestErrorRecordSchema(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
 
-			s, err := avro.Parse(tt.schema)
+			s, err := avro.Parse(test.schema)
 
-			if tt.wantErr {
+			if test.wantErr {
 				assert.Error(t, err)
 				return
 			}
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, avro.Record, s.Type())
 			recSchema := s.(*avro.RecordSchema)
 			assert.True(t, recSchema.IsError())
@@ -309,110 +318,159 @@ func TestRecordSchema_ValidatesDefault(t *testing.T) {
 	tests := []struct {
 		name    string
 		schema  string
-		wantErr bool
+		wantErr assert.ErrorAssertionFunc
 	}{
 		{
 			name:    "String",
 			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "string", "default": "test"}]}`,
-			wantErr: false,
+			wantErr: assert.NoError,
 		},
 		{
 			name:    "Int",
 			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "int", "default": 1}]}`,
-			wantErr: false,
+			wantErr: assert.NoError,
 		},
 		{
 			name:    "Long",
 			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "long", "default": 1}]}`,
-			wantErr: false,
+			wantErr: assert.NoError,
 		},
 		{
 			name:    "Float",
 			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "float", "default": 1}]}`,
-			wantErr: false,
+			wantErr: assert.NoError,
 		},
 		{
 			name:    "Double",
 			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "double", "default": 1}]}`,
-			wantErr: false,
+			wantErr: assert.NoError,
 		},
 		{
 			name:    "Array",
 			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": {"type":"array", "items": "int"}, "default": [1,2]}]}`,
-			wantErr: false,
+			wantErr: assert.NoError,
 		},
 		{
 			name:    "Array Not Array",
 			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": {"type":"array", "items": "int"}, "default": "test"}]}`,
-			wantErr: true,
+			wantErr: assert.Error,
 		},
 		{
 			name:    "Array Invalid Type",
 			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": {"type":"array", "items": "int"}, "default": ["test"]}]}`,
-			wantErr: true,
+			wantErr: assert.Error,
 		},
 		{
 			name:    "Map",
 			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": {"type":"map", "values": "int"}, "default": {"b": 1}}]}`,
-			wantErr: false,
+			wantErr: assert.NoError,
 		},
 		{
 			name:    "Map Not Map",
 			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": {"type":"map", "values": "int"}, "default": "test"}]}`,
-			wantErr: true,
+			wantErr: assert.Error,
 		},
 		{
 			name:    "Map Invalid Type",
 			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": {"type":"map", "values": "int"}, "default": {"b": "test"}}]}`,
-			wantErr: true,
+			wantErr: assert.Error,
 		},
 		{
 			name:    "Union",
 			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": ["string", "null"]}]}`,
-			wantErr: false,
+			wantErr: assert.NoError,
 		},
 		{
 			name:    "Union Default",
 			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": ["null", "string"], "default": null}]}`,
-			wantErr: false,
+			wantErr: assert.NoError,
 		},
 		{
 			name:    "Union Invalid Type",
 			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": ["null", "string"], "default": "string"}]}`,
-			wantErr: true,
+			wantErr: assert.Error,
 		},
 		{
 			name:    "Record",
 			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": {"type":"record", "name": "test2", "fields":[{"name": "b", "type": "int"},{"name": "c", "type": "int", "default": 1}]}, "default": {"b": 1}}]}`,
-			wantErr: false,
+			wantErr: assert.NoError,
 		},
 		{
 			name:    "Record Not Map",
 			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": {"type":"record", "name": "test2", "fields":[{"name": "b", "type": "int"},{"name": "c", "type": "int", "default": 1}]}, "default": "test"}]}`,
-			wantErr: true,
+			wantErr: assert.Error,
 		},
 		{
 			name:    "Record Invalid Type",
 			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": {"type":"record", "name": "test2", "fields":[{"name": "b", "type": "int"},{"name": "c", "type": "int", "default": 1}]}, "default": {"b": "test"}}]}`,
-			wantErr: true,
+			wantErr: assert.Error,
 		},
 		{
 			name:    "Record Invalid Field Type",
 			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": {"type":"record", "name": "test2", "fields":[{"name": "b", "type": "int"},{"name": "c", "type": "int", "default": "test"}]}, "default": {"b": 1}}]}`,
-			wantErr: true,
+			wantErr: assert.Error,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := avro.Parse(tt.schema)
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			_, err := avro.Parse(test.schema)
 
-			if tt.wantErr {
-				assert.Error(t, err)
-				return
+			test.wantErr(t, err)
+		})
+	}
+}
+
+func TestRecordSchema_ValidatesOrder(t *testing.T) {
+	tests := []struct {
+		name    string
+		schema  string
+		want    avro.Order
+		wantErr assert.ErrorAssertionFunc
+	}{
+		{
+			name:    "empty",
+			schema:  `{"type":"record", "name":"test", "fields":[{"name": "a", "type": "string"}]}`,
+			want:    avro.Asc,
+			wantErr: assert.NoError,
+		},
+		{
+			name:    "asc",
+			schema:  `{"type":"record", "name":"test", "fields":[{"name": "a", "type": "string", "order": "ascending"}]}`,
+			want:    avro.Asc,
+			wantErr: assert.NoError,
+		},
+		{
+			name:    "desc",
+			schema:  `{"type":"record", "name":"test", "fields":[{"name": "a", "type": "string", "order": "descending"}]}`,
+			want:    avro.Desc,
+			wantErr: assert.NoError,
+		},
+		{
+			name:    "ignore",
+			schema:  `{"type":"record", "name":"test", "fields":[{"name": "a", "type": "string", "order": "ignore"}]}`,
+			want:    avro.Ignore,
+			wantErr: assert.NoError,
+		},
+		{
+			name:    "invalid",
+			schema:  `{"type":"record", "name":"test", "fields":[{"name": "a", "type": "string", "order": "blah"}]}`,
+			wantErr: assert.Error,
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			s, err := avro.Parse(test.schema)
+
+			test.wantErr(t, err)
+			if s != nil {
+				rs := s.(*avro.RecordSchema)
+				require.Len(t, rs.Fields(), 1)
+				assert.Equal(t, test.want, rs.Fields()[0].Order())
 			}
-
-			assert.NoError(t, err)
 		})
 	}
 }
@@ -423,19 +481,24 @@ func TestRecordSchema_HandlesProps(t *testing.T) {
    "type": "record",
    "name": "valid_name",
    "namespace": "org.hamba.avro",
+   "doc": "foo",
    "foo": "bar1",
    "fields": [
-       {"name": "intField", "type": "int", "foo": "bar2"}
+       {"name": "intField", "doc": "bar", "type": "int", "foo": "bar2"}
    ]
 }
 `
 
 	s, err := avro.Parse(schm)
+	require.NoError(t, err)
 
-	assert.NoError(t, err)
+	rs := s.(*avro.RecordSchema)
 	assert.Equal(t, avro.Record, s.Type())
-	assert.Equal(t, "bar1", s.(*avro.RecordSchema).Prop("foo"))
-	assert.Equal(t, "bar2", s.(*avro.RecordSchema).Fields()[0].Prop("foo"))
+	assert.Equal(t, "foo", rs.Doc())
+	assert.Equal(t, "bar1", rs.Prop("foo"))
+	require.Len(t, rs.Fields(), 1)
+	assert.Equal(t, "bar", rs.Fields()[0].Doc())
+	assert.Equal(t, "bar2", rs.Fields()[0].Prop("foo"))
 }
 
 func TestRecordSchema_WithReference(t *testing.T) {
@@ -453,7 +516,29 @@ func TestRecordSchema_WithReference(t *testing.T) {
 
 	s, err := avro.Parse(schm)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
+	assert.Equal(t, avro.Record, s.Type())
+	assert.Equal(t, avro.Ref, s.(*avro.RecordSchema).Fields()[1].Type().Type())
+	assert.Equal(t, s.Fingerprint(), s.(*avro.RecordSchema).Fields()[1].Type().Fingerprint())
+}
+
+func TestRecordSchema_WithAliasReference(t *testing.T) {
+	schm := `
+{
+   "type": "record",
+   "name": "valid_name",
+   "namespace": "org.hamba.avro",
+   "aliases": ["valid_alias"],
+   "fields": [
+       {"name": "intField", "type": "int"},
+       {"name": "ref", "type": "valid_alias"}
+   ]
+}
+`
+
+	s, err := avro.Parse(schm)
+
+	require.NoError(t, err)
 	assert.Equal(t, avro.Record, s.Type())
 	assert.Equal(t, avro.Ref, s.(*avro.RecordSchema).Fields()[1].Type().Type())
 	assert.Equal(t, s.Fingerprint(), s.(*avro.RecordSchema).Fields()[1].Type().Fingerprint())
@@ -461,16 +546,24 @@ func TestRecordSchema_WithReference(t *testing.T) {
 
 func TestEnumSchema(t *testing.T) {
 	tests := []struct {
-		name     string
-		schema   string
-		wantName string
-		wantErr  bool
+		name        string
+		schema      string
+		wantName    string
+		wantDefault string
+		wantErr     bool
 	}{
 		{
 			name:     "Valid",
 			schema:   `{"type":"enum", "name":"test", "namespace": "org.hamba.avro", "symbols":["TEST"]}`,
 			wantName: "org.hamba.avro.test",
 			wantErr:  false,
+		},
+		{
+			name:        "Valid With Default",
+			schema:      `{"type":"enum", "name":"test", "namespace": "org.hamba.avro", "symbols":["TEST"], "default": "TEST"}`,
+			wantName:    "org.hamba.avro.test",
+			wantDefault: "TEST",
+			wantErr:     false,
 		},
 		{
 			name:    "Invalid Name",
@@ -517,33 +610,42 @@ func TestEnumSchema(t *testing.T) {
 			schema:  `{"type":"enum", "name":"test", "namespace": "org.hamba.avro", "symbols":[1]}`,
 			wantErr: true,
 		},
+		{
+			name:    "Invalid Default",
+			schema:  `{"type":"enum", "name":"test", "namespace": "org.hamba.avro", "symbols":["TEST"], "default": "foo"}`,
+			wantErr: true,
+		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			schema, err := avro.Parse(tt.schema)
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			schema, err := avro.Parse(test.schema)
 
-			if tt.wantErr {
+			if test.wantErr {
 				assert.Error(t, err)
 				return
 			}
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, avro.Enum, schema.Type())
-			named := schema.(avro.NamedSchema)
-			assert.Equal(t, tt.wantName, named.FullName())
+			named := schema.(*avro.EnumSchema)
+			assert.Equal(t, test.wantName, named.FullName())
+			assert.Equal(t, test.wantDefault, named.Default())
 		})
 	}
 }
 
 func TestEnumSchema_HandlesProps(t *testing.T) {
-	schm := `{"type":"enum", "name":"test", "namespace": "org.hamba.avro", "symbols":["TEST"], "foo":"bar"}`
+	schm := `{"type":"enum", "name":"test", "namespace": "org.hamba.avro", "doc": "hello", "symbols":["TEST"], "foo":"bar"}`
 
 	s, err := avro.Parse(schm)
+	require.NoError(t, err)
 
-	assert.NoError(t, err)
+	es := s.(*avro.EnumSchema)
 	assert.Equal(t, avro.Enum, s.Type())
-	assert.Equal(t, "bar", s.(*avro.EnumSchema).Prop("foo"))
+	assert.Equal(t, "hello", es.Doc())
+	assert.Equal(t, "bar", es.Prop("foo"))
 }
 
 func TestArraySchema(t *testing.T) {
@@ -569,16 +671,17 @@ func TestArraySchema(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s, err := avro.Parse(tt.schema)
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			s, err := avro.Parse(test.schema)
 
-			if tt.wantErr {
+			if test.wantErr {
 				assert.Error(t, err)
 				return
 			}
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, avro.Array, s.Type())
 		})
 	}
@@ -589,7 +692,7 @@ func TestArraySchema_HandlesProps(t *testing.T) {
 
 	s, err := avro.Parse(schm)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, avro.Array, s.Type())
 	assert.Equal(t, "bar", s.(*avro.ArraySchema).Prop("foo"))
 }
@@ -617,16 +720,17 @@ func TestMapSchema(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s, err := avro.Parse(tt.schema)
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			s, err := avro.Parse(test.schema)
 
-			if tt.wantErr {
+			if test.wantErr {
 				assert.Error(t, err)
 				return
 			}
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, avro.Map, s.Type())
 		})
 	}
@@ -637,7 +741,7 @@ func TestMapSchema_HandlesProps(t *testing.T) {
 
 	s, err := avro.Parse(schm)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, avro.Map, s.Type())
 	assert.Equal(t, "bar", s.(*avro.MapSchema).Prop("foo"))
 }
@@ -662,10 +766,10 @@ func TestUnionSchema(t *testing.T) {
 			wantErr:         false,
 		},
 		{
-			name:    "Dereferences Ref Schemas",
-			schema:  `[{"type":"fixed", "name":"test", "namespace": "org.hamba.avro", "size": 12}, {"type":"enum", "name":"test1", "namespace": "org.hamba.avro", "symbols":["TEST"]}, {"type":"record", "name":"test2", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": ["null","org.hamba.avro.test","org.hamba.avro.test1"]}]}]`,
+			name:            "Dereferences Ref Schemas",
+			schema:          `[{"type":"fixed", "name":"test", "namespace": "org.hamba.avro", "size": 12}, {"type":"enum", "name":"test1", "namespace": "org.hamba.avro", "symbols":["TEST"]}, {"type":"record", "name":"test2", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": ["null","org.hamba.avro.test","org.hamba.avro.test1"]}]}]`,
 			wantFingerprint: [32]byte{0xc1, 0x42, 0x87, 0xde, 0x24, 0x3d, 0xee, 0x1d, 0xa5, 0x47, 0xa0, 0x13, 0x9e, 0xb, 0xe0, 0x6, 0xfd, 0xa, 0x76, 0xd9, 0xe8, 0x92, 0x9a, 0xd3, 0x46, 0xf, 0xbd, 0x86, 0x21, 0x72, 0x81, 0x1b},
-			wantErr: false,
+			wantErr:         false,
 		},
 		{
 			name:    "No Nested Union Type",
@@ -689,18 +793,19 @@ func TestUnionSchema(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s, err := avro.Parse(tt.schema)
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			s, err := avro.Parse(test.schema)
 
-			if tt.wantErr {
+			if test.wantErr {
 				assert.Error(t, err)
 				return
 			}
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, avro.Union, s.Type())
-			assert.Equal(t, tt.wantFingerprint, s.Fingerprint())
+			assert.Equal(t, test.wantFingerprint, s.Fingerprint())
 		})
 	}
 }
@@ -728,14 +833,15 @@ func TestUnionSchema_Indices(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s, err := avro.Parse(tt.schema)
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			s, err := avro.Parse(test.schema)
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			null, typ := s.(*avro.UnionSchema).Indices()
-			assert.Equal(t, tt.want[0], null)
-			assert.Equal(t, tt.want[1], typ)
+			assert.Equal(t, test.want[0], null)
+			assert.Equal(t, test.want[1], typ)
 		})
 	}
 }
@@ -792,20 +898,21 @@ func TestFixedSchema(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			schema, err := avro.Parse(tt.schema)
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			schema, err := avro.Parse(test.schema)
 
-			if tt.wantErr {
+			if test.wantErr {
 				assert.Error(t, err)
 				return
 			}
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, avro.Fixed, schema.Type())
 			named := schema.(avro.NamedSchema)
-			assert.Equal(t, tt.wantName, named.FullName())
-			assert.Equal(t, tt.wantFingerprint, named.Fingerprint())
+			assert.Equal(t, test.wantName, named.FullName())
+			assert.Equal(t, test.wantFingerprint, named.Fingerprint())
 		})
 	}
 }
@@ -815,7 +922,7 @@ func TestFixedSchema_HandlesProps(t *testing.T) {
 
 	s, err := avro.Parse(schm)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, avro.Fixed, s.Type())
 	assert.Equal(t, "bar", s.(*avro.FixedSchema).Prop("foo"))
 }
@@ -898,10 +1005,9 @@ func TestSchema_LogicalTypes(t *testing.T) {
 			wantLogicalType: avro.Decimal,
 			assertFn: func(t *testing.T, ls avro.LogicalSchema) {
 				dec, ok := ls.(*avro.DecimalLogicalSchema)
-				if assert.True(t, ok) {
-					assert.Equal(t, 4, dec.Precision())
-					assert.Equal(t, 2, dec.Scale())
-				}
+				require.True(t, ok)
+				assert.Equal(t, 4, dec.Precision())
+				assert.Equal(t, 2, dec.Scale())
 			},
 		},
 		{
@@ -912,10 +1018,9 @@ func TestSchema_LogicalTypes(t *testing.T) {
 			wantLogicalType: avro.Decimal,
 			assertFn: func(t *testing.T, ls avro.LogicalSchema) {
 				dec, ok := ls.(*avro.DecimalLogicalSchema)
-				if assert.True(t, ok) {
-					assert.Equal(t, 4, dec.Precision())
-					assert.Equal(t, 0, dec.Scale())
-				}
+				require.True(t, ok)
+				assert.Equal(t, 4, dec.Precision())
+				assert.Equal(t, 0, dec.Scale())
 			},
 		},
 		{
@@ -944,10 +1049,9 @@ func TestSchema_LogicalTypes(t *testing.T) {
 			wantLogicalType: avro.Decimal,
 			assertFn: func(t *testing.T, ls avro.LogicalSchema) {
 				dec, ok := ls.(*avro.DecimalLogicalSchema)
-				if assert.True(t, ok) {
-					assert.Equal(t, 4, dec.Precision())
-					assert.Equal(t, 2, dec.Scale())
-				}
+				require.True(t, ok)
+				assert.Equal(t, 4, dec.Precision())
+				assert.Equal(t, 2, dec.Scale())
 			},
 		},
 		{
@@ -958,10 +1062,9 @@ func TestSchema_LogicalTypes(t *testing.T) {
 			wantLogicalType: avro.Decimal,
 			assertFn: func(t *testing.T, ls avro.LogicalSchema) {
 				dec, ok := ls.(*avro.DecimalLogicalSchema)
-				if assert.True(t, ok) {
-					assert.Equal(t, 4, dec.Precision())
-					assert.Equal(t, 0, dec.Scale())
-				}
+				require.True(t, ok)
+				assert.Equal(t, 4, dec.Precision())
+				assert.Equal(t, 0, dec.Scale())
 			},
 		},
 		{
@@ -984,12 +1087,13 @@ func TestSchema_LogicalTypes(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			schema, err := avro.Parse(tt.schema)
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			schema, err := avro.Parse(test.schema)
 
-			assert.NoError(t, err)
-			assert.Equal(t, tt.wantType, schema.Type())
+			require.NoError(t, err)
+			assert.Equal(t, test.wantType, schema.Type())
 
 			lts, ok := schema.(avro.LogicalTypeSchema)
 			if !ok {
@@ -998,16 +1102,15 @@ func TestSchema_LogicalTypes(t *testing.T) {
 			}
 
 			ls := lts.Logical()
-			if assert.Equal(t, tt.wantLogical, ls != nil) {
-				if !tt.wantLogical {
-					return
-				}
+			require.Equal(t, test.wantLogical, ls != nil)
+			if !test.wantLogical {
+				return
+			}
 
-				assert.Equal(t, tt.wantLogicalType, ls.Type())
+			assert.Equal(t, test.wantLogicalType, ls.Type())
 
-				if tt.assertFn != nil {
-					tt.assertFn(t, ls)
-				}
+			if test.assertFn != nil {
+				test.assertFn(t, ls)
 			}
 		})
 	}
@@ -1083,14 +1186,14 @@ func TestSchema_FingerprintUsing(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			schema := avro.MustParse(tt.schema)
-			got, err := schema.FingerprintUsing(tt.typ)
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			schema := avro.MustParse(test.schema)
+			got, err := schema.FingerprintUsing(test.typ)
 
-			if assert.NoError(t, err) {
-				assert.Equal(t, tt.want, got)
-			}
+			require.NoError(t, err)
+			assert.Equal(t, test.want, got)
 		})
 	}
 }
@@ -1110,7 +1213,7 @@ func TestSchema_FingerprintUsingReference(t *testing.T) {
 
 	got, err := schema.(*avro.RecordSchema).Fields()[1].Type().FingerprintUsing(avro.CRC64Avro)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte{0xe1, 0xd6, 0x1e, 0x7c, 0x2f, 0xe3, 0x3c, 0x2b}, got)
 }
 
