@@ -6,6 +6,7 @@ import (
 
 	"github.com/hamba/avro"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEncoder_RecordStruct(t *testing.T) {
@@ -22,11 +23,11 @@ func TestEncoder_RecordStruct(t *testing.T) {
 	obj := TestRecord{A: 27, B: "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(obj)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte{0x36, 0x06, 0x66, 0x6f, 0x6f}, buf.Bytes())
 }
 
@@ -44,11 +45,11 @@ func TestEncoder_RecordStructPtr(t *testing.T) {
 	obj := &TestRecord{A: 27, B: "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(obj)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte{0x36, 0x06, 0x66, 0x6f, 0x6f}, buf.Bytes())
 }
 
@@ -66,7 +67,7 @@ func TestEncoder_RecordStructPtrNil(t *testing.T) {
 	var obj *TestRecord
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(obj)
 
@@ -87,7 +88,7 @@ func TestEncoder_RecordStructMissingRequiredField(t *testing.T) {
 	obj := TestPartialRecord{B: "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(obj)
 
@@ -108,11 +109,11 @@ func TestEncoder_RecordStructWithDefault(t *testing.T) {
 	obj := TestPartialRecord{B: "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(obj)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte{0x36, 0x06, 0x66, 0x6f, 0x6f}, buf.Bytes())
 }
 
@@ -130,11 +131,11 @@ func TestEncoder_RecordStructPartialWithNullDefault(t *testing.T) {
 	obj := TestPartialRecord{B: "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(obj)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte{0x00, 0x06, 0x66, 0x6f, 0x6f}, buf.Bytes())
 }
 
@@ -152,11 +153,11 @@ func TestEncoder_RecordStructWithNullDefault(t *testing.T) {
 	obj := TestPartialRecord{B: "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(obj)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte{0x06, 0x66, 0x6f, 0x6f}, buf.Bytes())
 }
 
@@ -174,7 +175,7 @@ func TestEncoder_RecordStructFieldError(t *testing.T) {
 	obj := TestRecord{A: 27, B: "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(obj)
 
@@ -195,11 +196,11 @@ func TestEncoder_RecordEmbeddedStruct(t *testing.T) {
 	obj := TestEmbeddedRecord{TestEmbed: TestEmbed{A: 27}, B: "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(obj)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte{0x36, 0x06, 0x66, 0x6f, 0x6f}, buf.Bytes())
 }
 
@@ -217,11 +218,11 @@ func TestEncoder_RecordEmbeddedPtrStruct(t *testing.T) {
 	obj := TestEmbeddedPtrRecord{TestEmbed: &TestEmbed{A: 27}, B: "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(obj)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte{0x36, 0x06, 0x66, 0x6f, 0x6f}, buf.Bytes())
 }
 
@@ -239,7 +240,7 @@ func TestEncoder_RecordEmbeddedPtrStructNull(t *testing.T) {
 	obj := TestEmbeddedPtrRecord{B: "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(obj)
 
@@ -260,7 +261,7 @@ func TestEncoder_RecordEmbeddedIntStruct(t *testing.T) {
 	obj := TestEmbeddedIntRecord{TestEmbedInt: 27, B: "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(obj)
 
@@ -281,7 +282,7 @@ func TestEncoder_RecordUnexportedStruct(t *testing.T) {
 	obj := TestUnexportedRecord{A: 27, b: "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(obj)
 
@@ -302,11 +303,11 @@ func TestEncoder_RecordMap(t *testing.T) {
 	obj := map[string]interface{}{"a": int64(27), "b": "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(obj)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte{0x36, 0x06, 0x66, 0x6f, 0x6f}, buf.Bytes())
 }
 
@@ -334,11 +335,11 @@ func TestEncoder_RecordMapNested(t *testing.T) {
 	}, "b": "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(obj)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte{0x36, 0x6, 0x62, 0x61, 0x72, 0x6, 0x66, 0x6f, 0x6f}, buf.Bytes())
 }
 
@@ -356,7 +357,7 @@ func TestEncoder_RecordMapNilValue(t *testing.T) {
 	obj := map[string]interface{}{"a": int64(27), "b": nil}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(obj)
 
@@ -377,7 +378,7 @@ func TestEncoder_RecordMapMissingRequiredField(t *testing.T) {
 	obj := map[string]interface{}{"b": "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(obj)
 
@@ -398,11 +399,11 @@ func TestEncoder_RecordMapWithDefault(t *testing.T) {
 	obj := map[string]interface{}{"b": "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(obj)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte{0x36, 0x06, 0x66, 0x6f, 0x6f}, buf.Bytes())
 }
 
@@ -420,11 +421,11 @@ func TestEncoder_RecordMapWithNullDefault(t *testing.T) {
 	obj := map[string]interface{}{"b": "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(obj)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte{0x06, 0x66, 0x6f, 0x6f}, buf.Bytes())
 }
 
@@ -442,11 +443,11 @@ func TestEncoder_RecordMapWithUnionNullDefault(t *testing.T) {
 	obj := map[string]interface{}{"b": "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(obj)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte{0x00, 0x06, 0x66, 0x6f, 0x6f}, buf.Bytes())
 }
 
@@ -464,11 +465,11 @@ func TestEncoder_RecordMapWithUnionStringDefault(t *testing.T) {
 	obj := map[string]interface{}{"b": "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(obj)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte{0x0, 0x8, 0x74, 0x65, 0x73, 0x74, 0x6, 0x66, 0x6f, 0x6f}, buf.Bytes())
 }
 
@@ -486,7 +487,7 @@ func TestEncoder_RecordMapInvalidKeyType(t *testing.T) {
 	obj := map[int]interface{}{1: int64(27), 2: "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(obj)
 
@@ -507,7 +508,7 @@ func TestEncoder_RecordMapInvalidValueType(t *testing.T) {
 	obj := map[string]string{"a": "test", "b": "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(obj)
 
@@ -538,10 +539,10 @@ func TestEncoder_RefStruct(t *testing.T) {
 	}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(obj)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte{0x36, 0x06, 0x66, 0x6f, 0x6f, 0x36, 0x06, 0x66, 0x6f, 0x6f}, buf.Bytes())
 }
