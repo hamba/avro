@@ -1,6 +1,7 @@
 package registry_test
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -13,7 +14,7 @@ func Example() {
 		log.Fatal(err)
 	}
 
-	schema, err := reg.GetSchema(5)
+	schema, err := reg.GetSchema(context.Background(), 5)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -21,9 +22,9 @@ func Example() {
 	fmt.Println("schema: ", schema)
 
 	schemaRaw := `["null","string","int"]`
-	id, schema, err := reg.IsRegistered("foobar", schemaRaw)
+	id, schema, err := reg.IsRegistered(context.Background(), "foobar", schemaRaw)
 	if err != nil {
-		id, schema, err = reg.CreateSchema("foobar", schemaRaw)
+		id, schema, err = reg.CreateSchema(context.Background(), "foobar", schemaRaw)
 		if err != nil {
 			log.Fatal(err)
 		}
