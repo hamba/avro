@@ -1,6 +1,7 @@
 package registry_test
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -31,7 +32,7 @@ func TestClient_PopulatesError(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, _, err := client.CreateSchema("test", "")
+	_, _, err := client.CreateSchema(context.Background(), "test", "")
 
 	assert.Error(t, err)
 	assert.IsType(t, registry.Error{}, err)
@@ -54,7 +55,7 @@ func TestNewClient_BasicAuth(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL, registry.WithBasicAuth("username", "password"))
 
-	_, err := client.GetSubjects()
+	_, err := client.GetSubjects(context.Background())
 
 	assert.NoError(t, err)
 }
@@ -69,7 +70,7 @@ func TestClient_GetSchema(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	schema, err := client.GetSchema(5)
+	schema, err := client.GetSchema(context.Background(), 5)
 
 	assert.NoError(t, err)
 	assert.Equal(t, `["null","string","int"]`, schema.String())
@@ -84,9 +85,9 @@ func TestClient_GetSchemaCachesSchema(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, _ = client.GetSchema(5)
+	_, _ = client.GetSchema(context.Background(), 5)
 
-	_, _ = client.GetSchema(5)
+	_, _ = client.GetSchema(context.Background(), 5)
 
 	assert.Equal(t, 1, count)
 }
@@ -98,7 +99,7 @@ func TestClient_GetSchemaRequestError(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, err := client.GetSchema(5)
+	_, err := client.GetSchema(context.Background(), 5)
 
 	assert.Error(t, err)
 }
@@ -110,7 +111,7 @@ func TestClient_GetSchemaJsonError(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, err := client.GetSchema(5)
+	_, err := client.GetSchema(context.Background(), 5)
 
 	assert.Error(t, err)
 }
@@ -122,7 +123,7 @@ func TestClient_GetSchemaSchemaError(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, err := client.GetSchema(5)
+	_, err := client.GetSchema(context.Background(), 5)
 
 	assert.Error(t, err)
 }
@@ -137,7 +138,7 @@ func TestClient_GetSubjects(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	subs, err := client.GetSubjects()
+	subs, err := client.GetSubjects(context.Background())
 
 	assert.NoError(t, err)
 	assert.Len(t, subs, 1)
@@ -151,7 +152,7 @@ func TestClient_GetSubjectsRequestError(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, err := client.GetSubjects()
+	_, err := client.GetSubjects(context.Background())
 
 	assert.Error(t, err)
 }
@@ -163,7 +164,7 @@ func TestClient_GetSubjectsJSONError(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, err := client.GetSubjects()
+	_, err := client.GetSubjects(context.Background())
 
 	assert.Error(t, err)
 }
@@ -178,7 +179,7 @@ func TestClient_GetVersions(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	vers, err := client.GetVersions("foobar")
+	vers, err := client.GetVersions(context.Background(), "foobar")
 
 	assert.NoError(t, err)
 	assert.Len(t, vers, 1)
@@ -192,7 +193,7 @@ func TestClient_GetVersionsRequestError(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, err := client.GetVersions("foobar")
+	_, err := client.GetVersions(context.Background(), "foobar")
 
 	assert.Error(t, err)
 }
@@ -204,7 +205,7 @@ func TestClient_GetVersionsJSONError(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, err := client.GetVersions("foobar")
+	_, err := client.GetVersions(context.Background(), "foobar")
 
 	assert.Error(t, err)
 }
@@ -219,7 +220,7 @@ func TestClient_GetSchemaByVersion(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	schema, err := client.GetSchemaByVersion("foobar", 5)
+	schema, err := client.GetSchemaByVersion(context.Background(), "foobar", 5)
 
 	assert.NoError(t, err)
 	assert.Equal(t, `["null","string","int"]`, schema.String())
@@ -232,7 +233,7 @@ func TestClient_GetSchemaByVersionRequestError(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, err := client.GetSchemaByVersion("foobar", 5)
+	_, err := client.GetSchemaByVersion(context.Background(), "foobar", 5)
 
 	assert.Error(t, err)
 }
@@ -244,7 +245,7 @@ func TestClient_GetSchemaByVersionJsonError(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, err := client.GetSchemaByVersion("foobar", 5)
+	_, err := client.GetSchemaByVersion(context.Background(), "foobar", 5)
 
 	assert.Error(t, err)
 }
@@ -256,7 +257,7 @@ func TestClient_GetSchemaByVersionSchemaError(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, err := client.GetSchemaByVersion("foobar", 5)
+	_, err := client.GetSchemaByVersion(context.Background(), "foobar", 5)
 
 	assert.Error(t, err)
 }
@@ -271,7 +272,7 @@ func TestClient_GetLatestSchema(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	schema, err := client.GetLatestSchema("foobar")
+	schema, err := client.GetLatestSchema(context.Background(), "foobar")
 
 	assert.NoError(t, err)
 	assert.Equal(t, `["null","string","int"]`, schema.String())
@@ -284,7 +285,7 @@ func TestClient_GetLatestSchemaRequestError(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, err := client.GetLatestSchema("foobar")
+	_, err := client.GetLatestSchema(context.Background(), "foobar")
 
 	assert.Error(t, err)
 }
@@ -296,7 +297,7 @@ func TestClient_GetLatestSchemaJsonError(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, err := client.GetLatestSchema("foobar")
+	_, err := client.GetLatestSchema(context.Background(), "foobar")
 
 	assert.Error(t, err)
 }
@@ -308,7 +309,7 @@ func TestClient_GetLatestSchemaSchemaError(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, err := client.GetLatestSchema("foobar")
+	_, err := client.GetLatestSchema(context.Background(), "foobar")
 
 	assert.Error(t, err)
 }
@@ -323,7 +324,7 @@ func TestClient_GetLatestSchemaInfo(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	schemaInfo, err := client.GetLatestSchemaInfo("foobar")
+	schemaInfo, err := client.GetLatestSchemaInfo(context.Background(), "foobar")
 
 	assert.NoError(t, err)
 	assert.Equal(t, `["null","string","int"]`, schemaInfo.Schema.String())
@@ -338,7 +339,7 @@ func TestClient_GetLatestSchemaInfoRequestError(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, err := client.GetLatestSchemaInfo("foobar")
+	_, err := client.GetLatestSchemaInfo(context.Background(), "foobar")
 
 	assert.Error(t, err)
 }
@@ -350,7 +351,7 @@ func TestClient_GetLatestSchemaInfoJsonError(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, err := client.GetLatestSchemaInfo("foobar")
+	_, err := client.GetLatestSchemaInfo(context.Background(), "foobar")
 
 	assert.Error(t, err)
 }
@@ -362,7 +363,7 @@ func TestClient_GetLatestSchemaInfoSchemaError(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, err := client.GetLatestSchemaInfo("foobar")
+	_, err := client.GetLatestSchemaInfo(context.Background(), "foobar")
 
 	assert.Error(t, err)
 }
@@ -377,7 +378,7 @@ func TestClient_CreateSchema(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	id, schema, err := client.CreateSchema("foobar", "[\"null\",\"string\",\"int\"]")
+	id, schema, err := client.CreateSchema(context.Background(), "foobar", "[\"null\",\"string\",\"int\"]")
 
 	assert.NoError(t, err)
 	assert.Equal(t, 10, id)
@@ -391,7 +392,7 @@ func TestClient_CreateSchemaRequestError(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, _, err := client.CreateSchema("foobar", "[\"null\",\"string\",\"int\"]")
+	_, _, err := client.CreateSchema(context.Background(), "foobar", "[\"null\",\"string\",\"int\"]")
 
 	assert.Error(t, err)
 }
@@ -403,7 +404,7 @@ func TestClient_CreateSchemaJsonError(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, _, err := client.CreateSchema("foobar", "[\"null\",\"string\",\"int\"]")
+	_, _, err := client.CreateSchema(context.Background(), "foobar", "[\"null\",\"string\",\"int\"]")
 
 	assert.Error(t, err)
 }
@@ -415,7 +416,7 @@ func TestClient_CreateSchemaSchemaError(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, _, err := client.CreateSchema("foobar", "[\"null\",\"string\",\"int\"")
+	_, _, err := client.CreateSchema(context.Background(), "foobar", "[\"null\",\"string\",\"int\"")
 
 	assert.Error(t, err)
 }
@@ -430,7 +431,7 @@ func TestClient_IsRegistered(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	id, schema, err := client.IsRegistered("test", "[\"null\",\"string\",\"int\"]")
+	id, schema, err := client.IsRegistered(context.Background(), "test", "[\"null\",\"string\",\"int\"]")
 
 	assert.NoError(t, err)
 	assert.Equal(t, 10, id)
@@ -444,7 +445,7 @@ func TestClient_IsRegisteredRequestError(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, _, err := client.IsRegistered("test", "[\"null\",\"string\",\"int\"]")
+	_, _, err := client.IsRegistered(context.Background(), "test", "[\"null\",\"string\",\"int\"]")
 
 	assert.Error(t, err)
 }
@@ -456,7 +457,7 @@ func TestClient_IsRegisteredJsonError(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, _, err := client.IsRegistered("test", "[\"null\",\"string\",\"int\"]")
+	_, _, err := client.IsRegistered(context.Background(), "test", "[\"null\",\"string\",\"int\"]")
 
 	assert.Error(t, err)
 }
@@ -468,7 +469,7 @@ func TestClient_IsRegisteredSchemaError(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, _, err := client.IsRegistered("test", "[\"null\",\"string\",\"int\"")
+	_, _, err := client.IsRegistered(context.Background(), "test", "[\"null\",\"string\",\"int\"")
 
 	assert.Error(t, err)
 }
@@ -478,7 +479,7 @@ func TestClient_HandlesServerError(t *testing.T) {
 	s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, err := client.GetSchema(5)
+	_, err := client.GetSchema(context.Background(), 5)
 
 	assert.Error(t, err)
 }
