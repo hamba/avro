@@ -7,6 +7,7 @@ import (
 
 	"github.com/hamba/avro"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWriter_Reset(t *testing.T) {
@@ -17,7 +18,7 @@ func TestWriter_Reset(t *testing.T) {
 
 	err := w.Flush()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("test"), buf.Bytes())
 }
 
@@ -36,7 +37,7 @@ func TestWriter_Flush(t *testing.T) {
 
 	err := w.Flush()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("test"), buf.Bytes())
 }
 
@@ -92,12 +93,12 @@ func TestWriter_WriteBool(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for _, test := range tests {
 		w := avro.NewWriter(nil, 50)
 
-		w.WriteBool(tt.data)
+		w.WriteBool(test.data)
 
-		assert.Equal(t, tt.want, w.Buffer())
+		assert.Equal(t, test.want, w.Buffer())
 	}
 }
 
@@ -144,12 +145,12 @@ func TestWriter_WriteInt(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for _, test := range tests {
 		w := avro.NewWriter(nil, 50)
 
-		w.WriteInt(tt.data)
+		w.WriteInt(test.data)
 
-		assert.Equal(t, tt.want, w.Buffer())
+		assert.Equal(t, test.want, w.Buffer())
 	}
 }
 
@@ -208,12 +209,12 @@ func TestWriter_WriteLong(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for _, test := range tests {
 		w := avro.NewWriter(nil, 50)
 
-		w.WriteLong(tt.data)
+		w.WriteLong(test.data)
 
-		assert.Equal(t, tt.want, w.Buffer())
+		assert.Equal(t, test.want, w.Buffer())
 	}
 }
 
@@ -248,12 +249,12 @@ func TestWriter_WriteFloat(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for _, test := range tests {
 		w := avro.NewWriter(nil, 50)
 
-		w.WriteFloat(tt.data)
+		w.WriteFloat(test.data)
 
-		assert.Equal(t, tt.want, w.Buffer())
+		assert.Equal(t, test.want, w.Buffer())
 	}
 }
 
@@ -304,12 +305,12 @@ func TestWriter_WriteDouble(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for _, test := range tests {
 		w := avro.NewWriter(nil, 50)
 
-		w.WriteDouble(tt.data)
+		w.WriteDouble(test.data)
 
-		assert.Equal(t, tt.want, w.Buffer())
+		assert.Equal(t, test.want, w.Buffer())
 	}
 }
 
@@ -336,12 +337,12 @@ func TestWriter_WriteBytes(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for _, test := range tests {
 		w := avro.NewWriter(nil, 50)
 
-		w.WriteBytes(tt.data)
+		w.WriteBytes(test.data)
 
-		assert.Equal(t, tt.want, w.Buffer())
+		assert.Equal(t, test.want, w.Buffer())
 	}
 }
 
@@ -384,12 +385,12 @@ func TestWriter_WriteString(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for _, test := range tests {
 		w := avro.NewWriter(nil, 50)
 
-		w.WriteString(tt.data)
+		w.WriteString(test.data)
 
-		assert.Equal(t, tt.want, w.Buffer())
+		assert.Equal(t, test.want, w.Buffer())
 	}
 }
 
@@ -411,12 +412,12 @@ func TestWriter_WriteBlockHeader(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for _, test := range tests {
 		w := avro.NewWriter(nil, 50)
 
-		w.WriteBlockHeader(tt.len, tt.size)
+		w.WriteBlockHeader(test.len, test.size)
 
-		assert.Equal(t, tt.want, w.Buffer())
+		assert.Equal(t, test.want, w.Buffer())
 	}
 }
 

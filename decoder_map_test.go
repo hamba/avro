@@ -6,6 +6,7 @@ import (
 
 	"github.com/hamba/avro"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDecoder_MapInvalidType(t *testing.T) {
@@ -14,7 +15,7 @@ func TestDecoder_MapInvalidType(t *testing.T) {
 	data := []byte{0x02, 0x06, 0x66, 0x6F, 0x6F, 0x06, 0x66, 0x6F, 0x6F, 0x00}
 	schema := `{"type":"map", "values": "string"}`
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var str string
 	err = dec.Decode(&str)
@@ -32,7 +33,7 @@ func TestDecoder_MapMap(t *testing.T) {
 	var got map[string]string
 	err := dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, map[string]string{"foo": "foo"}, got)
 }
 
@@ -46,7 +47,7 @@ func TestDecoder_MapMapOfStruct(t *testing.T) {
 	var got map[string]TestRecord
 	err := dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, map[string]TestRecord{"foo": {A: 27, B: "foo"}}, got)
 }
 
@@ -56,7 +57,7 @@ func TestDecoder_MapMapError(t *testing.T) {
 	data := []byte{0xE2, 0xA2, 0xF3, 0xAD, 0xAD, 0xAD, 0xE2, 0xA2, 0xF3, 0xAD, 0xAD}
 	schema := `{"type":"map", "values": "string"}`
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var got map[string]string
 	err = dec.Decode(&got)
