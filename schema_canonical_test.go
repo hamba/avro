@@ -190,6 +190,10 @@ func TestSchema_Canonical(t *testing.T) {
 			canonical: `{"name":"foo","type":"fixed","size":12,"logicalType":"decimal","precision":4,"scale":2}`,
 		},
 		{
+			input:     `{"name":"foo","type":"fixed","logicalType":"decimal","size":12,"precision":4,"scale":2,"someProp":"foobar"}`,
+			canonical: `{"name":"foo","type":"fixed","size":12,"logicalType":"decimal","precision":4,"scale":2}`,
+		},
+		{
 			input:     `{"name":"foo","type":"fixed","logicalType":"decimal","size":12,"precision":4,"scale":0}`,
 			canonical: `{"name":"foo","type":"fixed","size":12,"logicalType":"decimal","precision":4}`,
 		},
