@@ -52,7 +52,12 @@ type Protocol struct {
 }
 
 // NewProtocol creates a protocol instance.
-func NewProtocol(name, namepsace string, types []NamedSchema, messages map[string]*Message, opts ...ProtocolOption) (*Protocol, error) {
+func NewProtocol(
+	name, namepsace string,
+	types []NamedSchema,
+	messages map[string]*Message,
+	opts ...ProtocolOption,
+) (*Protocol, error) {
 	var cfg protocolConfig
 	for _, opt := range opts {
 		opt(&cfg)

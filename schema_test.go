@@ -426,31 +426,31 @@ func TestRecordSchema_ValidatesOrder(t *testing.T) {
 	tests := []struct {
 		name    string
 		schema  string
-		want    string
+		want    avro.Order
 		wantErr assert.ErrorAssertionFunc
 	}{
 		{
 			name:    "empty",
 			schema:  `{"type":"record", "name":"test", "fields":[{"name": "a", "type": "string"}]}`,
-			want:    "ascending",
+			want:    avro.Asc,
 			wantErr: assert.NoError,
 		},
 		{
 			name:    "asc",
 			schema:  `{"type":"record", "name":"test", "fields":[{"name": "a", "type": "string", "order": "ascending"}]}`,
-			want:    "ascending",
+			want:    avro.Asc,
 			wantErr: assert.NoError,
 		},
 		{
 			name:    "desc",
 			schema:  `{"type":"record", "name":"test", "fields":[{"name": "a", "type": "string", "order": "descending"}]}`,
-			want:    "descending",
+			want:    avro.Desc,
 			wantErr: assert.NoError,
 		},
 		{
 			name:    "ignore",
 			schema:  `{"type":"record", "name":"test", "fields":[{"name": "a", "type": "string", "order": "ignore"}]}`,
-			want:    "ignore",
+			want:    avro.Ignore,
 			wantErr: assert.NoError,
 		},
 		{

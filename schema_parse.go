@@ -205,9 +205,13 @@ func parseRecord(typ Type, namespace string, m map[string]interface{}, cache *Sc
 	)
 	switch typ {
 	case Record:
-		rec, err = NewRecordSchema(r.Name, r.Namespace, fields, WithAliases(r.Aliases), WithDoc(r.Doc), WithProps(r.Props))
+		rec, err = NewRecordSchema(r.Name, r.Namespace, fields,
+			WithAliases(r.Aliases), WithDoc(r.Doc), WithProps(r.Props),
+		)
 	case Error:
-		rec, err = NewErrorRecordSchema(r.Name, r.Namespace, fields, WithAliases(r.Aliases), WithDoc(r.Doc), WithProps(r.Props))
+		rec, err = NewErrorRecordSchema(r.Name, r.Namespace, fields,
+			WithAliases(r.Aliases), WithDoc(r.Doc), WithProps(r.Props),
+		)
 	}
 	if err != nil {
 		return nil, err
@@ -236,7 +240,7 @@ type fieldSchema struct {
 	Type    interface{}            `mapstructure:"type"`
 	Doc     string                 `mapstructure:"doc"`
 	Default interface{}            `mapstructure:"default"`
-	Order   string                 `mapstructure:"order"`
+	Order   Order                  `mapstructure:"order"`
 	Props   map[string]interface{} `mapstructure:",remain"`
 }
 
@@ -265,7 +269,9 @@ func parseField(namespace string, m map[string]interface{}, cache *SchemaCache) 
 		f.Default = NoDefault
 	}
 
-	field, err := NewField(f.Name, typ, WithDefault(f.Default), WithAliases(f.Aliases), WithDoc(f.Doc), WithOrder(f.Order), WithProps(f.Props))
+	field, err := NewField(f.Name, typ,
+		WithDefault(f.Default), WithAliases(f.Aliases), WithDoc(f.Doc), WithOrder(f.Order), WithProps(f.Props),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -300,7 +306,9 @@ func parseEnum(namespace string, m map[string]interface{}, cache *SchemaCache) (
 		e.Namespace = namespace
 	}
 
-	enum, err := NewEnumSchema(e.Name, e.Namespace, e.Symbols, WithDefault(e.Default), WithAliases(e.Aliases), WithDoc(e.Doc), WithProps(e.Props))
+	enum, err := NewEnumSchema(e.Name, e.Namespace, e.Symbols,
+		WithDefault(e.Default), WithAliases(e.Aliases), WithDoc(e.Doc), WithProps(e.Props),
+	)
 	if err != nil {
 		return nil, err
 	}

@@ -48,6 +48,16 @@ const (
 	Null    Type = "null"
 )
 
+// Order is a field order.
+type Order string
+
+// Field orders.
+const (
+	Asc    Order = "ascending"
+	Desc   Order = "descending"
+	Ignore Order = "ignore"
+)
+
 // LogicalType is a schema logical type.
 type LogicalType string
 
@@ -189,7 +199,7 @@ func newName(n, ns string, aliases []string) (name, error) {
 
 	a := make([]string, 0, len(aliases))
 	for _, alias := range aliases {
-		if strings.Index(alias, ".") == -1 {
+		if !strings.Contains(alias, ".") {
 			if err := validateName(alias); err != nil {
 				return name{}, fmt.Errorf("avro: invalid name %q: %w", alias, err)
 			}
@@ -308,7 +318,7 @@ type schemaConfig struct {
 	aliases []string
 	doc     string
 	def     interface{}
-	order   string
+	order   Order
 	props   map[string]interface{}
 }
 
@@ -337,7 +347,7 @@ func WithDefault(def interface{}) SchemaOption {
 }
 
 // WithOrder sets the order on a schema.
-func WithOrder(order string) SchemaOption {
+func WithOrder(order Order) SchemaOption {
 	return func(opts *schemaConfig) {
 		opts.order = order
 	}
@@ -526,7 +536,7 @@ type Field struct {
 	typ     Schema
 	hasDef  bool
 	def     interface{}
-	order   string
+	order   Order
 }
 
 type noDef struct{}
@@ -552,8 +562,8 @@ func NewField(name string, typ Schema, opts ...SchemaOption) (*Field, error) {
 
 	switch cfg.order {
 	case "":
-		cfg.order = "ascending"
-	case "ascending", "descending", "ignore":
+		cfg.order = Asc
+	case Asc, Desc, Ignore:
 	default:
 		return nil, fmt.Errorf("avro: field %q order %q is invalid", name, cfg.order)
 	}
@@ -616,7 +626,7 @@ func (f *Field) Default() interface{} {
 }
 
 // Order returns the field order.
-func (f *Field) Order() string {
+func (f *Field) Order() Order {
 	return f.order
 }
 
@@ -643,8 +653,8 @@ func (f *Field) MarshalJSON() ([]byte, error) {
 	if f.hasDef {
 		s.Default = f.def
 	}
-	if f.order != "ascending" {
-		s.Order = f.order
+	if f.order != Asc {
+		s.Order = string(f.order)
 	}
 	return jsoniter.Marshal(s)
 }
@@ -986,7 +996,12 @@ type FixedSchema struct {
 }
 
 // NewFixedSchema creates a new fixed schema instance.
-func NewFixedSchema(name, namespace string, size int, logical LogicalSchema, opts ...SchemaOption) (*FixedSchema, error) {
+func NewFixedSchema(
+	name, namespace string,
+	size int,
+	logical LogicalSchema,
+	opts ...SchemaOption,
+) (*FixedSchema, error) {
 	var cfg schemaConfig
 	for _, opt := range opts {
 		opt(&cfg)
@@ -1055,7 +1070,7 @@ func (s *FixedSchema) MarshalJSON() ([]byte, error) {
 		logical = "," + s.logical.String()
 	}
 
-	return []byte(json[:len(json)-1]+logical+"}"), nil
+	return []byte(json[:len(json)-1] + logical + "}"), nil
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
