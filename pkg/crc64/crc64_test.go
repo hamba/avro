@@ -28,14 +28,15 @@ func TestGolden(t *testing.T) {
 
 	hash := New()
 
-	for i, tt := range tests {
+	for i, test := range tests {
+		test := test
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			hash.Reset()
-			_, _ = hash.Write([]byte(tt.in))
+			_, _ = hash.Write([]byte(test.in))
 
 			got := hash.Sum64()
 
-			assert.Equal(t, tt.want, got)
+			assert.Equal(t, test.want, got)
 		})
 	}
 }
@@ -61,15 +62,16 @@ func TestGoldenBytes(t *testing.T) {
 
 	hash := New()
 
-	for i, tt := range tests {
+	for i, test := range tests {
+		test := test
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			hash.Reset()
-			_, _ = hash.Write([]byte(tt.in))
+			_, _ = hash.Write([]byte(test.in))
 
 			got := make([]byte, 0, hash.Size())
 			got = hash.Sum(got)
 
-			assert.Equal(t, tt.want, got)
+			assert.Equal(t, test.want, got)
 		})
 	}
 }

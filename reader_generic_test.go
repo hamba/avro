@@ -8,6 +8,7 @@ import (
 
 	"github.com/hamba/avro"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReader_ReadNext(t *testing.T) {
@@ -196,20 +197,21 @@ func TestReader_ReadNext(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			schema := avro.MustParse(tt.schema)
-			r := avro.NewReader(bytes.NewReader(tt.data), 10)
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			schema := avro.MustParse(test.schema)
+			r := avro.NewReader(bytes.NewReader(test.data), 10)
 
 			got := r.ReadNext(schema)
 
-			if tt.wantErr {
+			if test.wantErr {
 				assert.Error(t, r.Error)
 				return
 			}
 
-			assert.NoError(t, r.Error)
-			assert.Equal(t, tt.want, got)
+			require.NoError(t, r.Error)
+			assert.Equal(t, test.want, got)
 		})
 	}
 }

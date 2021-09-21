@@ -6,6 +6,7 @@ import (
 
 	"github.com/hamba/avro"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDecoder_SkipBool(t *testing.T) {
@@ -22,12 +23,12 @@ func TestDecoder_SkipBool(t *testing.T) {
 }`
 
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var got TestPartialRecord
 	err = dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, TestPartialRecord{B: "foo"}, got)
 }
 
@@ -45,12 +46,12 @@ func TestDecoder_SkipInt(t *testing.T) {
 }`
 
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var got TestPartialRecord
 	err = dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, TestPartialRecord{B: "foo"}, got)
 }
 
@@ -68,12 +69,12 @@ func TestDecoder_SkipLong(t *testing.T) {
 }`
 
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var got TestPartialRecord
 	err = dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, TestPartialRecord{B: "foo"}, got)
 }
 
@@ -89,12 +90,12 @@ func TestDecoder_SkipFloat(t *testing.T) {
 }`
 
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var got TestPartialRecord
 	err = dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, TestPartialRecord{B: "foo"}, got)
 }
 
@@ -112,12 +113,12 @@ func TestDecoder_SkipDouble(t *testing.T) {
 }`
 
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var got TestPartialRecord
 	err = dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, TestPartialRecord{B: "foo"}, got)
 }
 
@@ -135,12 +136,12 @@ func TestDecoder_SkipBytes(t *testing.T) {
 }`
 
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var got TestPartialRecord
 	err = dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, TestPartialRecord{B: "foo"}, got)
 }
 
@@ -158,12 +159,12 @@ func TestDecoder_SkipString(t *testing.T) {
 }`
 
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var got TestPartialRecord
 	err = dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, TestPartialRecord{B: "foo"}, got)
 }
 
@@ -181,12 +182,12 @@ func TestDecoder_SkipRecord(t *testing.T) {
 }`
 
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var got TestPartialRecord
 	err = dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, TestPartialRecord{B: "foo"}, got)
 }
 
@@ -205,12 +206,12 @@ func TestDecoder_SkipRef(t *testing.T) {
 }`
 
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var got TestPartialRecord
 	err = dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, TestPartialRecord{B: "foo"}, got)
 }
 
@@ -228,12 +229,12 @@ func TestDecoder_SkipEnum(t *testing.T) {
 }`
 
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var got TestPartialRecord
 	err = dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, TestPartialRecord{B: "foo"}, got)
 }
 
@@ -251,12 +252,12 @@ func TestDecoder_SkipArray(t *testing.T) {
 }`
 
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var got TestPartialRecord
 	err = dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, TestPartialRecord{B: "foo"}, got)
 }
 
@@ -274,12 +275,12 @@ func TestDecoder_SkipArrayBlocks(t *testing.T) {
 }`
 
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var got TestPartialRecord
 	err = dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, TestPartialRecord{B: "foo"}, got)
 }
 
@@ -297,12 +298,12 @@ func TestDecoder_SkipMap(t *testing.T) {
 }`
 
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var got TestPartialRecord
 	err = dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, TestPartialRecord{B: "foo"}, got)
 }
 
@@ -320,12 +321,12 @@ func TestDecoder_SkipMapBlocks(t *testing.T) {
 }`
 
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var got TestPartialRecord
 	err = dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, TestPartialRecord{B: "foo"}, got)
 }
 
@@ -343,12 +344,12 @@ func TestDecoder_SkipUnion(t *testing.T) {
 }`
 
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var got TestPartialRecord
 	err = dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, TestPartialRecord{B: "foo"}, got)
 }
 
@@ -366,12 +367,12 @@ func TestDecoder_SkipUnionNull(t *testing.T) {
 }`
 
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var got TestPartialRecord
 	err = dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, TestPartialRecord{B: "foo"}, got)
 }
 
@@ -389,7 +390,7 @@ func TestDecoder_SkipUnionInvalidSchema(t *testing.T) {
 }`
 
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var got TestPartialRecord
 	err = dec.Decode(&got)
@@ -411,11 +412,11 @@ func TestDecoder_SkipFixed(t *testing.T) {
 }`
 
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var got TestPartialRecord
 	err = dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, TestPartialRecord{B: "foo"}, got)
 }
