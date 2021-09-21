@@ -75,6 +75,28 @@ func TestDecoder_RecordStructPtrNil(t *testing.T) {
 	assert.Equal(t, &TestRecord{A: 27, B: "foo"}, got)
 }
 
+func TestDecoder_RecordStructWithFieldAlias(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x36, 0x06, 0x66, 0x6f, 0x6f}
+	schema := `{
+	"type": "record",
+	"name": "test",
+	"fields" : [
+		{"name": "c", "aliases": ["a"], "type": "long"},
+	    {"name": "b", "type": "string"}
+	]
+}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	assert.NoError(t, err)
+
+	var got TestRecord
+	err = dec.Decode(&got)
+
+	assert.NoError(t, err)
+	assert.Equal(t, TestRecord{A: 27, B: "foo"}, got)
+}
+
 func TestDecoder_RecordPartialStruct(t *testing.T) {
 	defer ConfigTeardown()
 
