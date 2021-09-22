@@ -18,11 +18,11 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hamba/avro"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/modern-go/concurrent"
 )
 
 const (
@@ -128,7 +128,7 @@ type Client struct {
 
 	creds credentials
 
-	cache *concurrent.Map // map[int]avro.Schema
+	cache sync.Map // map[int]avro.Schema
 }
 
 // NewClient creates a schema registry Client with the given base url.
@@ -144,7 +144,6 @@ func NewClient(baseURL string, opts ...ClientFunc) (*Client, error) {
 	c := &Client{
 		client: defaultClient,
 		base:   u,
-		cache:  concurrent.NewMap(),
 	}
 
 	for _, opt := range opts {
