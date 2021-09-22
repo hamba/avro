@@ -2,6 +2,7 @@ on:
   push:
     branches:
       - master
+      - vnext
   pull_request:
 
 name: run tests
