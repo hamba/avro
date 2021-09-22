@@ -3,25 +3,22 @@ package avro
 import (
 	"fmt"
 	"math/big"
+	"sync"
 	"time"
 
-	"github.com/modern-go/concurrent"
 	"github.com/modern-go/reflect2"
 )
 
 // TypeResolver resolves types by name.
 type TypeResolver struct {
-	names *concurrent.Map // map[string]reflect2.Type
-	types *concurrent.Map // map[int][]string
+	names sync.Map // map[string]reflect2.Type
+	types sync.Map // map[int][]string
 }
 
 // NewTypeResolver creates a new type resolver with all primitive types
 // registered.
 func NewTypeResolver() *TypeResolver {
-	r := &TypeResolver{
-		names: concurrent.NewMap(),
-		types: concurrent.NewMap(),
-	}
+	r := &TypeResolver{}
 
 	// Register basic types
 	r.Register(string(Null), &null{})

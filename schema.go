@@ -8,11 +8,11 @@ import (
 	"hash"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	"github.com/hamba/avro/pkg/crc64"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/modern-go/concurrent"
 )
 
 var nullDefault = struct{}{}
@@ -91,7 +91,7 @@ var fingerprinters = map[FingerprintType]hash.Hash{
 
 // SchemaCache is a cache of schemas.
 type SchemaCache struct {
-	cache concurrent.Map // map[string]Schema
+	cache sync.Map // map[string]Schema
 }
 
 // Add adds a schema to the cache with the given name.
@@ -248,8 +248,8 @@ func (n name) Aliases() []string {
 }
 
 type fingerprinter struct {
-	fingerprint atomic.Value   // [32]byte
-	cache       concurrent.Map // map[FingerprintType][]byte
+	fingerprint atomic.Value // [32]byte
+	cache       sync.Map     // map[FingerprintType][]byte
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
