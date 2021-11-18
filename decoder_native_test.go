@@ -317,7 +317,7 @@ func TestDecoder_BytesInvalidSchema(t *testing.T) {
 func TestDecoder_Time_Date(t *testing.T) {
 	defer ConfigTeardown()
 
-	data := []byte{0xAE, 0x9D, 0x02}
+	data := []byte{0xCA, 0xAD, 0x2A}
 	schema := `{"type":"int","logicalType":"date"}`
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
 	assert.NoError(t, err)
@@ -326,7 +326,7 @@ func TestDecoder_Time_Date(t *testing.T) {
 	err = dec.Decode(&got)
 
 	assert.NoError(t, err)
-	assert.Equal(t, time.Date(2020, 1, 2, 0, 0, 0, 0, time.UTC), got)
+	assert.Equal(t, time.Date(2920, 1, 2, 0, 0, 0, 0, time.UTC), got)
 }
 
 func TestDecoder_Time_TimestampMillis(t *testing.T) {

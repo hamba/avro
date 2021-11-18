@@ -329,10 +329,10 @@ func TestEncoder_Time_Date(t *testing.T) {
 	enc, err := avro.NewEncoder(schema, buf)
 	assert.NoError(t, err)
 
-	err = enc.Encode(time.Date(2020, 1, 2, 0, 0, 0, 0, time.UTC))
+	err = enc.Encode(time.Date(2920, 1, 2, 0, 0, 0, 0, time.UTC))
 
 	assert.NoError(t, err)
-	assert.Equal(t, []byte{0xAE, 0x9D, 0x02}, buf.Bytes())
+	assert.Equal(t, []byte{0xCA, 0xAD, 0x2A}, buf.Bytes())
 }
 
 func TestEncoder_Time_TimestampMillis(t *testing.T) {

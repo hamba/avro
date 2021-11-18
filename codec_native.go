@@ -391,12 +391,14 @@ type dateCodec struct{}
 
 func (c *dateCodec) Decode(ptr unsafe.Pointer, r *Reader) {
 	i := r.ReadInt()
-	*((*time.Time)(ptr)) = time.Unix(0, int64(i)*int64(24*time.Hour)).UTC()
+	sec := int64(i) * int64(24*time.Hour/time.Second)
+	*((*time.Time)(ptr)) = time.Unix(sec, 0).UTC()
 }
 
 func (c *dateCodec) Encode(ptr unsafe.Pointer, w *Writer) {
 	t := *((*time.Time)(ptr))
-	w.WriteInt(int32(t.UnixNano() / int64(24*time.Hour)))
+	days := t.Unix() / int64(24*time.Hour/time.Second)
+	w.WriteInt(int32(days))
 }
 
 type timestampMillisCodec struct{}
