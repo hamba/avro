@@ -21,7 +21,9 @@ func (r *Reader) ReadNext(schema Schema) interface{} {
 		if ls != nil {
 			switch ls.Type() {
 			case Date:
-				return time.Unix(0, int64(r.ReadInt())*int64(24*time.Hour)).UTC()
+				i := r.ReadInt()
+				sec := int64(i) * int64(24*time.Hour/time.Second)
+				return time.Unix(sec, 0).UTC()
 
 			case TimeMillis:
 				return time.Duration(r.ReadInt()) * time.Millisecond
@@ -36,10 +38,16 @@ func (r *Reader) ReadNext(schema Schema) interface{} {
 				return time.Duration(r.ReadLong()) * time.Microsecond
 
 			case TimestampMillis:
-				return time.Unix(0, r.ReadLong()*int64(time.Millisecond)).UTC()
+				i := r.ReadLong()
+				sec := i / 1e3
+				nsec := (i - sec*1e3) * 1e6
+				return time.Unix(sec, nsec).UTC()
 
 			case TimestampMicros:
-				return time.Unix(0, r.ReadLong()*int64(time.Microsecond)).UTC()
+				i := r.ReadLong()
+				sec := i / 1e6
+				nsec := (i - sec*1e6) * 1e3
+				return time.Unix(sec, nsec).UTC()
 			}
 		}
 		return r.ReadLong()
