@@ -335,10 +335,11 @@ type RecordSchema struct {
 
 	isError bool
 	fields  []*Field
+	doc     string
 }
 
 // NewRecordSchema creates a new record schema instance.
-func NewRecordSchema(name, space string, fields []*Field) (*RecordSchema, error) {
+func NewRecordSchema(name, space string, doc string, fields []*Field) (*RecordSchema, error) {
 	n, err := newName(name, space)
 	if err != nil {
 		return nil, err
@@ -346,13 +347,14 @@ func NewRecordSchema(name, space string, fields []*Field) (*RecordSchema, error)
 
 	return &RecordSchema{
 		name:       n,
+		doc:        doc,
 		properties: properties{reserved: schemaReserved},
 		fields:     fields,
 	}, nil
 }
 
 // NewErrorRecordSchema creates a new error record schema instance.
-func NewErrorRecordSchema(name, space string, fields []*Field) (*RecordSchema, error) {
+func NewErrorRecordSchema(name, space string, doc string, fields []*Field) (*RecordSchema, error) {
 	n, err := newName(name, space)
 	if err != nil {
 		return nil, err
@@ -360,6 +362,7 @@ func NewErrorRecordSchema(name, space string, fields []*Field) (*RecordSchema, e
 
 	return &RecordSchema{
 		name:       n,
+		doc:        doc,
 		properties: properties{reserved: schemaReserved},
 		isError:    true,
 		fields:     fields,
@@ -369,6 +372,10 @@ func NewErrorRecordSchema(name, space string, fields []*Field) (*RecordSchema, e
 // Type returns the type of the schema.
 func (s *RecordSchema) Type() Type {
 	return Record
+}
+
+func (s *RecordSchema) Doc() string {
+	return s.doc
 }
 
 // IsError determines is this is an error record.
@@ -434,6 +441,7 @@ type Field struct {
 	properties
 
 	name   string
+	doc    string
 	typ    Schema
 	hasDef bool
 	def    interface{}
@@ -445,7 +453,7 @@ type noDef struct{}
 var NoDefault = noDef{}
 
 // NewField creates a new field instance.
-func NewField(name string, typ Schema, def interface{}) (*Field, error) {
+func NewField(name string, typ Schema, doc string, def interface{}) (*Field, error) {
 	if err := validateName(name); err != nil {
 		return nil, err
 	}
@@ -454,6 +462,7 @@ func NewField(name string, typ Schema, def interface{}) (*Field, error) {
 		properties: properties{reserved: fieldReserved},
 		name:       name,
 		typ:        typ,
+		doc:        doc,
 	}
 
 	if def != NoDefault {
@@ -492,6 +501,11 @@ func (f *Field) Default() interface{} {
 	}
 
 	return f.def
+}
+
+// Doc returns the documentation of a field
+func (f *Field) Doc() string {
+	return f.doc
 }
 
 // String returns the canonical form of a field.

@@ -184,6 +184,11 @@ func parseRecord(typ Type, namespace string, m map[string]interface{}, cache *Sc
 		namespace = newNamespace
 	}
 
+	doc, err := resolveDoc(m)
+	if err != nil {
+		return nil, err
+	}
+
 	fs, ok := m["fields"].([]interface{})
 	if !ok {
 		return nil, errors.New("avro: record must have an array of fields")
@@ -193,9 +198,9 @@ func parseRecord(typ Type, namespace string, m map[string]interface{}, cache *Sc
 	var rec *RecordSchema
 	switch typ {
 	case Record:
-		rec, err = NewRecordSchema(name, namespace, fields)
+		rec, err = NewRecordSchema(name, namespace, doc, fields)
 	case Error:
-		rec, err = NewErrorRecordSchema(name, namespace, fields)
+		rec, err = NewErrorRecordSchema(name, namespace, doc, fields)
 	}
 	if err != nil {
 		return nil, err
@@ -238,12 +243,17 @@ func parseField(namespace string, v interface{}, cache *SchemaCache) (*Field, er
 		return nil, err
 	}
 
+	doc, err := resolveDoc(m)
+	if err != nil {
+		return nil, err
+	}
+
 	def, ok := m["default"]
 	if !ok {
 		def = NoDefault
 	}
 
-	field, err := NewField(name, typ, def)
+	field, err := NewField(name, typ, doc, def)
 	if err != nil {
 		return nil, err
 	}
@@ -434,6 +444,14 @@ func resolveName(m map[string]interface{}) (string, error) {
 		return "", errors.New("avro: name key required")
 	}
 
+	return name, nil
+}
+
+func resolveDoc(m map[string]interface{}) (string, error) {
+	name, ok := m["doc"].(string)
+	if !ok {
+		return "", nil
+	}
 	return name, nil
 }
 
