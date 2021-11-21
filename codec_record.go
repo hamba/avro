@@ -94,7 +94,7 @@ func (d *structDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		// Skip case
 		if field.field == nil {
 			field.decoder.Decode(nil, r)
-			return
+			continue
 		}
 
 		fieldPtr := ptr
@@ -120,6 +120,7 @@ func (d *structDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 			for _, f := range field.field {
 				r.Error = fmt.Errorf("%s: %w", f.Name(), r.Error)
 			}
+			return
 		}
 	}
 }
@@ -189,7 +190,7 @@ func (e *structEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 		// Default case
 		if field.field == nil {
 			field.encoder.Encode(field.defaultPtr, w)
-			return
+			continue
 		}
 
 		fieldPtr := ptr
