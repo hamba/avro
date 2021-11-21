@@ -258,7 +258,6 @@ func parseField(namespace string, v interface{}, cache *SchemaCache) (*Field, er
 	if err != nil {
 		return nil, err
 	}
-
 	field.AddDoc(doc)
 
 	for k, v := range m {
