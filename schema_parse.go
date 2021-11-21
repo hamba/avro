@@ -452,7 +452,7 @@ func resolveName(m map[string]interface{}) (string, error) {
 }
 
 func resolveDoc(m map[string]interface{}) (string, error) {
-	name, ok := m["doc"].(string)
+	doc, ok := m["doc"].(string)
 	if !ok {
 		return "", nil
 	}
