@@ -454,7 +454,7 @@ func resolveDoc(m map[string]interface{}) (string, error) {
 	if !ok {
 		return "", nil
 	}
-	return name, nil
+	return doc, nil
 }
 
 func resolveFullName(m map[string]interface{}) (string, string, error) {
