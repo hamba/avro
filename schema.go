@@ -372,6 +372,7 @@ func (s *RecordSchema) Type() Type {
 	return Record
 }
 
+// Doc returns the documentation of a record.
 func (s *RecordSchema) Doc() string {
 	return s.doc
 }
@@ -434,7 +435,7 @@ func (s *RecordSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
 	return s.fingerprinter.FingerprintUsing(typ, s)
 }
 
-// AddDoc add documentation to the record
+// AddDoc add documentation to the record.
 func (s *RecordSchema) AddDoc(doc string) {
 	s.doc = doc
 }
@@ -494,7 +495,7 @@ func (f *Field) HasDefault() bool {
 	return f.hasDef
 }
 
-// AddDoc add documentation to the field .
+// AddDoc add documentation to the field.
 func (f *Field) AddDoc(doc string) {
 	f.doc = doc
 }
@@ -510,7 +511,7 @@ func (f *Field) Default() interface{} {
 	return f.def
 }
 
-// Doc returns the documentation of a field
+// Doc returns the documentation of a field.
 func (f *Field) Doc() string {
 	return f.doc
 }
