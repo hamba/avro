@@ -339,7 +339,7 @@ type RecordSchema struct {
 }
 
 // NewRecordSchema creates a new record schema instance.
-func NewRecordSchema(name, space string, doc string, fields []*Field) (*RecordSchema, error) {
+func NewRecordSchema(name, space string, fields []*Field) (*RecordSchema, error) {
 	n, err := newName(name, space)
 	if err != nil {
 		return nil, err
@@ -347,14 +347,13 @@ func NewRecordSchema(name, space string, doc string, fields []*Field) (*RecordSc
 
 	return &RecordSchema{
 		name:       n,
-		doc:        doc,
 		properties: properties{reserved: schemaReserved},
 		fields:     fields,
 	}, nil
 }
 
 // NewErrorRecordSchema creates a new error record schema instance.
-func NewErrorRecordSchema(name, space string, doc string, fields []*Field) (*RecordSchema, error) {
+func NewErrorRecordSchema(name, space string, fields []*Field) (*RecordSchema, error) {
 	n, err := newName(name, space)
 	if err != nil {
 		return nil, err
@@ -362,7 +361,6 @@ func NewErrorRecordSchema(name, space string, doc string, fields []*Field) (*Rec
 
 	return &RecordSchema{
 		name:       n,
-		doc:        doc,
 		properties: properties{reserved: schemaReserved},
 		isError:    true,
 		fields:     fields,
@@ -436,6 +434,11 @@ func (s *RecordSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
 	return s.fingerprinter.FingerprintUsing(typ, s)
 }
 
+// AddDoc add documentation to the record
+func (s *RecordSchema) AddDoc(doc string) {
+	s.doc = doc
+}
+
 // Field is an Avro record type field.
 type Field struct {
 	properties
@@ -453,7 +456,7 @@ type noDef struct{}
 var NoDefault = noDef{}
 
 // NewField creates a new field instance.
-func NewField(name string, typ Schema, doc string, def interface{}) (*Field, error) {
+func NewField(name string, typ Schema, def interface{}) (*Field, error) {
 	if err := validateName(name); err != nil {
 		return nil, err
 	}
@@ -462,7 +465,6 @@ func NewField(name string, typ Schema, doc string, def interface{}) (*Field, err
 		properties: properties{reserved: fieldReserved},
 		name:       name,
 		typ:        typ,
-		doc:        doc,
 	}
 
 	if def != NoDefault {
@@ -490,6 +492,11 @@ func (f *Field) Type() Schema {
 // HasDefault determines if the field has a default value.
 func (f *Field) HasDefault() bool {
 	return f.hasDef
+}
+
+// AddDoc add documentation to the field .
+func (f *Field) AddDoc(doc string) {
+	f.doc = doc
 }
 
 // Default returns the default of a field or nil.
