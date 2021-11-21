@@ -113,12 +113,14 @@ encoding and decoding.
 Benchmark source code can be found at: [https://github.com/nrwiersma/avro-benchmarks](https://github.com/nrwiersma/avro-benchmarks)
 
 ```
-BenchmarkGoAvroDecode-8     	  326304	      3608 ns/op	     442 B/op	      27 allocs/op
-BenchmarkGoAvroEncode-8     	  282902	      4367 ns/op	     856 B/op	      63 allocs/op
-BenchmarkHambaDecode-8      	 2133788	       568 ns/op	      64 B/op	       4 allocs/op
-BenchmarkHambaEncode-8      	 2635092	       444 ns/op	     112 B/op	       1 allocs/op
-BenchmarkLinkedinDecode-8   	  583681	      2138 ns/op	    1728 B/op	      35 allocs/op
-BenchmarkLinkedinEncode-8   	 1527082	       785 ns/op	     248 B/op	       5 allocs/op
+BenchmarkGoAvroDecode-10       	  495176	      2413 ns/op	     418 B/op	      27 allocs/op
+BenchmarkGoAvroEncode-10       	  420168	      2917 ns/op	     948 B/op	      63 allocs/op
+BenchmarkGoGenAvroDecode-10    	  757150	      1552 ns/op	     728 B/op	      45 allocs/op
+BenchmarkGoGenAvroEncode-10    	 1882940	       639.0 ns/op	     256 B/op	       3 allocs/op
+BenchmarkHambaDecode-10        	 3138063	       383.0 ns/op	      64 B/op	       4 allocs/op
+BenchmarkHambaEncode-10        	 4377513	       273.3 ns/op	     112 B/op	       1 allocs/op
+BenchmarkLinkedinDecode-10     	 1000000	      1109 ns/op	    1688 B/op	      35 allocs/op
+BenchmarkLinkedinEncode-10     	 2641016	       456.0 ns/op	     248 B/op	       5 allocs/op
 ```
 
 Always benchmark with your own workload. The result depends heavily on the data input.
