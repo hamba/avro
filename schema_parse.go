@@ -205,7 +205,6 @@ func parseRecord(typ Type, namespace string, m map[string]interface{}, cache *Sc
 	if err != nil {
 		return nil, err
 	}
-
 	rec.AddDoc(doc)
 
 	cache.Add(rec.FullName(), NewRefSchema(rec))
