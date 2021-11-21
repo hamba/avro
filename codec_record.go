@@ -79,6 +79,11 @@ func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 	return &structDecoder{typ: typ, fields: fields}
 }
 
+type structFieldDecoder struct {
+	field   []*reflect2.UnsafeStructField
+	decoder ValDecoder
+}
+
 type structDecoder struct {
 	typ    reflect2.Type
 	fields []*structFieldDecoder
@@ -86,44 +91,35 @@ type structDecoder struct {
 
 func (d *structDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 	for _, field := range d.fields {
-		field.Decode(ptr, r)
-	}
-}
-
-type structFieldDecoder struct {
-	field   []*reflect2.UnsafeStructField
-	decoder ValDecoder
-}
-
-func (d *structFieldDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
-	// Skip case
-	if d.field == nil {
-		d.decoder.Decode(nil, r)
-		return
-	}
-
-	fieldPtr := ptr
-	for i, f := range d.field {
-		fieldPtr = f.UnsafeGet(fieldPtr)
-
-		if i == len(d.field)-1 {
-			break
+		// Skip case
+		if field.field == nil {
+			field.decoder.Decode(nil, r)
+			return
 		}
 
-		if f.Type().Kind() == reflect.Ptr {
-			if *((*unsafe.Pointer)(ptr)) == nil {
-				newPtr := f.Type().UnsafeNew()
-				*((*unsafe.Pointer)(fieldPtr)) = newPtr
+		fieldPtr := ptr
+		for i, f := range field.field {
+			fieldPtr = f.UnsafeGet(fieldPtr)
+
+			if i == len(field.field)-1 {
+				break
 			}
 
-			fieldPtr = *((*unsafe.Pointer)(fieldPtr))
-		}
-	}
-	d.decoder.Decode(fieldPtr, r)
+			if f.Type().Kind() == reflect.Ptr {
+				if *((*unsafe.Pointer)(ptr)) == nil {
+					newPtr := f.Type().UnsafeNew()
+					*((*unsafe.Pointer)(fieldPtr)) = newPtr
+				}
 
-	if r.Error != nil && !errors.Is(r.Error, io.EOF) {
-		for _, f := range d.field {
-			r.Error = fmt.Errorf("%s: %w", f.Name(), r.Error)
+				fieldPtr = *((*unsafe.Pointer)(fieldPtr))
+			}
+		}
+		field.decoder.Decode(fieldPtr, r)
+
+		if r.Error != nil && !errors.Is(r.Error, io.EOF) {
+			for _, f := range field.field {
+				r.Error = fmt.Errorf("%s: %w", f.Name(), r.Error)
+			}
 		}
 	}
 }
@@ -177,6 +173,12 @@ func encoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEnc
 	return &structEncoder{typ: typ, fields: fields}
 }
 
+type structFieldEncoder struct {
+	field      []*reflect2.UnsafeStructField
+	defaultPtr unsafe.Pointer
+	encoder    ValEncoder
+}
+
 type structEncoder struct {
 	typ    reflect2.Type
 	fields []*structFieldEncoder
@@ -184,45 +186,35 @@ type structEncoder struct {
 
 func (e *structEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 	for _, field := range e.fields {
-		field.Encode(ptr, w)
-	}
-}
-
-type structFieldEncoder struct {
-	field      []*reflect2.UnsafeStructField
-	defaultPtr unsafe.Pointer
-	encoder    ValEncoder
-}
-
-func (e *structFieldEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
-	// Default case
-	if e.field == nil {
-		e.encoder.Encode(e.defaultPtr, w)
-		return
-	}
-
-	fieldPtr := ptr
-	for i, f := range e.field {
-		fieldPtr = f.UnsafeGet(fieldPtr)
-
-		if i == len(e.field)-1 {
-			break
+		// Default case
+		if field.field == nil {
+			field.encoder.Encode(field.defaultPtr, w)
+			return
 		}
 
-		if f.Type().Kind() == reflect.Ptr {
-			if *((*unsafe.Pointer)(ptr)) == nil {
-				w.Error = fmt.Errorf("embedded field %q is nil", f.Name())
-				return
+		fieldPtr := ptr
+		for i, f := range field.field {
+			fieldPtr = f.UnsafeGet(fieldPtr)
+
+			if i == len(field.field)-1 {
+				break
 			}
 
-			fieldPtr = *((*unsafe.Pointer)(fieldPtr))
-		}
-	}
-	e.encoder.Encode(fieldPtr, w)
+			if f.Type().Kind() == reflect.Ptr {
+				if *((*unsafe.Pointer)(ptr)) == nil {
+					w.Error = fmt.Errorf("embedded field %q is nil", f.Name())
+					return
+				}
 
-	if w.Error != nil && !errors.Is(w.Error, io.EOF) {
-		for _, f := range e.field {
-			w.Error = fmt.Errorf("%s: %w", f.Name(), w.Error)
+				fieldPtr = *((*unsafe.Pointer)(fieldPtr))
+			}
+		}
+		field.encoder.Encode(fieldPtr, w)
+
+		if w.Error != nil && !errors.Is(w.Error, io.EOF) {
+			for _, f := range field.field {
+				w.Error = fmt.Errorf("%s: %w", f.Name(), w.Error)
+			}
 		}
 	}
 }
