@@ -201,10 +201,7 @@ func parseRecord(typ Type, namespace string, m map[string]interface{}, cache *Sc
 		return nil, err
 	}
 
-	doc, err := resolveDoc(m)
-	if err != nil {
-		return nil, err
-	}
+	doc := resolveDoc(m)
 	rec.AddDoc(doc)
 
 	cache.Add(rec.FullName(), NewRefSchema(rec))
@@ -254,10 +251,7 @@ func parseField(namespace string, v interface{}, cache *SchemaCache) (*Field, er
 		return nil, err
 	}
 
-	doc, err := resolveDoc(m)
-	if err != nil {
-		return nil, err
-	}
+	doc := resolveDoc(m)
 	field.AddDoc(doc)
 
 	for k, v := range m {
@@ -449,12 +443,12 @@ func resolveName(m map[string]interface{}) (string, error) {
 	return name, nil
 }
 
-func resolveDoc(m map[string]interface{}) (string, error) {
+func resolveDoc(m map[string]interface{}) string {
 	doc, ok := m["doc"].(string)
 	if !ok {
-		return "", nil
+		return ""
 	}
-	return doc, nil
+	return doc
 }
 
 func resolveFullName(m map[string]interface{}) (string, string, error) {
