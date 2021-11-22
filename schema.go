@@ -335,6 +335,7 @@ type RecordSchema struct {
 
 	isError bool
 	fields  []*Field
+	doc     string
 }
 
 // NewRecordSchema creates a new record schema instance.
@@ -369,6 +370,11 @@ func NewErrorRecordSchema(name, space string, fields []*Field) (*RecordSchema, e
 // Type returns the type of the schema.
 func (s *RecordSchema) Type() Type {
 	return Record
+}
+
+// Doc returns the documentation of a record.
+func (s *RecordSchema) Doc() string {
+	return s.doc
 }
 
 // IsError determines is this is an error record.
@@ -429,11 +435,17 @@ func (s *RecordSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
 	return s.fingerprinter.FingerprintUsing(typ, s)
 }
 
+// AddDoc add documentation to the record.
+func (s *RecordSchema) AddDoc(doc string) {
+	s.doc = doc
+}
+
 // Field is an Avro record type field.
 type Field struct {
 	properties
 
 	name   string
+	doc    string
 	typ    Schema
 	hasDef bool
 	def    interface{}
@@ -483,6 +495,11 @@ func (f *Field) HasDefault() bool {
 	return f.hasDef
 }
 
+// AddDoc add documentation to the field.
+func (f *Field) AddDoc(doc string) {
+	f.doc = doc
+}
+
 // Default returns the default of a field or nil.
 //
 // The only time a nil default is valid is for a Null Type.
@@ -492,6 +509,11 @@ func (f *Field) Default() interface{} {
 	}
 
 	return f.def
+}
+
+// Doc returns the documentation of a field.
+func (f *Field) Doc() string {
+	return f.doc
 }
 
 // String returns the canonical form of a field.
