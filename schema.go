@@ -523,16 +523,23 @@ func (f *Field) String() string {
 
 // MarshalJSON marshals the schema to json.
 func (f *Field) MarshalJSON() ([]byte, error) {
-	s := struct {
-		Name    string      `json:"name"`
-		Type    Schema      `json:"type"`
-		Default interface{} `json:"default,omitempty"`
-	}{
+	type base struct {
+		Name string `json:"name"`
+		Type Schema `json:"type"`
+	}
+	type ext struct {
+		base
+		Default interface{} `json:"default"`
+	}
+	var s interface{} = base{
 		Name: f.name,
 		Type: f.typ,
 	}
 	if f.hasDef {
-		s.Default = f.def
+		s = ext{
+			base:    s.(base),
+			Default: f.Default(),
+		}
 	}
 	return jsoniter.Marshal(s)
 }

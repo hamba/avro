@@ -258,6 +258,18 @@ func TestSchema_JSON(t *testing.T) {
 			}`,
 			json: `{"name":"org.hamba.avro.X","type":"record","fields":[{"name":"value","type":{"name":"org.hamba.avro.Y","type":"fixed","size":15}}]}`,
 		},
+		{
+			input: `{
+				"type":"record",
+				"namespace": "org.hamba.avro",
+				"name":"X",
+  				"fields":[
+					{"name":"union_no_def","type":["null", "int"]},
+					{"name":"union_with_def","type":["null", "string"],"default": null}
+				]
+			}`,
+			json: `{"name":"org.hamba.avro.X","type":"record","fields":[{"name":"union_no_def","type":["null","int"]},{"name":"union_with_def","type":["null","string"],"default":null}]}`,
+		},
 	}
 
 	for i, test := range tests {
