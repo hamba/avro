@@ -238,6 +238,38 @@ func TestEncoder_UnionPtrNotNullable(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestEncoder_UnionPtrRecursiveType(t *testing.T) {
+	defer ConfigTeardown()
+
+	type record struct {
+		A int     `avro:"a"`
+		B *record `avro:"b"`
+	}
+
+	schema := `{
+	"type": "record",
+	"name": "test",
+	"fields" : [
+		{"name": "a", "type": "int"},
+	    {"name": "b", "type": [null, "test"]}
+	]
+}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	rec := record{
+		A: 1,
+		B: &record{
+			A: 2,
+		},
+	}
+	err = enc.Encode(rec)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x02, 0x02, 0x04, 0x0}, buf.Bytes())
+}
+
 func TestEncoder_UnionInterface(t *testing.T) {
 	defer ConfigTeardown()
 
@@ -364,6 +396,38 @@ func TestEncoder_UnionInterfaceNamed(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, []byte{0x02, 0x02}, buf.Bytes())
+}
+
+func TestEncoder_UnionInterfaceRecursiveType(t *testing.T) {
+	defer ConfigTeardown()
+
+	type record struct {
+		A int         `avro:"a"`
+		B interface{} `avro:"b"`
+	}
+
+	schema := `{
+	"type": "record",
+	"name": "test",
+	"fields" : [
+		{"name": "a", "type": "int"},
+	    {"name": "b", "type": [null, "test"]}
+	]
+}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	rec := record{
+		A: 1,
+		B: &record{
+			A: 2,
+		},
+	}
+	err = enc.Encode(rec)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x02, 0x02, 0x04, 0x0}, buf.Bytes())
 }
 
 func TestEncoder_UnionInterfaceWithTime(t *testing.T) {
