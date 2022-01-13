@@ -8,6 +8,7 @@ import (
 
 	"github.com/hamba/avro"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDecoder_UnionInvalidType(t *testing.T) {
@@ -236,6 +237,38 @@ func TestDecoder_UnionPtrNotNullable(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestDecoder_UnionPtrRecursiveType(t *testing.T) {
+	defer ConfigTeardown()
+
+	type record struct {
+		A int     `avro:"a"`
+		B *record `avro:"b"`
+	}
+
+	data := []byte{0x02, 0x02, 0x04, 0x0}
+	schema := `{
+	"type": "record",
+	"name": "test",
+	"fields" : [
+		{"name": "a", "type": "int"},
+	    {"name": "b", "type": [null, "test"]}
+	]
+}`
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	var got record
+	err := dec.Decode(&got)
+
+	require.NoError(t, err)
+	want := record{
+		A: 1,
+		B: &record{
+			A: 2,
+		},
+	}
+	assert.Equal(t, want, got)
+}
+
 func TestDecoder_UnionInterface(t *testing.T) {
 	defer ConfigTeardown()
 
@@ -401,16 +434,52 @@ func TestDecoder_UnionInterfaceRecord(t *testing.T) {
 
 	data := []byte{0x02, 0x36, 0x06, 0x66, 0x6F, 0x6F}
 	schema := `["int", {"type": "record", "name": "test", "fields" : [{"name": "a", "type": "long"}, {"name": "b", "type": "string"}]}]`
-	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
 
 	var got interface{}
-	err := dec.Decode(&got)
+	err = dec.Decode(&got)
 
-	assert.NoError(t, err)
-	assert.IsType(t, &TestRecord{}, got)
+	require.NoError(t, err)
+	require.IsType(t, &TestRecord{}, got)
 	rec := got.(*TestRecord)
 	assert.Equal(t, int64(27), rec.A)
 	assert.Equal(t, "foo", rec.B)
+}
+
+func TestDecoder_UnionInterfaceRecursiveType(t *testing.T) {
+	defer ConfigTeardown()
+
+	type record struct {
+		A int         `avro:"a"`
+		B interface{} `avro:"b"`
+	}
+
+	data := []byte{0x02, 0x02, 0x04, 0x0}
+	schema := `{
+	"type": "record",
+	"name": "test",
+	"fields" : [
+		{"name": "a", "type": "int"},
+	    {"name": "b", "type": [null, "test"]}
+	]
+}`
+	avro.Register("test", record{})
+
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	var got record
+	err := dec.Decode(&got)
+
+	require.NoError(t, err)
+	require.IsType(t, record{}, got)
+	want := record{
+		A: 1,
+		B: record{
+			A: 2,
+		},
+	}
+	assert.Equal(t, want, got)
 }
 
 func TestDecoder_UnionInterfaceRecordNotReused(t *testing.T) {

@@ -29,7 +29,7 @@ func createEncoderOfMap(cfg *frozenConfig, schema Schema, typ reflect2.Type) Val
 func decoderOfMap(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
 	m := schema.(*MapSchema)
 	mapType := typ.(*reflect2.UnsafeMapType)
-	decoder := decoderOfType(cfg, m.Values(), mapType.Elem())
+	decoder := cfg.DecoderOf(m.Values(), mapType.Elem())
 
 	return &mapDecoder{
 		mapType:  mapType,
@@ -72,7 +72,7 @@ func (d *mapDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 func encoderOfMap(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncoder {
 	m := schema.(*MapSchema)
 	mapType := typ.(*reflect2.UnsafeMapType)
-	encoder := encoderOfType(cfg, m.Values(), mapType.Elem())
+	encoder := cfg.EncoderOf(m.Values(), mapType.Elem())
 
 	return &mapEncoder{
 		blockLength: cfg.getBlockLength(),

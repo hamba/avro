@@ -29,7 +29,7 @@ func createEncoderOfArray(cfg *frozenConfig, schema Schema, typ reflect2.Type) V
 func decoderOfArray(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
 	arr := schema.(*ArraySchema)
 	sliceType := typ.(*reflect2.UnsafeSliceType)
-	decoder := decoderOfType(cfg, arr.Items(), sliceType.Elem())
+	decoder := cfg.DecoderOf(arr.Items(), sliceType.Elem())
 
 	return &arrayDecoder{typ: sliceType, decoder: decoder}
 }
@@ -67,7 +67,7 @@ func (d *arrayDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 func encoderOfArray(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncoder {
 	arr := schema.(*ArraySchema)
 	sliceType := typ.(*reflect2.UnsafeSliceType)
-	encoder := encoderOfType(cfg, arr.Items(), sliceType.Elem())
+	encoder := cfg.EncoderOf(arr.Items(), sliceType.Elem())
 
 	return &arrayEncoder{
 		blockLength: cfg.getBlockLength(),

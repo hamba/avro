@@ -50,6 +50,25 @@ func TestDecoder_ArraySliceOfStruct(t *testing.T) {
 	assert.Equal(t, []TestRecord{{A: 27, B: "foo"}, {A: 27, B: "foo"}}, got)
 }
 
+func TestDecoder_ArrayRecursiveStruct(t *testing.T) {
+	defer ConfigTeardown()
+
+	type record struct {
+		A int      `avro:"a"`
+		B []record `avro:"b"`
+	}
+
+	data := []byte{0x2, 0x3, 0x8, 0x4, 0x0, 0x6, 0x0, 0x0}
+	schema := `{"type": "record", "name": "test", "fields" : [{"name": "a", "type": "int"}, {"name": "b", "type": {"type":"array", "items": "test"}}]}`
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	var got record
+	err := dec.Decode(&got)
+
+	assert.NoError(t, err)
+	assert.Equal(t, record{A: 1, B: []record{{A: 2}, {A: 3}}}, got)
+}
+
 func TestDecoder_ArraySliceError(t *testing.T) {
 	defer ConfigTeardown()
 

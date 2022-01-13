@@ -153,7 +153,7 @@ func decoderOfPtrUnion(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValD
 	_, typeIdx := union.Indices()
 	ptrType := typ.(*reflect2.UnsafePtrType)
 	elemType := ptrType.Elem()
-	decoder := decoderOfType(cfg, union.Types()[typeIdx], elemType)
+	decoder := cfg.DecoderOf(union.Types()[typeIdx], elemType)
 
 	return &unionPtrDecoder{
 		schema:  union,
@@ -195,7 +195,7 @@ func encoderOfPtrUnion(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValE
 	union := schema.(*UnionSchema)
 	nullIdx, typeIdx := union.Indices()
 	ptrType := typ.(*reflect2.UnsafePtrType)
-	encoder := encoderOfType(cfg, union.Types()[typeIdx], ptrType.Elem())
+	encoder := cfg.EncoderOf(union.Types()[typeIdx], ptrType.Elem())
 
 	return &unionPtrEncoder{
 		schema:  union,
@@ -230,7 +230,7 @@ func decoderOfResolvedUnion(cfg *frozenConfig, schema Schema) ValDecoder {
 	for i, schema := range union.Types() {
 		name := unionResolutionName(schema)
 		if typ, err := cfg.resolver.Type(name); err == nil {
-			decoder := decoderOfType(cfg, schema, typ)
+			decoder := cfg.DecoderOf(schema, typ)
 			decoders[i] = decoder
 			types[i] = typ
 			continue
