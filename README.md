@@ -108,6 +108,10 @@ The interfaces `TextMarshaler` and `TextUnmarshaler` are supported for a `string
 be tested first for implementation of these interfaces, in the case of a `string` schema, before trying regular
 encoding and decoding. 
 
+### Recursive Structs
+
+At this moment recursive structs are not supported. It is planned for the future.
+
 ## Benchmark
 
 Benchmark source code can be found at: [https://github.com/nrwiersma/avro-benchmarks](https://github.com/nrwiersma/avro-benchmarks)
