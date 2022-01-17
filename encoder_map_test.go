@@ -63,26 +63,6 @@ func TestEncoder_MapOfStruct(t *testing.T) {
 	assert.Equal(t, []byte{0x01, 0x12, 0x06, 0x66, 0x6F, 0x6F, 0x36, 0x06, 0x66, 0x6f, 0x6f, 0x0}, buf.Bytes())
 }
 
-func TestEncoder_MapOfRecursiveStruct(t *testing.T) {
-	defer ConfigTeardown()
-
-	type record struct {
-		A int               `avro:"a"`
-		B map[string]record `avro:"b"`
-	}
-
-	schema := `{"type": "record", "name": "test", "fields" : [{"name": "a", "type": "int"}, {"name": "b", "type": {"type":"map", "values": "test"}}]}`
-	buf := bytes.NewBuffer([]byte{})
-	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
-
-	rec := record{A: 1, B: map[string]record{"foo": {A: 2}}}
-	err = enc.Encode(rec)
-
-	assert.NoError(t, err)
-	assert.Equal(t, []byte{0x02, 0x01, 0x0c, 0x06, 0x66, 0x6f, 0x6f, 0x04, 0x0, 0x0}, buf.Bytes())
-}
-
 func TestEncoder_MapInvalidKeyType(t *testing.T) {
 	defer ConfigTeardown()
 

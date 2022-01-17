@@ -46,10 +46,6 @@ func (r *Reader) ReadVal(schema Schema, obj interface{}) {
 			r.ReportError("ReadVal", "can only unmarshal into pointer")
 			return
 		}
-		if typ.Kind() == reflect.Ptr {
-			ptrType := typ.(*reflect2.UnsafePtrType)
-			typ = ptrType.Elem()
-		}
 
 		decoder = r.cfg.DecoderOf(schema, typ)
 	}
@@ -83,12 +79,9 @@ func (c *frozenConfig) DecoderOf(schema Schema, typ reflect2.Type) ValDecoder {
 		return decoder
 	}
 
-	pe := &placeholderEncoder{}
-	c.addDecoderToCache(schema.Fingerprint(), rtype, pe)
-
-	decoder = decoderOfType(c, schema, typ)
+	ptrType := typ.(*reflect2.UnsafePtrType)
+	decoder = decoderOfType(c, schema, ptrType.Elem())
 	c.addDecoderToCache(schema.Fingerprint(), rtype, decoder)
-	pe.dec = decoder
 	return decoder
 }
 
@@ -146,29 +139,12 @@ func (c *frozenConfig) EncoderOf(schema Schema, typ reflect2.Type) ValEncoder {
 		return encoder
 	}
 
-	pe := &placeholderEncoder{}
-	c.addEncoderToCache(schema.Fingerprint(), rtype, pe)
-
 	encoder = encoderOfType(c, schema, typ)
 	if typ.LikePtr() {
 		encoder = &onePtrEncoder{encoder}
 	}
 	c.addEncoderToCache(schema.Fingerprint(), rtype, encoder)
-	pe.enc = encoder
 	return encoder
-}
-
-type placeholderEncoder struct {
-	enc ValEncoder
-	dec ValDecoder
-}
-
-func (e *placeholderEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
-	e.enc.Encode(noescape(ptr), w)
-}
-
-func (e *placeholderEncoder) Decode(ptr unsafe.Pointer, r *Reader) {
-	e.dec.Decode(noescape(ptr), r)
 }
 
 type onePtrEncoder struct {
