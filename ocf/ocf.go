@@ -243,6 +243,25 @@ func NewEncoder(s string, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
 	return e, nil
 }
 
+// Write v to the internal buffer. This method skips the internal encoder and
+// therefore the caller is responsible for encoding the bytes. No error will be
+// thrown if the bytes does not conform to the schema given to NewEncoder, but
+// the final ocf data will be corrupted.
+func (e *Encoder) Write(v []byte) error {
+	if _, err := e.buf.Write(v); err != nil {
+		return err
+	}
+
+	e.count++
+	if e.count >= e.blockLength {
+		if err := e.writerBlock(); err != nil {
+			return err
+		}
+	}
+
+	return e.writer.Error
+}
+
 // Encode writes the Avro encoding of v to the stream.
 func (e *Encoder) Encode(v interface{}) error {
 	if err := e.encoder.Encode(v); err != nil {
