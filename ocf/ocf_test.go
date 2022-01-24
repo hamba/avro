@@ -457,12 +457,13 @@ func TestEncoder_Write(t *testing.T) {
 	encodedBytes, err := avro.Marshal(avro.MustParse(schema), record)
 	require.NoError(t, err)
 
-	err = enc.Write(encodedBytes)
+	n, err := enc.Write(encodedBytes)
 	require.NoError(t, err)
 
 	err = enc.Close()
 	require.NoError(t, err)
 
+	require.Equal(t, n, len(encodedBytes))
 	require.Equal(t, 957, buf.Len())
 }
 
