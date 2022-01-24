@@ -458,12 +458,12 @@ func TestEncoder_Write(t *testing.T) {
 	require.NoError(t, err)
 
 	err = enc.Write(encodedBytes)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Close()
 	require.NoError(t, err)
 
-	assert.Equal(t, 957, buf.Len())
+	require.Equal(t, 957, buf.Len())
 }
 
 func TestEncoder_EncodeCompressesDeflate(t *testing.T) {
