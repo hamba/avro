@@ -247,19 +247,20 @@ func NewEncoder(s string, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
 // therefore the caller is responsible for encoding the bytes. No error will be
 // thrown if the bytes does not conform to the schema given to NewEncoder, but
 // the final ocf data will be corrupted.
-func (e *Encoder) Write(v []byte) error {
-	if _, err := e.buf.Write(v); err != nil {
-		return err
+func (e *Encoder) Write(p []byte) (n int, err error) {
+	n, err = e.buf.Write(p)
+	if err != nil {
+		return n, err
 	}
 
 	e.count++
 	if e.count >= e.blockLength {
 		if err := e.writerBlock(); err != nil {
-			return err
+			return n, err
 		}
 	}
 
-	return e.writer.Error
+	return n, e.writer.Error
 }
 
 // Encode writes the Avro encoding of v to the stream.
