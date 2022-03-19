@@ -24,10 +24,13 @@ linters:
     - gocyclo
     - goerr113
     - gomnd
+    - ireturn
     - nestif
+    - nilnil
     - nlreturn
     - noctx # until registry client gets context
     - tagliatelle
+    - varnamelen
     - wrapcheck
     - wsl
 
