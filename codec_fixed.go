@@ -2,7 +2,6 @@ package avro
 
 import (
 	"fmt"
-	"math"
 	"math/big"
 	"reflect"
 	"unsafe"
@@ -89,7 +88,8 @@ func (c *fixedDecimalCodec) Decode(ptr unsafe.Pointer, r *Reader) {
 
 func (c *fixedDecimalCodec) Encode(ptr unsafe.Pointer, w *Writer) {
 	r := *((**big.Rat)(ptr))
-	i := (&big.Int{}).Mul(r.Num(), big.NewInt(int64(math.Pow10(c.scale))))
+	scale := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(c.scale)), nil)
+	i := (&big.Int{}).Mul(r.Num(), scale)
 	i = i.Div(i, r.Denom())
 
 	var b []byte

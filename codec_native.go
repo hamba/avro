@@ -2,7 +2,6 @@ package avro
 
 import (
 	"fmt"
-	"math"
 	"math/big"
 	"reflect"
 	"time"
@@ -469,16 +468,18 @@ func (c *bytesDecimalCodec) Decode(ptr unsafe.Pointer, r *Reader) {
 }
 
 func ratFromBytes(b []byte, scale int) *big.Rat {
-	i := (&big.Int{}).SetBytes(b)
+	num := (&big.Int{}).SetBytes(b)
 	if len(b) > 0 && b[0]&0x80 > 0 {
-		i.Sub(i, new(big.Int).Lsh(one, uint(len(b))*8))
+		num.Sub(num, new(big.Int).Lsh(one, uint(len(b))*8))
 	}
-	return big.NewRat(i.Int64(), int64(math.Pow10(scale)))
+	denom := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(scale)), nil)
+	return new(big.Rat).SetFrac(num, denom)
 }
 
 func (c *bytesDecimalCodec) Encode(ptr unsafe.Pointer, w *Writer) {
 	r := (*big.Rat)(ptr)
-	i := (&big.Int{}).Mul(r.Num(), big.NewInt(int64(math.Pow10(c.scale))))
+	scale := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(c.scale)), nil)
+	i := (&big.Int{}).Mul(r.Num(), scale)
 	i = i.Div(i, r.Denom())
 
 	var b []byte
@@ -514,7 +515,8 @@ func (c *bytesDecimalPtrCodec) Decode(ptr unsafe.Pointer, r *Reader) {
 
 func (c *bytesDecimalPtrCodec) Encode(ptr unsafe.Pointer, w *Writer) {
 	r := *((**big.Rat)(ptr))
-	i := (&big.Int{}).Mul(r.Num(), big.NewInt(int64(math.Pow10(c.scale))))
+	scale := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(c.scale)), nil)
+	i := (&big.Int{}).Mul(r.Num(), scale)
 	i = i.Div(i, r.Denom())
 
 	var b []byte
