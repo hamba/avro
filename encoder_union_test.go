@@ -124,18 +124,35 @@ func TestEncoder_UnionMapWithDuration(t *testing.T) {
 func TestEncoder_UnionMapWithDecimal(t *testing.T) {
 	defer ConfigTeardown()
 
-	schema := `["null", {"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}]`
-	buf := bytes.NewBuffer([]byte{})
-	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	t.Run("low scale", func(t *testing.T) {
+		schema := `["null", {"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}]`
+		buf := bytes.NewBuffer([]byte{})
+		enc, err := avro.NewEncoder(schema, buf)
+		assert.NoError(t, err)
 
-	m := map[string]interface{}{
-		"bytes.decimal": big.NewRat(1734, 5),
-	}
-	err = enc.Encode(m)
+		m := map[string]interface{}{
+			"bytes.decimal": big.NewRat(1734, 5),
+		}
+		err = enc.Encode(m)
 
-	assert.NoError(t, err)
-	assert.Equal(t, []byte{0x02, 0x6, 0x00, 0x87, 0x78}, buf.Bytes())
+		assert.NoError(t, err)
+		assert.Equal(t, []byte{0x02, 0x6, 0x00, 0x87, 0x78}, buf.Bytes())
+	})
+
+	t.Run("high scale", func(t *testing.T) {
+		schema := `["null", {"type": "bytes", "logicalType": "decimal", "precision": 77, "scale": 38}]`
+		buf := bytes.NewBuffer([]byte{})
+		enc, err := avro.NewEncoder(schema, buf)
+		assert.NoError(t, err)
+
+		m := map[string]interface{}{
+			"bytes.decimal": big.NewRat(1734, 5),
+		}
+		err = enc.Encode(m)
+
+		assert.NoError(t, err)
+		assert.Equal(t, []byte{0x2, 0x22, 0x65, 0xea, 0x55, 0xc, 0x11, 0x8, 0xf7, 0xc3, 0xb8, 0xec, 0x53, 0xff, 0x80, 0x0, 0x0, 0x0, 0x0}, buf.Bytes())
+	})
 }
 
 func TestEncoder_UnionMapInvalidType(t *testing.T) {
@@ -399,16 +416,32 @@ func TestEncoder_UnionInterfaceWithDuration(t *testing.T) {
 func TestEncoder_UnionInterfaceWithDecimal(t *testing.T) {
 	defer ConfigTeardown()
 
-	schema := `["null", {"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}]`
-	buf := bytes.NewBuffer([]byte{})
-	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	t.Run("low scale", func(t *testing.T) {
+		schema := `["null", {"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}]`
+		buf := bytes.NewBuffer([]byte{})
+		enc, err := avro.NewEncoder(schema, buf)
+		assert.NoError(t, err)
 
-	var val interface{} = big.NewRat(1734, 5)
-	err = enc.Encode(val)
+		var val interface{} = big.NewRat(1734, 5)
+		err = enc.Encode(val)
 
-	assert.NoError(t, err)
-	assert.Equal(t, []byte{0x02, 0x6, 0x00, 0x87, 0x78}, buf.Bytes())
+		assert.NoError(t, err)
+		assert.Equal(t, []byte{0x02, 0x6, 0x00, 0x87, 0x78}, buf.Bytes())
+	})
+
+	t.Run("high scale", func(t *testing.T) {
+		schema := `["null", {"type": "bytes", "logicalType": "decimal", "precision": 77, "scale": 38}]`
+		buf := bytes.NewBuffer([]byte{})
+		enc, err := avro.NewEncoder(schema, buf)
+		assert.NoError(t, err)
+
+		var val interface{} = big.NewRat(1734, 5)
+		err = enc.Encode(val)
+
+		assert.NoError(t, err)
+		assert.Equal(t, []byte{0x2, 0x22, 0x65, 0xea, 0x55, 0xc, 0x11, 0x8, 0xf7, 0xc3, 0xb8, 0xec, 0x53, 0xff, 0x80, 0x0, 0x0, 0x0, 0x0}, buf.Bytes())
+	})
+
 }
 
 func TestEncoder_UnionInterfaceUnregisteredType(t *testing.T) {
