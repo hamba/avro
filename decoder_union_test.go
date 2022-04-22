@@ -97,15 +97,29 @@ func TestDecoder_UnionMapWithDuration(t *testing.T) {
 func TestDecoder_UnionMapWithDecimal(t *testing.T) {
 	defer ConfigTeardown()
 
-	data := []byte{0x02, 0x6, 0x00, 0x87, 0x78}
-	schema := `["null", {"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}]`
-	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+	t.Run("low scale", func(t *testing.T) {
+		data := []byte{0x02, 0x6, 0x00, 0x87, 0x78}
+		schema := `["null", {"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}]`
+		dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
 
-	var got map[string]interface{}
-	err := dec.Decode(&got)
+		var got map[string]interface{}
+		err := dec.Decode(&got)
 
-	assert.NoError(t, err)
-	assert.Equal(t, big.NewRat(1734, 5), got["bytes.decimal"])
+		assert.NoError(t, err)
+		assert.Equal(t, big.NewRat(1734, 5), got["bytes.decimal"])
+	})
+
+	t.Run("high scale", func(t *testing.T) {
+		data := []byte{0x2, 0x22, 0x65, 0xea, 0x55, 0xc, 0x11, 0x8, 0xf7, 0xc3, 0xb8, 0xec, 0x53, 0xff, 0x80, 0x0, 0x0, 0x0, 0x0}
+		schema := `["null", {"type": "bytes", "logicalType": "decimal", "precision": 77, "scale": 38}]`
+		dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+		var got map[string]interface{}
+		err := dec.Decode(&got)
+
+		assert.NoError(t, err)
+		assert.Equal(t, big.NewRat(1734, 5), got["bytes.decimal"])
+	})
 }
 
 func TestDecoder_UnionMapInvalidSchema(t *testing.T) {
@@ -481,29 +495,56 @@ func TestDecoder_UnionInterfaceWithDuration(t *testing.T) {
 func TestDecoder_UnionInterfaceWithDecimal(t *testing.T) {
 	defer ConfigTeardown()
 
-	data := []byte{0x02, 0x6, 0x00, 0x87, 0x78}
-	schema := `["null", {"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}]`
-	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+	t.Run("low scale", func(t *testing.T) {
+		data := []byte{0x02, 0x6, 0x00, 0x87, 0x78}
+		schema := `["null", {"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}]`
+		dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
 
-	var got interface{}
-	err := dec.Decode(&got)
+		var got interface{}
+		err := dec.Decode(&got)
 
-	assert.NoError(t, err)
-	assert.Equal(t, big.NewRat(1734, 5), got)
+		assert.NoError(t, err)
+		assert.Equal(t, big.NewRat(1734, 5), got)
+	})
+
+	t.Run("high scale", func(t *testing.T) {
+		data := []byte{0x2, 0x22, 0x65, 0xea, 0x55, 0xc, 0x11, 0x8, 0xf7, 0xc3, 0xb8, 0xec, 0x53, 0xff, 0x80, 0x0, 0x0, 0x0, 0x0}
+		schema := `["null", {"type": "bytes", "logicalType": "decimal", "precision": 77, "scale": 38}]`
+		dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+		var got interface{}
+		err := dec.Decode(&got)
+
+		assert.NoError(t, err)
+		assert.Equal(t, big.NewRat(1734, 5), got)
+	})
 }
 
 func TestDecoder_UnionInterfaceWithDecimal_Negative(t *testing.T) {
 	defer ConfigTeardown()
 
-	data := []byte{0x02, 0x6, 0xFF, 0x78, 0x88}
-	schema := `["null", {"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}]`
-	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+	t.Run("low scale", func(t *testing.T) {
+		data := []byte{0x02, 0x6, 0xFF, 0x78, 0x88}
+		schema := `["null", {"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}]`
+		dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
 
-	var got interface{}
-	err := dec.Decode(&got)
+		var got interface{}
+		err := dec.Decode(&got)
 
-	assert.NoError(t, err)
-	assert.Equal(t, big.NewRat(-1734, 5), got)
+		assert.NoError(t, err)
+		assert.Equal(t, big.NewRat(-1734, 5), got)
+	})
+	t.Run("high scale", func(t *testing.T) {
+		data := []byte{0x2, 0x22, 0x9a, 0x15, 0xaa, 0xf3, 0xee, 0xf7, 0x8, 0x3c, 0x47, 0x13, 0xac, 0x0, 0x80, 0x0, 0x0, 0x0, 0x0}
+		schema := `["null", {"type": "bytes", "logicalType": "decimal", "precision": 77, "scale": 38}]`
+		dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+		var got interface{}
+		err := dec.Decode(&got)
+
+		assert.NoError(t, err)
+		assert.Equal(t, big.NewRat(-1734, 5), got)
+	})
 }
 
 func TestDecoder_UnionInterfaceUnresolvableTypeWithError(t *testing.T) {
