@@ -2,6 +2,7 @@ package ocf_test
 
 import (
 	"bytes"
+	"compress/flate"
 	"errors"
 	"os"
 	"testing"
@@ -122,7 +123,7 @@ func TestDecoder(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	defer f.Close()
+	t.Cleanup(func() { _ = f.Close() })
 
 	dec, err := ocf.NewDecoder(f)
 	if err != nil {
@@ -174,7 +175,7 @@ func TestDecoderDeflate(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	defer f.Close()
+	t.Cleanup(func() { _ = f.Close() })
 
 	dec, err := ocf.NewDecoder(f)
 	if err != nil {
@@ -202,7 +203,7 @@ func TestDecoderDeflate_InvalidData(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	defer f.Close()
+	t.Cleanup(func() { _ = f.Close() })
 
 	dec, err := ocf.NewDecoder(f)
 	if err != nil {
@@ -245,7 +246,7 @@ func TestDecoderSnappy(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	defer f.Close()
+	t.Cleanup(func() { _ = f.Close() })
 
 	dec, err := ocf.NewDecoder(f)
 	if err != nil {
@@ -273,7 +274,7 @@ func TestDecoderSnappy_InvalidData(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	defer f.Close()
+	t.Cleanup(func() { _ = f.Close() })
 
 	dec, err := ocf.NewDecoder(f)
 	if err != nil {
@@ -292,7 +293,7 @@ func TestDecoderSnappy_ShortCRC(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	defer f.Close()
+	t.Cleanup(func() { _ = f.Close() })
 
 	dec, err := ocf.NewDecoder(f)
 	if err != nil {
@@ -311,7 +312,7 @@ func TestDecoderSnappy_InvalidCRC(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	defer f.Close()
+	t.Cleanup(func() { _ = f.Close() })
 
 	dec, err := ocf.NewDecoder(f)
 	if err != nil {
@@ -504,6 +505,43 @@ func TestEncoder_EncodeCompressesDeflate(t *testing.T) {
 	assert.Equal(t, 926, buf.Len())
 }
 
+func TestEncoder_EncodeCompressesDeflateWithLevel(t *testing.T) {
+	unionStr := "union value"
+	record := FullRecord{
+		Strings: []string{"string1", "string2", "string3", "string4", "string5"},
+		Longs:   []int64{1, 2, 3, 4, 5},
+		Enum:    "C",
+		Map: map[string]int{
+			"key1": 1,
+			"key2": 2,
+			"key3": 3,
+			"key4": 4,
+			"key5": 5,
+		},
+		Nullable: &unionStr,
+		Fixed:    [16]byte{0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04},
+		Record: &TestRecord{
+			Long:   1925639126735,
+			String: "I am a test record",
+			Int:    666,
+			Float:  7171.17,
+			Double: 916734926348163.01973408746523,
+			Bool:   true,
+		},
+	}
+
+	buf := &bytes.Buffer{}
+	enc, _ := ocf.NewEncoder(schema, buf, ocf.WithCompressionLevel(flate.BestCompression))
+
+	err := enc.Encode(record)
+	assert.NoError(t, err)
+
+	err = enc.Close()
+	assert.NoError(t, err)
+
+	assert.Equal(t, 926, buf.Len())
+}
+
 func TestEncoder_EncodeCompressesSnappy(t *testing.T) {
 	unionStr := "union value"
 	record := FullRecord{
@@ -553,7 +591,7 @@ func TestEncoder_EncodeError(t *testing.T) {
 func TestEncoder_EncodeWritesBlocks(t *testing.T) {
 	buf := &bytes.Buffer{}
 	enc, _ := ocf.NewEncoder(`"long"`, buf, ocf.WithBlockLength(1))
-	defer enc.Close()
+	t.Cleanup(func() { _ = enc.Close() })
 
 	err := enc.Encode(int64(1))
 
@@ -564,7 +602,7 @@ func TestEncoder_EncodeWritesBlocks(t *testing.T) {
 func TestEncoder_EncodeHandlesWriteBlockError(t *testing.T) {
 	w := &errorWriter{}
 	enc, _ := ocf.NewEncoder(`"long"`, w, ocf.WithBlockLength(1))
-	defer enc.Close()
+	t.Cleanup(func() { _ = enc.Close() })
 
 	err := enc.Encode(int64(1))
 
@@ -590,7 +628,7 @@ func TestEncodeDecodeMetadata(t *testing.T) {
 	err := enc.Encode(int64(1))
 	assert.NoError(t, err)
 
-	enc.Close()
+	_ = enc.Close()
 
 	dec, err := ocf.NewDecoder(buf)
 	assert.NoError(t, err)

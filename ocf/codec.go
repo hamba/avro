@@ -22,13 +22,13 @@ const (
 	Snappy  CodecName = "snappy"
 )
 
-func resolveCodec(name CodecName) (Codec, error) {
+func resolveCodec(name CodecName, lvl int) (Codec, error) {
 	switch name {
 	case Null, "":
 		return &NullCodec{}, nil
 
 	case Deflate:
-		return &DeflateCodec{}, nil
+		return &DeflateCodec{compLvl: lvl}, nil
 
 	case Snappy:
 		return &SnappyCodec{}, nil
@@ -60,10 +60,12 @@ func (*NullCodec) Encode(b []byte) []byte {
 }
 
 // DeflateCodec is a flate compression codec.
-type DeflateCodec struct{}
+type DeflateCodec struct {
+	compLvl int
+}
 
 // Decode decodes the given bytes.
-func (*DeflateCodec) Decode(b []byte) ([]byte, error) {
+func (c *DeflateCodec) Decode(b []byte) ([]byte, error) {
 	r := flate.NewReader(bytes.NewBuffer(b))
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
@@ -76,10 +78,10 @@ func (*DeflateCodec) Decode(b []byte) ([]byte, error) {
 }
 
 // Encode encodes the given bytes.
-func (*DeflateCodec) Encode(b []byte) []byte {
+func (c *DeflateCodec) Encode(b []byte) []byte {
 	data := bytes.NewBuffer(make([]byte, 0, len(b)))
 
-	w, _ := flate.NewWriter(data, flate.DefaultCompression)
+	w, _ := flate.NewWriter(data, c.compLvl)
 	_, _ = w.Write(b)
 	_ = w.Close()
 
