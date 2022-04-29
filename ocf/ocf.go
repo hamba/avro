@@ -73,7 +73,7 @@ func NewDecoder(r io.Reader) (*Decoder, error) {
 		return nil, err
 	}
 
-	codec, err := resolveCodec(CodecName(h.Meta[codecKey]))
+	codec, err := resolveCodec(CodecName(h.Meta[codecKey]), -1)
 	if err != nil {
 		return nil, err
 	}
@@ -155,9 +155,10 @@ func (d *Decoder) readBlock() int64 {
 }
 
 type encoderConfig struct {
-	BlockLength int
-	CodecName   CodecName
-	Metadata    map[string][]byte
+	BlockLength      int
+	CodecName        CodecName
+	CodecCompression int
+	Metadata         map[string][]byte
 }
 
 // EncoderFunc represents an configuration function for Encoder.
@@ -174,6 +175,15 @@ func WithBlockLength(length int) EncoderFunc {
 func WithCodec(codec CodecName) EncoderFunc {
 	return func(cfg *encoderConfig) {
 		cfg.CodecName = codec
+	}
+}
+
+// WithCompressionLevel sets the compression codec to deflate and
+// the compression level on the encoder.
+func WithCompressionLevel(compLvl int) EncoderFunc {
+	return func(cfg *encoderConfig) {
+		cfg.CodecName = Deflate
+		cfg.CodecCompression = compLvl
 	}
 }
 
@@ -205,9 +215,10 @@ func NewEncoder(s string, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
 	}
 
 	cfg := encoderConfig{
-		BlockLength: 100,
-		CodecName:   Null,
-		Metadata:    map[string][]byte{},
+		BlockLength:      100,
+		CodecName:        Null,
+		CodecCompression: -1,
+		Metadata:         map[string][]byte{},
 	}
 	for _, opt := range opts {
 		opt(&cfg)
@@ -224,7 +235,7 @@ func NewEncoder(s string, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
 	_, _ = rand.Read(header.Sync[:])
 	writer.WriteVal(HeaderSchema, header)
 
-	codec, err := resolveCodec(cfg.CodecName)
+	codec, err := resolveCodec(cfg.CodecName, cfg.CodecCompression)
 	if err != nil {
 		return nil, err
 	}
