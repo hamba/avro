@@ -14,7 +14,7 @@ func TestWriter_Reset(t *testing.T) {
 	var buf bytes.Buffer
 	w := avro.NewWriter(nil, 10)
 	w.Reset(&buf)
-	w.Write([]byte("test"))
+	_, _ = w.Write([]byte("test"))
 
 	err := w.Flush()
 
@@ -24,7 +24,7 @@ func TestWriter_Reset(t *testing.T) {
 
 func TestWriter_Buffer(t *testing.T) {
 	w := avro.NewWriter(nil, 10)
-	w.Write([]byte("test"))
+	_, _ = w.Write([]byte("test"))
 
 	assert.Equal(t, 4, w.Buffered())
 	assert.Equal(t, []byte("test"), w.Buffer())
@@ -33,7 +33,7 @@ func TestWriter_Buffer(t *testing.T) {
 func TestWriter_Flush(t *testing.T) {
 	var buf bytes.Buffer
 	w := avro.NewWriter(&buf, 10)
-	w.Write([]byte("test"))
+	_, _ = w.Write([]byte("test"))
 
 	err := w.Flush()
 
@@ -43,7 +43,7 @@ func TestWriter_Flush(t *testing.T) {
 
 func TestWriter_FlushNoWriter(t *testing.T) {
 	w := avro.NewWriter(nil, 10)
-	w.Write([]byte("test"))
+	_, _ = w.Write([]byte("test"))
 
 	err := w.Flush()
 
@@ -62,7 +62,7 @@ func TestWriter_FlushReturnsWriterError(t *testing.T) {
 
 func TestWriter_FlushReturnsUnderlyingWriterError(t *testing.T) {
 	w := avro.NewWriter(&errorWriter{}, 10)
-	w.Write([]byte("test"))
+	_, _ = w.Write([]byte("test"))
 
 	err := w.Flush()
 
@@ -73,7 +73,7 @@ func TestWriter_FlushReturnsUnderlyingWriterError(t *testing.T) {
 func TestWriter_Write(t *testing.T) {
 	w := avro.NewWriter(nil, 50)
 
-	w.Write([]byte{0xBC, 0xDC, 0x06, 0x00, 0x10, 0x0A})
+	_, _ = w.Write([]byte{0xBC, 0xDC, 0x06, 0x00, 0x10, 0x0A})
 
 	assert.Equal(t, []byte{0xBC, 0xDC, 0x06, 0x00, 0x10, 0x0A}, w.Buffer())
 }
