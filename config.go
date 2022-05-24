@@ -151,7 +151,10 @@ func (c *frozenConfig) returnReader(reader *Reader) {
 }
 
 func (c *frozenConfig) NewEncoder(schema Schema, w io.Writer) *Encoder {
-	writer := NewWriter(w, 512, WithWriterConfig(c))
+	writer, ok := w.(*Writer)
+	if !ok {
+		writer = NewWriter(w, 512, WithWriterConfig(c))
+	}
 	return &Encoder{
 		s: schema,
 		w: writer,
