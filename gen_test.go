@@ -41,6 +41,44 @@ func TestGenFromSchema(t *testing.T) {
       }
     ]
   }
+  },
+  {
+    "name": "anEnum", "type": {
+    "type": "enum", "name": "Cards", "symbols": [
+      "SPADES",
+      "HEARTS",
+      "DIAMONDS",
+      "CLUBS"
+    ]
+  }
+  },
+  {
+    "name": "aFixed", "type": {
+    "type": "fixed", "name": "fixedField", "size": 7
+  }
+  },
+  {
+    "name": "mapOfStrings", "type": {
+    "name": "aMapOfStrings", "type": "map", "values": "string"
+  }
+  },
+  {
+    "name": "aDate", "type": "int", "logicalType": "date"
+  },
+  {
+    "name": "aDuration", "type": "int", "logicalType": "time-millis"
+  },
+  {
+    "name": "aLongTimeMicros", "type": "long", "logicalType": "time-micros"
+  },
+  {
+    "name": "aLongTimestampMillis", "type": "long", "logicalType": "timestamp-millis"
+  },
+  {
+    "name": "aLongTimestampMicro", "type": "long", "logicalType": "timestamp-micros"
+  },
+  {
+    "name": "ABytesDecimal", "type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2
   }
 ]
 }`
@@ -74,6 +112,15 @@ func TestGenFromSchema(t *testing.T) {
 		"JustBytes []byte",
 		"PrimitiveNullableArrayUnion []string",
 		"InnerRecord InnerRecord",
+		"AnEnum string",
+		"AFixed [7]byte",
+		"MapOfStrings map[string]string",
+		"ADate time.Time",
+		"ADuration time.Duration",
+		"ALongTimeMicros time.Duration",
+		"ALongTimestampMillis time.Time",
+		"ALongTimestampMicro time.Time",
+		"ABytesDecimal *big.Rat",
 		"}",
 		"type InnerRecord struct {",
 		"InnerJustBytes []byte",

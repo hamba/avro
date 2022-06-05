@@ -3,6 +3,7 @@ package avro
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"go/token"
 	"io"
 	"strings"
@@ -73,22 +74,45 @@ func generateFrom(gc GenConf, schema *RecordSchema, acc *dst.File) string {
 
 func genField(gc GenConf, f *Field, acc *dst.File) (string, string) {
 	fieldName := capitalize(f.name)
+	logicalType := f.Prop("logicalType")
 	var typ string
 	switch s := f.Type().(type) {
+	case *RefSchema:
+		panic("impl")
 	case *RecordSchema:
 		typ = generateFrom(gc, s, acc)
 	case *PrimitiveSchema:
-		typ = resolvePrimitiveType(s.Type())
+		switch logicalType {
+		case "", nil:
+			typ = resolvePrimitiveType(s.Type())
+		case "date", "timestamp-millis", "timestamp-micros":
+			typ = "time.Time"
+		case "time-millis", "time-micros":
+			typ = "time.Duration"
+		case "decimal":
+			typ = "*big.Rat"
+		}
 	case *ArraySchema:
-		// TODO missing arrays of unions
 		typ = "[]" + resolvePrimitiveType(s.Items().Type())
+	case *EnumSchema:
+		typ = "string"
+	case *FixedSchema:
+		typ = fmt.Sprintf("[%d]byte", +s.Size())
+	case *MapSchema:
+		switch typeSchema := s.Values().(type) {
+		case *PrimitiveSchema:
+			typ = "map[string]" + resolvePrimitiveType(typeSchema.Type())
+			// TODO other types of maps
+		}
 	case *UnionSchema:
 		nullIsAllowed := false // TODO assumes null is always first
 		for _, schemaInUnion := range s.Types() {
 			switch schemaAsType := schemaInUnion.(type) {
 			case *RecordSchema:
 				typ = generateFrom(gc, schemaAsType, acc)
-				if !nullIsAllowed || len(s.Types()) != 2 {
+				if len(s.Types()) == 2 && nullIsAllowed {
+					typ = "*" + typ
+				} else if !nullIsAllowed || len(s.Types()) != 2 {
 					typ = "interface{}"
 				}
 			case *ArraySchema:
@@ -96,6 +120,7 @@ func genField(gc GenConf, f *Field, acc *dst.File) (string, string) {
 			case *NullSchema:
 				nullIsAllowed = true
 			}
+			// TODO support all schema types within the union
 		}
 	}
 	return fieldName, typ
