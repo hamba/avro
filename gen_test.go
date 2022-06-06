@@ -63,6 +63,23 @@ func TestGenFromSchema(t *testing.T) {
   }
   },
   {
+    "name": "mapOfRecords",
+    "type": {
+      "name": "aMapOfRecords",
+      "type": "map",
+      "values": {
+        "name": "RecordInMap",
+        "type": "record",
+        "fields": [
+          {
+            "type": "string",
+            "name": "name"
+          }
+        ]
+      }
+    }
+  },  
+  {
     "name": "aDate", "type": "int", "logicalType": "date"
   },
   {
@@ -115,6 +132,7 @@ func TestGenFromSchema(t *testing.T) {
 		"AnEnum string",
 		"AFixed [7]byte",
 		"MapOfStrings map[string]string",
+		"MapOfRecords map[string]RecordInMap",
 		"ADate time.Time",
 		"ADuration time.Duration",
 		"ALongTimeMicros time.Duration",
@@ -125,6 +143,9 @@ func TestGenFromSchema(t *testing.T) {
 		"type InnerRecord struct {",
 		"InnerJustBytes []byte",
 		"InnerPrimitiveNullableArrayUnion []string",
+		"}",
+		"type RecordInMap struct {",
+		"Name string",
 		"}",
 	} {
 		assert.Contains(t, lines, expected)

@@ -17,6 +17,16 @@ type GenConf struct {
 	OutFileName string
 }
 
+var primitiveMappings = map[Type]string{
+	"string":  "string",
+	"bytes":   "[]byte",
+	"int":     "int",
+	"long":    "int64",
+	"float":   "float32",
+	"double":  "float64",
+	"boolean": "bool",
+}
+
 func GenerateFrom(gc GenConf, s string) (io.Reader, error) {
 	// Ideas
 	/*
@@ -49,7 +59,7 @@ func GenerateFrom(gc GenConf, s string) (io.Reader, error) {
 		// TODO should be to_snake_case
 		Name: &dst.Ident{Name: strings.ToLower(gc.PackageName)}, // For some reason this is the package name
 	}
-	generateFrom(gc, rSchema, &result)
+	generateFrom(rSchema, &result)
 
 	buf := &bytes.Buffer{}
 	if err = decorator.Fprint(buf, &result); err != nil {
@@ -58,110 +68,84 @@ func GenerateFrom(gc GenConf, s string) (io.Reader, error) {
 	return buf, nil
 }
 
-func generateFrom(gc GenConf, schema *RecordSchema, acc *dst.File) string {
-	// TODO inner records
-	// TODO union types
+func generateFrom(schema Schema, acc *dst.File) string {
 	// TODO union types at root
-	fields := make([]*dst.Field, len(schema.fields))
-	for i, f := range schema.fields {
-		fieldName, typ := genField(gc, f, acc)
-		fields[i] = newField(fieldName, typ)
+	switch t := schema.(type) {
+	case *RecordSchema:
+		typeName := capitalize(t.Name())
+		fields := make([]*dst.Field, len(t.fields))
+		for i, f := range t.fields {
+			fSchema := f.Type()
+			fieldName := capitalize(f.Name())
+			typ := resolveType(fSchema, f.Prop("logicalType"), acc)
+			fields[i] = newField(fieldName, typ)
+		}
+		acc.Decls = append(acc.Decls, newType(typeName, fields))
+		return typeName
+	default:
+		return resolveType(schema, nil, acc)
 	}
-	typeName := capitalize(schema.name.name)
-	acc.Decls = append(acc.Decls, newType(typeName, fields))
-	return typeName
 }
 
-func genField(gc GenConf, f *Field, acc *dst.File) (string, string) {
-	fieldName := capitalize(f.name)
-	logicalType := f.Prop("logicalType")
+func resolveType(fieldSchema Schema, logicalType interface{}, acc *dst.File) string {
 	var typ string
-	switch s := f.Type().(type) {
+	switch s := fieldSchema.(type) {
 	case *RefSchema:
 		panic("impl")
 	case *RecordSchema:
-		typ = generateFrom(gc, s, acc)
+		typ = generateFrom(s, acc)
 	case *PrimitiveSchema:
-		switch logicalType {
-		case "", nil:
-			typ = resolvePrimitiveType(s.Type())
-		case "date", "timestamp-millis", "timestamp-micros":
-			typ = "time.Time"
-		case "time-millis", "time-micros":
-			typ = "time.Duration"
-		case "decimal":
-			typ = "*big.Rat"
-		}
+		typ = resolvePrimitiveLogicalType(logicalType, typ, s)
 	case *ArraySchema:
-		typ = "[]" + resolvePrimitiveType(s.Items().Type())
+		// TODO support non primitive arrays
+		typ = fmt.Sprintf("[]%s", primitiveMappings[s.Items().Type()])
 	case *EnumSchema:
 		typ = "string"
 	case *FixedSchema:
 		typ = fmt.Sprintf("[%d]byte", +s.Size())
 	case *MapSchema:
-		switch typeSchema := s.Values().(type) {
-		case *PrimitiveSchema:
-			typ = "map[string]" + resolvePrimitiveType(typeSchema.Type())
-			// TODO other types of maps
-		}
+		typ = "map[string]" + resolveType(s.Values(), nil, acc)
 	case *UnionSchema:
-		nullIsAllowed := false // TODO assumes null is always first
-		for _, schemaInUnion := range s.Types() {
-			switch schemaAsType := schemaInUnion.(type) {
-			case *RecordSchema:
-				typ = generateFrom(gc, schemaAsType, acc)
-				if len(s.Types()) == 2 && nullIsAllowed {
-					typ = "*" + typ
-				} else if !nullIsAllowed || len(s.Types()) != 2 {
-					typ = "interface{}"
-				}
-			case *ArraySchema:
-				typ = "[]" + resolvePrimitiveType(schemaAsType.Items().Type())
-			case *NullSchema:
-				nullIsAllowed = true
-			}
-			// TODO support all schema types within the union
-		}
+		typ = resolveUnionTypes(s, acc)
 	}
-	return fieldName, typ
+	return typ
 }
 
-func resolvePrimitiveType(x Type) string {
-	switch x {
-	case "record":
-		panic("impl")
-	case "error":
-		panic("impl")
-	case "<ref>":
-		panic("impl")
-	case "enum":
-		panic("impl")
-	case "array":
-		panic("impl")
-	case "map":
-		panic("impl")
-	case "union":
-		panic("impl")
-	case "fixed":
-		panic("impl")
-	case "string":
-		return "string"
-	case "bytes":
-		return "[]byte"
-	case "int":
-		return "int"
-	case "long":
-		return "int64"
-	case "float":
-		return "float32"
-	case "double":
-		return "float64"
-	case "boolean":
-		return "bool"
-	case "null":
-		panic("impl")
+func resolveUnionTypes(s *UnionSchema, acc *dst.File) string {
+	var typ string
+	nullIsAllowed := false // TODO assumes null is always first
+	for _, schemaInUnion := range s.Types() {
+		switch schemaAsType := schemaInUnion.(type) {
+		case *RecordSchema:
+			// TODO new types in unions need to be generated
+			typ = generateFrom(schemaAsType, acc)
+			if len(s.Types()) == 2 && nullIsAllowed {
+				typ = "*" + typ
+			} else if !nullIsAllowed || len(s.Types()) != 2 {
+				typ = "interface{}"
+			}
+		case *ArraySchema:
+			typ = fmt.Sprintf("[]%s", primitiveMappings[(schemaAsType.Items().Type())])
+		case *NullSchema:
+			nullIsAllowed = true
+		}
+		// TODO support all schema types within the union
 	}
-	panic("impl")
+	return typ
+}
+
+func resolvePrimitiveLogicalType(logicalType interface{}, typ string, s Schema) string {
+	switch logicalType {
+	case "", nil:
+		typ = primitiveMappings[s.Type()]
+	case "date", "timestamp-millis", "timestamp-micros":
+		typ = "time.Time"
+	case "time-millis", "time-micros":
+		typ = "time.Duration"
+	case "decimal":
+		typ = "*big.Rat"
+	}
+	return typ
 }
 
 func newType(name string, fields []*dst.Field) *dst.GenDecl {
