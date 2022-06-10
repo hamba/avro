@@ -110,27 +110,24 @@ func resolveType(fieldSchema Schema, logicalType interface{}, acc *dst.File) str
 	return typ
 }
 
-func resolveUnionTypes(s *UnionSchema, acc *dst.File) string {
-	var typ string
+func resolveUnionTypes(unionSchema *UnionSchema, acc *dst.File) string {
 	nullIsAllowed := false // TODO assumes null is always first
-	for _, schemaInUnion := range s.Types() {
-		switch schemaAsType := schemaInUnion.(type) {
-		case *RecordSchema:
-			// TODO new types in unions need to be generated
-			typ = generateFrom(schemaAsType, acc)
-			if len(s.Types()) == 2 && nullIsAllowed {
-				typ = "*" + typ
-			} else if !nullIsAllowed || len(s.Types()) != 2 {
-				typ = "interface{}"
-			}
-		case *ArraySchema:
-			typ = fmt.Sprintf("[]%s", primitiveMappings[(schemaAsType.Items().Type())])
-		case *NullSchema:
+	typesInUnion := make([]string, 0)
+	for _, elementSchema := range unionSchema.Types() {
+		if _, ok := elementSchema.(*NullSchema); ok {
 			nullIsAllowed = true
+		} else {
+			typesInUnion = append(typesInUnion, generateFrom(elementSchema, acc))
 		}
-		// TODO support all schema types within the union
 	}
-	return typ
+	if nullIsAllowed && len(typesInUnion) == 1 {
+		typ := typesInUnion[0]
+		if strings.HasPrefix(typ, "[]") {
+			return typ
+		}
+		return "*" + typ
+	}
+	return "{}interface"
 }
 
 func resolvePrimitiveLogicalType(logicalType interface{}, typ string, s Schema) string {

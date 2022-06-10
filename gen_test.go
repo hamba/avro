@@ -175,6 +175,75 @@ func TestGenFromSchema(t *testing.T) {
           ]
         }
       }
+    },
+    {
+      "name": "nullableRecordUnion",
+      "type": [
+        "null",
+        {
+          "name": "recordInNullableUnion",
+          "type": "record",
+          "fields": [
+            {
+              "name": "aString",
+              "type": "string"
+            }
+          ]
+        }
+      ],
+      "default": null
+    },
+    {
+      "name": "nonNullableRecordUnion",
+      "type": [
+        {
+          "name": "record1InNonNullableUnion",
+          "type": "record",
+          "fields": [
+            {
+              "name": "aString",
+              "type": "string"
+            }
+          ]
+        },
+        {
+          "name": "record2InNonNullableUnion",
+          "type": "record",
+          "fields": [
+            {
+              "name": "aString",
+              "type": "string"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "nullableRecordUnionWith3Options",
+      "type": [
+        "null",
+        {
+          "name": "record1InNullableUnion",
+          "type": "record",
+          "fields": [
+            {
+              "name": "aString",
+              "type": "string"
+            }
+          ]
+        },
+        {
+          "name": "record2InNullableUnion",
+          "type": "record",
+          "fields": [
+            {
+              "name": "aString",
+              "type": "string"
+            }
+          ]
+        }
+      ],
+      "default": null
     }
   ]
 }`
@@ -218,6 +287,9 @@ func TestGenFromSchema(t *testing.T) {
 		"ALongTimestampMillis time.Time",
 		"ALongTimestampMicro time.Time",
 		"ABytesDecimal *big.Rat",
+		"NullableRecordUnion *RecordInNullableUnion",
+		"NonNullableRecordUnion {}interface",
+		"NullableRecordUnionWith3Options {}interface",
 		"}",
 		"type InnerRecord struct {",
 		"InnerJustBytes []byte",
@@ -227,6 +299,21 @@ func TestGenFromSchema(t *testing.T) {
 		"Name string",
 		"}",
 		"type RecordInArray struct {",
+		"AString string",
+		"}",
+		"type Record1InNonNullableUnion struct {",
+		"AString string",
+		"}",
+		"type Record2InNonNullableUnion struct {",
+		"AString string",
+		"}",
+		"type RecordInNullableUnion struct {",
+		"AString string",
+		"}",
+		"type Record1InNullableUnion struct {",
+		"AString string",
+		"}",
+		"type Record2InNullableUnion struct {",
 		"AString string",
 		"}",
 	} {
