@@ -279,6 +279,7 @@ func (p *properties) Prop(name string) interface{} {
 
 // PrimitiveSchema is an Avro primitive type schema.
 type PrimitiveSchema struct {
+	properties
 	fingerprinter
 
 	typ     Type
@@ -288,8 +289,9 @@ type PrimitiveSchema struct {
 // NewPrimitiveSchema creates a new PrimitiveSchema.
 func NewPrimitiveSchema(t Type, l LogicalSchema) *PrimitiveSchema {
 	return &PrimitiveSchema{
-		typ:     t,
-		logical: l,
+		properties: properties{reserved: schemaReserved},
+		typ:        t,
+		logical:    l,
 	}
 }
 
