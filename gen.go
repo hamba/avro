@@ -110,7 +110,7 @@ func resolveUnionTypes(unionSchema *UnionSchema, acc *dst.File) string {
 		}
 		return "*" + typ
 	}
-	return "{}interface"
+	return "interface{}"
 }
 
 func resolvePrimitiveLogicalType(logicalType interface{}, typ string, s Schema) string {
