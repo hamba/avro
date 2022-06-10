@@ -97,8 +97,7 @@ func resolveType(fieldSchema Schema, logicalType interface{}, acc *dst.File) str
 	case *PrimitiveSchema:
 		typ = resolvePrimitiveLogicalType(logicalType, typ, s)
 	case *ArraySchema:
-		// TODO support non primitive arrays
-		typ = fmt.Sprintf("[]%s", primitiveMappings[s.Items().Type()])
+		typ = fmt.Sprintf("[]%s", generateFrom(s.Items(), acc))
 	case *EnumSchema:
 		typ = "string"
 	case *FixedSchema:

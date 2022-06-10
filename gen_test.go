@@ -15,89 +15,168 @@ import (
 func TestGenFromSchema(t *testing.T) {
 	defer ConfigTeardown()
 	schema := `{
-  "type": "record", "name": "test", "fields": [
-  {"name": "aString", "type": "string"},
-  {"name": "aBoolean", "type": "boolean"},
-  {"name": "anInt", "type": "int"},
-  {"name": "aFloat", "type": "float"},
-  {"name": "aDouble", "type": "double"},
-  {"name": "aLong", "type": "long"},
-  {"name": "justBytes", "type": "bytes"},
-  {
-    "name": "primitiveNullableArrayUnion", "type": [
-    "null",
-    {"type": "array", "items": "string"}
-  ], "default": null
-  },
-  {
-    "name": "innerRecord", "type": {
-    "name": "InnerRecord", "type": "record", "fields": [
-      {"name": "innerJustBytes", "type": "bytes"},
-      {
-        "name": "innerPrimitiveNullableArrayUnion", "type": [
+  "type": "record",
+  "name": "test",
+  "fields": [
+    {
+      "name": "aString",
+      "type": "string"
+    },
+    {
+      "name": "aBoolean",
+      "type": "boolean"
+    },
+    {
+      "name": "anInt",
+      "type": "int"
+    },
+    {
+      "name": "aFloat",
+      "type": "float"
+    },
+    {
+      "name": "aDouble",
+      "type": "double"
+    },
+    {
+      "name": "aLong",
+      "type": "long"
+    },
+    {
+      "name": "justBytes",
+      "type": "bytes"
+    },
+    {
+      "name": "primitiveNullableArrayUnion",
+      "type": [
         "null",
-        {"type": "array", "items": "string"}
-      ], "default": null
-      }
-    ]
-  }
-  },
-  {
-    "name": "anEnum", "type": {
-    "type": "enum", "name": "Cards", "symbols": [
-      "SPADES",
-      "HEARTS",
-      "DIAMONDS",
-      "CLUBS"
-    ]
-  }
-  },
-  {
-    "name": "aFixed", "type": {
-    "type": "fixed", "name": "fixedField", "size": 7
-  }
-  },
-  {
-    "name": "mapOfStrings", "type": {
-    "name": "aMapOfStrings", "type": "map", "values": "string"
-  }
-  },
-  {
-    "name": "mapOfRecords",
-    "type": {
-      "name": "aMapOfRecords",
-      "type": "map",
-      "values": {
-        "name": "RecordInMap",
+        {
+          "type": "array",
+          "items": "string"
+        }
+      ],
+      "default": null
+    },
+    {
+      "name": "innerRecord",
+      "type": {
+        "name": "InnerRecord",
         "type": "record",
         "fields": [
           {
-            "type": "string",
-            "name": "name"
+            "name": "innerJustBytes",
+            "type": "bytes"
+          },
+          {
+            "name": "innerPrimitiveNullableArrayUnion",
+            "type": [
+              "null",
+              {
+                "type": "array",
+                "items": "string"
+              }
+            ],
+            "default": null
           }
         ]
       }
+    },
+    {
+      "name": "anEnum",
+      "type": {
+        "type": "enum",
+        "name": "Cards",
+        "symbols": [
+          "SPADES",
+          "HEARTS",
+          "DIAMONDS",
+          "CLUBS"
+        ]
+      }
+    },
+    {
+      "name": "aFixed",
+      "type": {
+        "type": "fixed",
+        "name": "fixedField",
+        "size": 7
+      }
+    },
+    {
+      "name": "mapOfStrings",
+      "type": {
+        "name": "aMapOfStrings",
+        "type": "map",
+        "values": "string"
+      }
+    },
+    {
+      "name": "mapOfRecords",
+      "type": {
+        "name": "aMapOfRecords",
+        "type": "map",
+        "values": {
+          "name": "RecordInMap",
+          "type": "record",
+          "fields": [
+            {
+              "type": "string",
+              "name": "name"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "aDate",
+      "type": "int",
+      "logicalType": "date"
+    },
+    {
+      "name": "aDuration",
+      "type": "int",
+      "logicalType": "time-millis"
+    },
+    {
+      "name": "aLongTimeMicros",
+      "type": "long",
+      "logicalType": "time-micros"
+    },
+    {
+      "name": "aLongTimestampMillis",
+      "type": "long",
+      "logicalType": "timestamp-millis"
+    },
+    {
+      "name": "aLongTimestampMicro",
+      "type": "long",
+      "logicalType": "timestamp-micros"
+    },
+    {
+      "name": "aBytesDecimal",
+      "type": "bytes",
+      "logicalType": "decimal",
+      "precision": 4,
+      "scale": 2
+    },
+    {
+      "name": "aRecordArray",
+      "type": {
+        "name": "someRecordArray",
+        "type": "array",
+        "items": {
+          "name": "recordInArray",
+          "type": "record",
+          "fields": [
+            {
+              "type": "string",
+              "name": "aString"
+            }
+          ]
+        }
+      }
     }
-  },  
-  {
-    "name": "aDate", "type": "int", "logicalType": "date"
-  },
-  {
-    "name": "aDuration", "type": "int", "logicalType": "time-millis"
-  },
-  {
-    "name": "aLongTimeMicros", "type": "long", "logicalType": "time-micros"
-  },
-  {
-    "name": "aLongTimestampMillis", "type": "long", "logicalType": "timestamp-millis"
-  },
-  {
-    "name": "aLongTimestampMicro", "type": "long", "logicalType": "timestamp-micros"
-  },
-  {
-    "name": "ABytesDecimal", "type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2
-  }
-]
+  ]
 }`
 
 	gc := avro.GenConf{PackageName: "Something"}
@@ -146,6 +225,9 @@ func TestGenFromSchema(t *testing.T) {
 		"}",
 		"type RecordInMap struct {",
 		"Name string",
+		"}",
+		"type RecordInArray struct {",
+		"AString string",
 		"}",
 	} {
 		assert.Contains(t, lines, expected)
