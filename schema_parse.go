@@ -145,7 +145,13 @@ func parseComplexType(namespace string, m map[string]interface{}, cache *SchemaC
 func parsePrimitive(typ Type, m map[string]interface{}) (Schema, error) {
 	logical := parsePrimitiveLogicalType(typ, m)
 
-	return NewPrimitiveSchema(typ, logical), nil
+	prim := NewPrimitiveSchema(typ, logical)
+
+	for k, v := range m {
+		prim.AddProp(k, v)
+	}
+
+	return prim, nil
 }
 
 func parsePrimitiveLogicalType(typ Type, m map[string]interface{}) LogicalSchema {
