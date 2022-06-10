@@ -156,6 +156,23 @@ func TestPrimitiveSchema(t *testing.T) {
 	}
 }
 
+func TestPrimitiveSchema_HandlesProps(t *testing.T) {
+	schm := `
+{
+   "type": "string",
+   "foo": "bar",
+   "baz": 1
+}
+`
+
+	s, err := avro.Parse(schm)
+
+	assert.NoError(t, err)
+	assert.Equal(t, avro.String, s.Type())
+	assert.Equal(t, "bar", s.(*avro.PrimitiveSchema).Prop("foo"))
+	assert.Equal(t, float64(1), s.(*avro.PrimitiveSchema).Prop("baz"))
+}
+
 func TestRecordSchema(t *testing.T) {
 	tests := []struct {
 		name    string
