@@ -47,14 +47,22 @@ type Registry interface {
 	GetLatestSchemaInfo(subject string) (SchemaInfo, error)
 
 	// CreateSchema creates a schema in the registry, returning the schema id.
-	CreateSchema(subject, schema string) (int, avro.Schema, error)
+	CreateSchema(subject, schema string, references ...SchemaReference) (int, avro.Schema, error)
 
 	// IsRegistered determines of the schema is registered.
 	IsRegistered(subject, schema string) (int, avro.Schema, error)
 }
 
 type schemaPayload struct {
-	Schema string `json:"schema"`
+	Schema     string            `json:"schema"`
+	References []SchemaReference `json:"references,omitempty"`
+}
+
+// SchemaReference represents a schema reference.
+type SchemaReference struct {
+	Name    string `json:"name"`
+	Subject string `json:"subject"`
+	Version int    `json:"version"`
 }
 
 type idPayload struct {
@@ -228,9 +236,10 @@ func (c *Client) GetLatestSchemaInfo(subject string) (SchemaInfo, error) {
 }
 
 // CreateSchema creates a schema in the registry, returning the schema id.
-func (c *Client) CreateSchema(subject, schema string) (int, avro.Schema, error) {
+func (c *Client) CreateSchema(subject, schema string, references ...SchemaReference) (int, avro.Schema, error) {
 	var payload idPayload
-	err := c.request(http.MethodPost, "/subjects/"+subject+"/versions", schemaPayload{Schema: schema}, &payload)
+	inPayload := schemaPayload{Schema: schema, References: references}
+	err := c.request(http.MethodPost, "/subjects/"+subject+"/versions", inPayload, &payload)
 	if err != nil {
 		return 0, nil, err
 	}
