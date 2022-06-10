@@ -238,7 +238,8 @@ func (c *Client) GetLatestSchemaInfo(subject string) (SchemaInfo, error) {
 // CreateSchema creates a schema in the registry, returning the schema id.
 func (c *Client) CreateSchema(subject, schema string, references ...SchemaReference) (int, avro.Schema, error) {
 	var payload idPayload
-	err := c.request(http.MethodPost, "/subjects/"+subject+"/versions", schemaPayload{Schema: schema, References: references}, &payload)
+	inPayload := schemaPayload{Schema: schema, References: references}
+	err := c.request(http.MethodPost, "/subjects/"+subject+"/versions", inPayload, &payload)
 	if err != nil {
 		return 0, nil, err
 	}
