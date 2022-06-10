@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -12,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGenFromSchema(t *testing.T) {
+func TestGenFromRecordSchema(t *testing.T) {
 	defer ConfigTeardown()
 	schema := `{
   "type": "record",
@@ -253,9 +254,67 @@ func TestGenFromSchema(t *testing.T) {
 	require.NoError(t, err)
 	goCode, err := io.ReadAll(goCodeReader)
 	require.NoError(t, err)
+	lines := removeSpacesAndEmptyLines(goCode)
 
 	fmt.Printf("Generated code:\n%s\n", string(goCode))
 
+	for _, expected := range []string{
+		"package something",
+		"type Test struct {",
+		"AString string `avro:\"aString\"`",
+		"ABoolean bool `avro:\"aBoolean\"`",
+		"AnInt int `avro:\"anInt\"`",
+		"AFloat float32 `avro:\"aFloat\"`",
+		"ADouble float64 `avro:\"aDouble\"`",
+		"ALong int64 `avro:\"aLong\"`",
+		"JustBytes []byte `avro:\"justBytes\"`",
+		"PrimitiveNullableArrayUnion []string `avro:\"primitiveNullableArrayUnion\"`",
+		"InnerRecord InnerRecord `avro:\"innerRecord\"`",
+		"AnEnum string `avro:\"anEnum\"`",
+		"AFixed [7]byte `avro:\"aFixed\"`",
+		"MapOfStrings map[string]string `avro:\"mapOfStrings\"`",
+		"MapOfRecords map[string]RecordInMap `avro:\"mapOfRecords\"`",
+		"ADate time.Time `avro:\"aDate\"`",
+		"ADuration time.Duration `avro:\"aDuration\"`",
+		"ALongTimeMicros time.Duration `avro:\"aLongTimeMicros\"`",
+		"ALongTimestampMillis time.Time `avro:\"aLongTimestampMillis\"`",
+		"ALongTimestampMicro time.Time `avro:\"aLongTimestampMicro\"`",
+		"ABytesDecimal *big.Rat `avro:\"aBytesDecimal\"`",
+		"NullableRecordUnion *RecordInNullableUnion `avro:\"nullableRecordUnion\"`",
+		"NonNullableRecordUnion {}interface `avro:\"nonNullableRecordUnion\"`",
+		"NullableRecordUnionWith3Options {}interface `avro:\"nullableRecordUnionWith3Options\"`",
+		"}",
+		"type InnerRecord struct {",
+		"InnerJustBytes []byte `avro:\"innerJustBytes\"`",
+		"InnerPrimitiveNullableArrayUnion []string `avro:\"innerPrimitiveNullableArrayUnion\"`",
+		"}",
+		"type RecordInMap struct {",
+		"Name string `avro:\"name\"`",
+		"}",
+		"type RecordInArray struct {",
+		"AString string `avro:\"aString\"`",
+		"}",
+		"type Record1InNonNullableUnion struct {",
+		"AString string `avro:\"aString\"`",
+		"}",
+		"type Record2InNonNullableUnion struct {",
+		"AString string `avro:\"aString\"`",
+		"}",
+		"type RecordInNullableUnion struct {",
+		"AString string `avro:\"aString\"`",
+		"}",
+		"type Record1InNullableUnion struct {",
+		"AString string `avro:\"aString\"`",
+		"}",
+		"type Record2InNullableUnion struct {",
+		"AString string `avro:\"aString\"`",
+		"}",
+	} {
+		assert.Contains(t, lines, expected)
+	}
+}
+
+func removeSpacesAndEmptyLines(goCode []byte) []string {
 	var lines []string
 	for _, lineBytes := range bytes.Split(goCode, []byte("\n")) {
 		if len(lineBytes) == 0 {
@@ -264,71 +323,10 @@ func TestGenFromSchema(t *testing.T) {
 		trimmed := removeMoreThanOneConsecutiveSpaces(lineBytes)
 		lines = append(lines, trimmed)
 	}
-
-	for _, expected := range []string{
-		"package something",
-		"type Test struct {",
-		"AString string",
-		"ABoolean bool",
-		"AnInt int",
-		"AFloat float32",
-		"ADouble float64",
-		"ALong int64",
-		"JustBytes []byte",
-		"PrimitiveNullableArrayUnion []string",
-		"InnerRecord InnerRecord",
-		"AnEnum string",
-		"AFixed [7]byte",
-		"MapOfStrings map[string]string",
-		"MapOfRecords map[string]RecordInMap",
-		"ADate time.Time",
-		"ADuration time.Duration",
-		"ALongTimeMicros time.Duration",
-		"ALongTimestampMillis time.Time",
-		"ALongTimestampMicro time.Time",
-		"ABytesDecimal *big.Rat",
-		"NullableRecordUnion *RecordInNullableUnion",
-		"NonNullableRecordUnion {}interface",
-		"NullableRecordUnionWith3Options {}interface",
-		"}",
-		"type InnerRecord struct {",
-		"InnerJustBytes []byte",
-		"InnerPrimitiveNullableArrayUnion []string",
-		"}",
-		"type RecordInMap struct {",
-		"Name string",
-		"}",
-		"type RecordInArray struct {",
-		"AString string",
-		"}",
-		"type Record1InNonNullableUnion struct {",
-		"AString string",
-		"}",
-		"type Record2InNonNullableUnion struct {",
-		"AString string",
-		"}",
-		"type RecordInNullableUnion struct {",
-		"AString string",
-		"}",
-		"type Record1InNullableUnion struct {",
-		"AString string",
-		"}",
-		"type Record2InNullableUnion struct {",
-		"AString string",
-		"}",
-	} {
-		assert.Contains(t, lines, expected)
-	}
+	return lines
 }
 
+// removeMoreThanOneConsecutiveSpaces replaces all sequences of more than one space, with a single one
 func removeMoreThanOneConsecutiveSpaces(lineBytes []byte) string {
-	trimmed := strings.TrimSpace(string(lineBytes))
-	var line []string
-	words := strings.Split(trimmed, " ")
-	for _, word := range words {
-		if word != "" {
-			line = append(line, word)
-		}
-	}
-	return strings.Join(line, " ")
+	return strings.Join(regexp.MustCompile("\\s+").Split(strings.TrimSpace(string(lineBytes)), -1), " ")
 }

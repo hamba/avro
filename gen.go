@@ -28,23 +28,6 @@ var primitiveMappings = map[Type]string{
 }
 
 func GenerateFrom(gc GenConf, s string) (io.Reader, error) {
-	// Ideas
-	/*
-		- We get an avro schema
-		- We get a config, optional, so lets ignore for now...
-		- We can choose what file to output the generated code
-		- Generated code is tagged in comments, so we can infer if we can change it or not
-		- The above step means we can output to a file that already contains go code
-		- A clean up can be requested to remove all generated code (Nice to have)
-	*/
-
-	/*
-		1. Read and parse the schema into a suitable internal representation...
-			that representation should already exist in this project
-		2. Generate go code based on the representation
-			- Template based representation would be faster
-			- Go Code based representation would be more powerful
-	*/
 	schema, err := Parse(s)
 	if err != nil {
 		return nil, err
@@ -69,7 +52,6 @@ func GenerateFrom(gc GenConf, s string) (io.Reader, error) {
 }
 
 func generateFrom(schema Schema, acc *dst.File) string {
-	// TODO union types at root
 	switch t := schema.(type) {
 	case *RecordSchema:
 		typeName := capitalize(t.Name())
@@ -78,7 +60,8 @@ func generateFrom(schema Schema, acc *dst.File) string {
 			fSchema := f.Type()
 			fieldName := capitalize(f.Name())
 			typ := resolveType(fSchema, f.Prop("logicalType"), acc)
-			fields[i] = newField(fieldName, typ)
+			tag := f.Name()
+			fields[i] = newField(fieldName, typ, tag)
 		}
 		acc.Decls = append(acc.Decls, newType(typeName, fields))
 		return typeName
@@ -160,11 +143,15 @@ func newType(name string, fields []*dst.Field) *dst.GenDecl {
 	}
 }
 
-func newField(name string, typ string) *dst.Field {
+func newField(name string, typ string, tag string) *dst.Field {
 	return &dst.Field{
 		Names: []*dst.Ident{{Name: name}},
 		Type: &dst.Ident{
 			Name: typ,
+		},
+		Tag: &dst.BasicLit{
+			Value: "`avro:\"" + tag + "\"`",
+			Kind:  token.STRING,
 		},
 	}
 }
