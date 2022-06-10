@@ -245,7 +245,8 @@ func TestGenFromRecordSchema(t *testing.T) {
         }
       ],
       "default": null
-    }
+    },
+    {"name": "ref", "type": "record2InNullableUnion"}
   ]
 }`
 
@@ -287,6 +288,7 @@ func TestGenFromRecordSchema(t *testing.T) {
 		"NullableRecordUnion *RecordInNullableUnion `avro:\"nullableRecordUnion\"`",
 		"NonNullableRecordUnion interface{} `avro:\"nonNullableRecordUnion\"`",
 		"NullableRecordUnionWith3Options interface{} `avro:\"nullableRecordUnionWith3Options\"`",
+		"Ref Record2InNullableUnion `avro:\"ref\"`",
 		"}",
 		"type InnerRecord struct {",
 		"InnerJustBytes []byte `avro:\"innerJustBytes\"`",

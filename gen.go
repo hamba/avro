@@ -73,7 +73,7 @@ func resolveType(fieldSchema Schema, logicalType interface{}, acc *ast.File) str
 	var typ string
 	switch s := fieldSchema.(type) {
 	case *RefSchema:
-		panic("impl")
+		typ = strcase.ToCamel(s.actual.Name())
 	case *RecordSchema:
 		typ = generateFrom(s, acc)
 	case *PrimitiveSchema:
@@ -99,7 +99,7 @@ func resolveType(fieldSchema Schema, logicalType interface{}, acc *ast.File) str
 }
 
 func resolveUnionTypes(unionSchema *UnionSchema, acc *ast.File) string {
-	nullIsAllowed := false // TODO assumes null is always first
+	nullIsAllowed := false
 	typesInUnion := make([]string, 0)
 	for _, elementSchema := range unionSchema.Types() {
 		if _, ok := elementSchema.(*NullSchema); ok {
