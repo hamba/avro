@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"go/ast"
 	"go/token"
 	"io"
 	"strings"
 
-	"github.com/dave/dst"
-	"github.com/dave/dst/decorator"
+	"github.com/iancoleman/strcase"
+	"golang.org/x/tools/go/ast/astutil"
 )
 
 type GenConf struct {
@@ -37,28 +38,26 @@ func GenerateFrom(gc GenConf, s string) (io.Reader, error) {
 	if !ok {
 		return nil, errors.New("can only generate Go code from Record Schemas")
 	}
-
-	result := dst.File{
-		// TODO should be to_snake_case
-		Name: &dst.Ident{Name: strings.ToLower(gc.PackageName)}, // For some reason this is the package name
+	file := ast.File{
+		Name: &ast.Ident{Name: strcase.ToSnake(gc.PackageName)},
 	}
-	generateFrom(rSchema, &result)
+	generateFrom(rSchema, &file)
 
 	buf := &bytes.Buffer{}
-	if err = decorator.Fprint(buf, &result); err != nil {
+	if err = writeFile(buf, &file); err != nil {
 		return nil, err
 	}
 	return buf, nil
 }
 
-func generateFrom(schema Schema, acc *dst.File) string {
+func generateFrom(schema Schema, acc *ast.File) string {
 	switch t := schema.(type) {
 	case *RecordSchema:
-		typeName := capitalize(t.Name())
-		fields := make([]*dst.Field, len(t.fields))
+		typeName := strcase.ToCamel(t.Name())
+		fields := make([]*ast.Field, len(t.fields))
 		for i, f := range t.fields {
 			fSchema := f.Type()
-			fieldName := capitalize(f.Name())
+			fieldName := strcase.ToCamel(f.Name())
 			typ := resolveType(fSchema, f.Prop("logicalType"), acc)
 			tag := f.Name()
 			fields[i] = newField(fieldName, typ, tag)
@@ -70,7 +69,7 @@ func generateFrom(schema Schema, acc *dst.File) string {
 	}
 }
 
-func resolveType(fieldSchema Schema, logicalType interface{}, acc *dst.File) string {
+func resolveType(fieldSchema Schema, logicalType interface{}, acc *ast.File) string {
 	var typ string
 	switch s := fieldSchema.(type) {
 	case *RefSchema:
@@ -79,6 +78,12 @@ func resolveType(fieldSchema Schema, logicalType interface{}, acc *dst.File) str
 		typ = generateFrom(s, acc)
 	case *PrimitiveSchema:
 		typ = resolvePrimitiveLogicalType(logicalType, typ, s)
+		if strings.Contains(typ, "time") {
+			addImport(acc, "time")
+		}
+		if strings.Contains(typ, "big") {
+			addImport(acc, "math/big")
+		}
 	case *ArraySchema:
 		typ = fmt.Sprintf("[]%s", generateFrom(s.Items(), acc))
 	case *EnumSchema:
@@ -93,7 +98,7 @@ func resolveType(fieldSchema Schema, logicalType interface{}, acc *dst.File) str
 	return typ
 }
 
-func resolveUnionTypes(unionSchema *UnionSchema, acc *dst.File) string {
+func resolveUnionTypes(unionSchema *UnionSchema, acc *ast.File) string {
 	nullIsAllowed := false // TODO assumes null is always first
 	typesInUnion := make([]string, 0)
 	for _, elementSchema := range unionSchema.Types() {
@@ -127,14 +132,14 @@ func resolvePrimitiveLogicalType(logicalType interface{}, typ string, s Schema) 
 	return typ
 }
 
-func newType(name string, fields []*dst.Field) *dst.GenDecl {
-	return &dst.GenDecl{
+func newType(name string, fields []*ast.Field) *ast.GenDecl {
+	return &ast.GenDecl{
 		Tok: token.TYPE,
-		Specs: []dst.Spec{
-			&dst.TypeSpec{
-				Name: &dst.Ident{Name: name},
-				Type: &dst.StructType{
-					Fields: &dst.FieldList{
+		Specs: []ast.Spec{
+			&ast.TypeSpec{
+				Name: &ast.Ident{Name: name},
+				Type: &ast.StructType{
+					Fields: &ast.FieldList{
 						List: fields,
 					},
 				},
@@ -143,22 +148,68 @@ func newType(name string, fields []*dst.Field) *dst.GenDecl {
 	}
 }
 
-func newField(name string, typ string, tag string) *dst.Field {
-	return &dst.Field{
-		Names: []*dst.Ident{{Name: name}},
-		Type: &dst.Ident{
+func newField(name string, typ string, tag string) *ast.Field {
+	return &ast.Field{
+		Names: []*ast.Ident{{Name: name}},
+		Type: &ast.Ident{
 			Name: typ,
 		},
-		Tag: &dst.BasicLit{
+		Tag: &ast.BasicLit{
 			Value: "`avro:\"" + tag + "\"`",
 			Kind:  token.STRING,
 		},
 	}
 }
 
-func capitalize(s string) string {
-	if s == "" || s[0] < 'a' {
-		return s
+func addImport(acc *ast.File, statement string) {
+	astutil.AddImport(token.NewFileSet(), acc, statement)
+}
+
+func writeFile(w io.Writer, f *ast.File) error {
+	if _, err := w.Write([]byte("package " + f.Name.Name + "\n\nimport (\n")); err != nil {
+		return err
 	}
-	return strings.ToUpper(string(s[0])) + s[1:]
+
+	for _, imp := range f.Imports {
+		if _, err := w.Write([]byte("\t" + imp.Path.Value + "\n")); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.Write([]byte(")\n\n")); err != nil {
+		return err
+	}
+
+	for _, decl := range f.Decls {
+		x, _ := decl.(*ast.GenDecl)
+
+		for _, spec := range x.Specs {
+			s, isType := spec.(*ast.TypeSpec)
+			if !isType {
+				continue
+			}
+			if _, err := w.Write([]byte("type " + s.Name.Name + " struct {\n")); err != nil {
+				return err
+			}
+
+			st, isStruct := s.Type.(*ast.StructType)
+			if !isStruct {
+				continue
+			}
+
+			for _, field := range st.Fields.List {
+				typ, _ := field.Type.(*ast.Ident)
+				_, err := w.Write([]byte("\t" + field.Names[0].Name + " " + typ.Name + " " + field.Tag.Value + "\n"))
+				if err != nil {
+					return err
+				}
+			}
+
+			if _, err := w.Write([]byte("}\n\n")); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }

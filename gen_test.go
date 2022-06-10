@@ -254,12 +254,16 @@ func TestGenFromRecordSchema(t *testing.T) {
 	require.NoError(t, err)
 	goCode, err := io.ReadAll(goCodeReader)
 	require.NoError(t, err)
-	lines := removeSpacesAndEmptyLines(goCode)
+	lines := removeSpaceAndEmptyLines(goCode)
 
 	fmt.Printf("Generated code:\n%s\n", string(goCode))
 
 	for _, expected := range []string{
 		"package something",
+		"import (",
+		"\"math/big\"",
+		"\"time\"",
+		")",
 		"type Test struct {",
 		"AString string `avro:\"aString\"`",
 		"ABoolean bool `avro:\"aBoolean\"`",
@@ -314,7 +318,7 @@ func TestGenFromRecordSchema(t *testing.T) {
 	}
 }
 
-func removeSpacesAndEmptyLines(goCode []byte) []string {
+func removeSpaceAndEmptyLines(goCode []byte) []string {
 	var lines []string
 	for _, lineBytes := range bytes.Split(goCode, []byte("\n")) {
 		if len(lineBytes) == 0 {
@@ -328,5 +332,5 @@ func removeSpacesAndEmptyLines(goCode []byte) []string {
 
 // removeMoreThanOneConsecutiveSpaces replaces all sequences of more than one space, with a single one
 func removeMoreThanOneConsecutiveSpaces(lineBytes []byte) string {
-	return strings.Join(regexp.MustCompile("\\s+").Split(strings.TrimSpace(string(lineBytes)), -1), " ")
+	return strings.Join(regexp.MustCompile("\\s+|\\t+").Split(strings.TrimSpace(string(lineBytes)), -1), " ")
 }
