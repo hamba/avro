@@ -4,20 +4,52 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"go/ast"
 	"go/format"
-	"go/token"
 	"io"
 	"strings"
 	"text/template"
 
 	"github.com/hamba/avro"
 	"github.com/iancoleman/strcase"
-	"golang.org/x/tools/go/ast/astutil"
 )
 
 type Conf struct {
 	PackageName string
+}
+
+const outputTemplate = `package {{ .PackageName }}
+
+{{ if len .Imports }}
+import (
+    {{- range .Imports }}
+		"{{ . }}"
+	{{- end }}
+)
+{{ end }}
+
+{{- range .Typedefs }}
+type {{ .Name }} struct {
+	{{- range .Fields }}
+		{{ .Name }} {{ .Type }} {{ .Tag }}
+	{{- end }}
+}
+{{ end }}`
+
+type data struct {
+	PackageName string
+	Imports     []string
+	Typedefs    []typedef
+}
+
+type typedef struct {
+	Name   string
+	Fields []field
+}
+
+type field struct {
+	Name string
+	Type string
+	Tag  string
 }
 
 var primitiveMappings = map[avro.Type]string{
@@ -40,15 +72,15 @@ func Struct(s string, dst io.Writer, gc Conf) error {
 	if !ok {
 		return errors.New("can only generate Go code from Record Schemas")
 	}
-	file := ast.File{
-		Name: &ast.Ident{Name: strcase.ToSnake(gc.PackageName)},
-	}
 
-	_ = generateFrom(rSchema, &file)
+	td := data{PackageName: strcase.ToSnake(gc.PackageName)}
+	_ = generateFrom(rSchema, &td)
+
 	buf := &bytes.Buffer{}
-	if err = writeFile(buf, &file); err != nil {
+	if err = writeCode(buf, &td); err != nil {
 		return err
 	}
+
 	formatted, err := format.Source(buf.Bytes())
 	if err != nil {
 		return fmt.Errorf("failed formatting. %w", err)
@@ -58,11 +90,11 @@ func Struct(s string, dst io.Writer, gc Conf) error {
 	return err
 }
 
-func generateFrom(schema avro.Schema, acc *ast.File) string {
+func generateFrom(schema avro.Schema, acc *data) string {
 	switch t := schema.(type) {
 	case *avro.RecordSchema:
 		typeName := strcase.ToCamel(t.Name())
-		fields := make([]*ast.Field, len(t.Fields()))
+		fields := make([]field, len(t.Fields()))
 		for i, f := range t.Fields() {
 			fSchema := f.Type()
 			fieldName := strcase.ToCamel(f.Name())
@@ -70,14 +102,14 @@ func generateFrom(schema avro.Schema, acc *ast.File) string {
 			tag := f.Name()
 			fields[i] = newField(fieldName, typ, tag)
 		}
-		acc.Decls = append(acc.Decls, newType(typeName, fields))
+		acc.Typedefs = append(acc.Typedefs, newType(typeName, fields))
 		return typeName
 	default:
 		return resolveType(schema, nil, acc)
 	}
 }
 
-func resolveType(fieldSchema avro.Schema, logicalType interface{}, acc *ast.File) string {
+func resolveType(fieldSchema avro.Schema, logicalType interface{}, acc *data) string {
 	var typ string
 	switch s := fieldSchema.(type) {
 	case *avro.RefSchema:
@@ -117,7 +149,7 @@ func resolveRefSchema(s *avro.RefSchema) string {
 	return strcase.ToCamel(typ)
 }
 
-func resolveUnionTypes(unionSchema *avro.UnionSchema, acc *ast.File) string {
+func resolveUnionTypes(unionSchema *avro.UnionSchema, acc *data) string {
 	nullIsAllowed := false
 	typesInUnion := make([]string, 0)
 	for _, elementSchema := range unionSchema.Types() {
@@ -151,132 +183,35 @@ func resolvePrimitiveLogicalType(logicalType interface{}, typ string, s avro.Sch
 	return typ
 }
 
-func newType(name string, fields []*ast.Field) *ast.GenDecl {
-	return &ast.GenDecl{
-		Tok: token.TYPE,
-		Specs: []ast.Spec{
-			&ast.TypeSpec{
-				Name: &ast.Ident{Name: name},
-				Type: &ast.StructType{
-					Fields: &ast.FieldList{
-						List: fields,
-					},
-				},
-			},
-		},
+func newType(name string, fields []field) typedef {
+	return typedef{
+		Name:   name,
+		Fields: fields,
 	}
 }
 
-func newField(name string, typ string, tag string) *ast.Field {
-	return &ast.Field{
-		Names: []*ast.Ident{{Name: name}},
-		Type: &ast.Ident{
-			Name: typ,
-		},
-		Tag: &ast.BasicLit{
-			Value: "`avro:\"" + tag + "\"`",
-			Kind:  token.STRING,
-		},
+func newField(name string, typ string, tag string) field {
+	return field{
+		Name: name,
+		Type: typ,
+		Tag:  "`avro:\"" + tag + "\"`",
 	}
 }
 
-func addImport(acc *ast.File, statement string) {
-	astutil.AddImport(token.NewFileSet(), acc, statement)
+func addImport(acc *data, statement string) {
+	for _, k := range acc.Imports {
+		if k == statement {
+			return
+		}
+	}
+	acc.Imports = append(acc.Imports, statement)
 }
 
-const outputTemplate = `package {{ .PackageName }}
-
-{{ if len .Imports }}
-import (
-    {{- range .Imports }}
-		{{ . }}
-	{{- end }}
-)
-{{ end }}
-
-{{- range .Typedefs }}
-type {{ .Name }} struct {
-	{{- range .Fields }}
-		{{ .Name }} {{ .Type }} {{ .Tag }}
-	{{- end }}
-}
-{{ end }}`
-
-type data struct {
-	PackageName string
-	Imports     []string
-	Typedefs    []typedef
-}
-
-type typedef struct {
-	Name   string
-	Fields []field
-}
-
-type field struct {
-	Name string
-	Type string
-	Tag  string
-}
-
-func writeFile(w io.Writer, f *ast.File) error {
+func writeCode(w io.Writer, data *data) error {
 	parsed, err := template.New("out").Parse(outputTemplate)
 	if err != nil {
 		return err
 	}
 
-	return parsed.Execute(w, data{
-		PackageName: packageName(f),
-		Imports:     imports(f),
-		Typedefs:    types(f),
-	})
-}
-
-func packageName(f *ast.File) string {
-	return f.Name.Name
-}
-
-func imports(f *ast.File) []string {
-	result := make([]string, len(f.Imports))
-	for i, imp := range f.Imports {
-		result[i] = imp.Path.Value
-	}
-	return result
-}
-
-func types(f *ast.File) []typedef {
-	var result []typedef
-
-	for _, decl := range f.Decls {
-		x, _ := decl.(*ast.GenDecl)
-
-		for _, spec := range x.Specs {
-			s, isType := spec.(*ast.TypeSpec)
-			if !isType {
-				continue
-			}
-
-			st, isStruct := s.Type.(*ast.StructType)
-			if !isStruct {
-				continue
-			}
-
-			td := typedef{
-				Name:   s.Name.Name,
-				Fields: make([]field, 0),
-			}
-			for _, fld := range st.Fields.List {
-				typ, _ := fld.Type.(*ast.Ident)
-				td.Fields = append(td.Fields, field{
-					Name: fld.Names[0].Name,
-					Type: typ.Name,
-					Tag:  fld.Tag.Value,
-				})
-			}
-
-			result = append(result, td)
-		}
-	}
-
-	return result
+	return parsed.Execute(w, data)
 }
