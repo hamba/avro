@@ -9,6 +9,7 @@ import (
 	"go/token"
 	"io"
 	"strings"
+	"text/template"
 
 	"github.com/iancoleman/strcase"
 	"golang.org/x/tools/go/ast/astutil"
@@ -50,7 +51,7 @@ func GenerateFrom(s string, dst io.Writer, gc GenConf) error {
 	}
 	formatted, err := format.Source(buf.Bytes())
 	if err != nil {
-		return err
+		return fmt.Errorf("failed formatting. %w", err)
 	}
 
 	_, err = dst.Write(formatted)
@@ -172,20 +173,68 @@ func addImport(acc *ast.File, statement string) {
 	astutil.AddImport(token.NewFileSet(), acc, statement)
 }
 
+const outputTemplate = `package {{ .PackageName }}
+
+{{ if len .Imports }}
+import (
+    {{- range .Imports }}
+		{{ . }}
+	{{- end }}
+)
+{{ end }}
+
+{{- range .Typedefs }}
+type {{ .Name }} struct {
+	{{- range .Fields }}
+		{{ .Name }} {{ .Type }} {{ .Tag }}
+	{{- end }}
+}
+{{ end }}`
+
+type data struct {
+	PackageName string
+	Imports     []string
+	Typedefs    []typedef
+}
+
+type typedef struct {
+	Name   string
+	Fields []field
+}
+
+type field struct {
+	Name string
+	Type string
+	Tag  string
+}
+
 func writeFile(w io.Writer, f *ast.File) error {
-	if _, err := w.Write([]byte("package " + f.Name.Name + "\n\nimport (\n")); err != nil {
+	parsed, err := template.New("out").Parse(outputTemplate)
+	if err != nil {
 		return err
 	}
 
-	for _, imp := range f.Imports {
-		if _, err := w.Write([]byte("\t" + imp.Path.Value + "\n")); err != nil {
-			return err
-		}
-	}
+	return parsed.Execute(w, data{
+		PackageName: packageName(f),
+		Imports:     imports(f),
+		Typedefs:    types(f),
+	})
+}
 
-	if _, err := w.Write([]byte(")\n\n")); err != nil {
-		return err
+func packageName(f *ast.File) string {
+	return f.Name.Name
+}
+
+func imports(f *ast.File) []string {
+	result := make([]string, len(f.Imports))
+	for i, imp := range f.Imports {
+		result[i] = imp.Path.Value
 	}
+	return result
+}
+
+func types(f *ast.File) []typedef {
+	var result []typedef
 
 	for _, decl := range f.Decls {
 		x, _ := decl.(*ast.GenDecl)
@@ -195,28 +244,28 @@ func writeFile(w io.Writer, f *ast.File) error {
 			if !isType {
 				continue
 			}
-			if _, err := w.Write([]byte("type " + s.Name.Name + " struct {\n")); err != nil {
-				return err
-			}
 
 			st, isStruct := s.Type.(*ast.StructType)
 			if !isStruct {
 				continue
 			}
 
-			for _, field := range st.Fields.List {
-				typ, _ := field.Type.(*ast.Ident)
-				_, err := w.Write([]byte("\t" + field.Names[0].Name + " " + typ.Name + " " + field.Tag.Value + "\n"))
-				if err != nil {
-					return err
-				}
+			td := typedef{
+				Name:   s.Name.Name,
+				Fields: make([]field, 0),
+			}
+			for _, fld := range st.Fields.List {
+				typ, _ := fld.Type.(*ast.Ident)
+				td.Fields = append(td.Fields, field{
+					Name: fld.Names[0].Name,
+					Type: typ.Name,
+					Tag:  fld.Tag.Value,
+				})
 			}
 
-			if _, err := w.Write([]byte("}\n\n")); err != nil {
-				return err
-			}
+			result = append(result, td)
 		}
 	}
 
-	return nil
+	return result
 }
