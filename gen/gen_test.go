@@ -1,4 +1,4 @@
-package avro_test
+package gen_test
 
 import (
 	"bytes"
@@ -8,13 +8,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hamba/avro"
+	"github.com/hamba/avro/gen"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestGenFromRecordSchema(t *testing.T) {
-	defer ConfigTeardown()
 	schema := `{
   "type": "record",
   "name": "test",
@@ -250,9 +249,9 @@ func TestGenFromRecordSchema(t *testing.T) {
   ]
 }`
 
-	gc := avro.GenConf{PackageName: "Something"}
+	gc := gen.Conf{PackageName: "Something"}
 	buf := &bytes.Buffer{}
-	err := avro.GenerateFrom(schema, buf, gc)
+	err := gen.Struct(schema, buf, gc)
 	require.NoError(t, err)
 	goCode, err := io.ReadAll(buf)
 	require.NoError(t, err)

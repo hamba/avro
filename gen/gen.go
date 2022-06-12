@@ -1,4 +1,4 @@
-package avro
+package gen
 
 import (
 	"bytes"
@@ -11,15 +11,16 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/hamba/avro"
 	"github.com/iancoleman/strcase"
 	"golang.org/x/tools/go/ast/astutil"
 )
 
-type GenConf struct {
+type Conf struct {
 	PackageName string
 }
 
-var primitiveMappings = map[Type]string{
+var primitiveMappings = map[avro.Type]string{
 	"string":  "string",
 	"bytes":   "[]byte",
 	"int":     "int",
@@ -29,13 +30,13 @@ var primitiveMappings = map[Type]string{
 	"boolean": "bool",
 }
 
-func GenerateFrom(s string, dst io.Writer, gc GenConf) error {
-	schema, err := Parse(s)
+func Struct(s string, dst io.Writer, gc Conf) error {
+	schema, err := avro.Parse(s)
 	if err != nil {
 		return err
 	}
 
-	rSchema, ok := schema.(*RecordSchema)
+	rSchema, ok := schema.(*avro.RecordSchema)
 	if !ok {
 		return errors.New("can only generate Go code from Record Schemas")
 	}
@@ -57,12 +58,12 @@ func GenerateFrom(s string, dst io.Writer, gc GenConf) error {
 	return err
 }
 
-func generateFrom(schema Schema, acc *ast.File) string {
+func generateFrom(schema avro.Schema, acc *ast.File) string {
 	switch t := schema.(type) {
-	case *RecordSchema:
+	case *avro.RecordSchema:
 		typeName := strcase.ToCamel(t.Name())
-		fields := make([]*ast.Field, len(t.fields))
-		for i, f := range t.fields {
+		fields := make([]*ast.Field, len(t.Fields()))
+		for i, f := range t.Fields() {
 			fSchema := f.Type()
 			fieldName := strcase.ToCamel(f.Name())
 			typ := resolveType(fSchema, f.Prop("logicalType"), acc)
@@ -76,14 +77,14 @@ func generateFrom(schema Schema, acc *ast.File) string {
 	}
 }
 
-func resolveType(fieldSchema Schema, logicalType interface{}, acc *ast.File) string {
+func resolveType(fieldSchema avro.Schema, logicalType interface{}, acc *ast.File) string {
 	var typ string
 	switch s := fieldSchema.(type) {
-	case *RefSchema:
-		typ = strcase.ToCamel(s.actual.Name())
-	case *RecordSchema:
+	case *avro.RefSchema:
+		typ = resolveRefSchema(s)
+	case *avro.RecordSchema:
 		typ = generateFrom(s, acc)
-	case *PrimitiveSchema:
+	case *avro.PrimitiveSchema:
 		typ = resolvePrimitiveLogicalType(logicalType, typ, s)
 		if strings.Contains(typ, "time") {
 			addImport(acc, "time")
@@ -91,25 +92,36 @@ func resolveType(fieldSchema Schema, logicalType interface{}, acc *ast.File) str
 		if strings.Contains(typ, "big") {
 			addImport(acc, "math/big")
 		}
-	case *ArraySchema:
+	case *avro.ArraySchema:
 		typ = fmt.Sprintf("[]%s", generateFrom(s.Items(), acc))
-	case *EnumSchema:
+	case *avro.EnumSchema:
 		typ = "string"
-	case *FixedSchema:
+	case *avro.FixedSchema:
 		typ = fmt.Sprintf("[%d]byte", +s.Size())
-	case *MapSchema:
+	case *avro.MapSchema:
 		typ = "map[string]" + resolveType(s.Values(), nil, acc)
-	case *UnionSchema:
+	case *avro.UnionSchema:
 		typ = resolveUnionTypes(s, acc)
 	}
 	return typ
 }
 
-func resolveUnionTypes(unionSchema *UnionSchema, acc *ast.File) string {
+func resolveRefSchema(s *avro.RefSchema) string {
+	typ := ""
+	switch sx := s.Schema().(type) {
+	case *avro.RecordSchema:
+		typ = sx.Name()
+	case avro.NamedSchema:
+		typ = sx.Name()
+	}
+	return strcase.ToCamel(typ)
+}
+
+func resolveUnionTypes(unionSchema *avro.UnionSchema, acc *ast.File) string {
 	nullIsAllowed := false
 	typesInUnion := make([]string, 0)
 	for _, elementSchema := range unionSchema.Types() {
-		if _, ok := elementSchema.(*NullSchema); ok {
+		if _, ok := elementSchema.(*avro.NullSchema); ok {
 			nullIsAllowed = true
 		} else {
 			typesInUnion = append(typesInUnion, generateFrom(elementSchema, acc))
@@ -125,7 +137,7 @@ func resolveUnionTypes(unionSchema *UnionSchema, acc *ast.File) string {
 	return "interface{}"
 }
 
-func resolvePrimitiveLogicalType(logicalType interface{}, typ string, s Schema) string {
+func resolvePrimitiveLogicalType(logicalType interface{}, typ string, s avro.Schema) string {
 	switch logicalType {
 	case "", nil:
 		typ = primitiveMappings[s.Type()]
