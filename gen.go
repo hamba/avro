@@ -1,9 +1,11 @@
 package avro
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"go/ast"
+	"go/format"
 	"go/token"
 	"io"
 	"strings"
@@ -40,9 +42,19 @@ func GenerateFrom(s string, dst io.Writer, gc GenConf) error {
 	file := ast.File{
 		Name: &ast.Ident{Name: strcase.ToSnake(gc.PackageName)},
 	}
-	generateFrom(rSchema, &file)
 
-	return writeFile(dst, &file)
+	_ = generateFrom(rSchema, &file)
+	buf := &bytes.Buffer{}
+	if err = writeFile(buf, &file); err != nil {
+		return err
+	}
+	formatted, err := format.Source(buf.Bytes())
+	if err != nil {
+		return err
+	}
+
+	_, err = dst.Write(formatted)
+	return err
 }
 
 func generateFrom(schema Schema, acc *ast.File) string {
