@@ -251,9 +251,10 @@ func TestGenFromRecordSchema(t *testing.T) {
 }`
 
 	gc := avro.GenConf{PackageName: "Something"}
-	goCodeReader, err := avro.GenerateFrom(gc, schema)
+	buf := &bytes.Buffer{}
+	err := avro.GenerateFrom(schema, buf, gc)
 	require.NoError(t, err)
-	goCode, err := io.ReadAll(goCodeReader)
+	goCode, err := io.ReadAll(buf)
 	require.NoError(t, err)
 	lines := removeSpaceAndEmptyLines(goCode)
 

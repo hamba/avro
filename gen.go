@@ -1,7 +1,6 @@
 package avro
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"go/ast"
@@ -28,26 +27,22 @@ var primitiveMappings = map[Type]string{
 	"boolean": "bool",
 }
 
-func GenerateFrom(gc GenConf, s string) (io.Reader, error) {
+func GenerateFrom(s string, dst io.Writer, gc GenConf) error {
 	schema, err := Parse(s)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	rSchema, ok := schema.(*RecordSchema)
 	if !ok {
-		return nil, errors.New("can only generate Go code from Record Schemas")
+		return errors.New("can only generate Go code from Record Schemas")
 	}
 	file := ast.File{
 		Name: &ast.Ident{Name: strcase.ToSnake(gc.PackageName)},
 	}
 	generateFrom(rSchema, &file)
 
-	buf := &bytes.Buffer{}
-	if err = writeFile(buf, &file); err != nil {
-		return nil, err
-	}
-	return buf, nil
+	return writeFile(dst, &file)
 }
 
 func generateFrom(schema Schema, acc *ast.File) string {
