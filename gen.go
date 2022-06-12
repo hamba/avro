@@ -17,7 +17,6 @@ import (
 
 type GenConf struct {
 	PackageName string
-	OutFileName string
 }
 
 var primitiveMappings = map[Type]string{
