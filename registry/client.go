@@ -246,7 +246,11 @@ func (c *Client) GetLatestSchemaInfo(ctx context.Context, subject string) (Schem
 }
 
 // CreateSchema creates a schema in the registry, returning the schema id.
-func (c *Client) CreateSchema(ctx context.Context, subject, schema string, references ...SchemaReference) (int, avro.Schema, error) {
+func (c *Client) CreateSchema(
+	ctx context.Context,
+	subject, schema string,
+	references ...SchemaReference,
+) (int, avro.Schema, error) {
 	var payload idPayload
 	inPayload := schemaPayload{Schema: schema, References: references}
 	err := c.request(ctx, http.MethodPost, "/subjects/"+subject+"/versions", inPayload, &payload)
