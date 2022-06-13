@@ -24,6 +24,72 @@ func TestNonRecordSchemasAreNotSupported(t *testing.T) {
 	assert.Contains(t, strings.ToLower(err.Error()), "record schema")
 }
 
+func TestAvroStyleCannotBeOverriden(t *testing.T) {
+	schema := `{
+  "type": "record",
+  "name": "test",
+  "fields": [
+    { "name": "someString", "type": "string" }
+  ]
+}`
+	gc := gen.Config{
+		PackageName: "Something",
+		Tags: map[string]gen.TagStyle{
+			"avro": gen.Kebab,
+		},
+	}
+
+	goCode, lines := generate(t, schema, gc)
+	fmt.Printf("Generated code:\n%s\n", string(goCode))
+
+	for _, expected := range []string{
+		"package something",
+		"type Test struct {",
+		"SomeString string `avro:\"someString\"`",
+		"}",
+	} {
+		assert.Contains(t, lines, expected, "avro tags should not be configurable, they need to match the schema")
+	}
+}
+
+func TestConfigurableFieldTags(t *testing.T) {
+	schema := `{
+  "type": "record",
+  "name": "test",
+  "fields": [
+    { "name": "someString", "type": "string" }
+  ]
+}`
+
+	for _, tc := range []struct {
+		tagStyle    gen.TagStyle
+		expectedTag string
+	}{
+		{tagStyle: gen.Camel, expectedTag: "json:\"someString\""},
+		{tagStyle: gen.Snake, expectedTag: "json:\"some_string\""},
+		{tagStyle: gen.Kebab, expectedTag: "json:\"some-string\""},
+		{tagStyle: gen.UpperCamel, expectedTag: "json:\"SomeString\""},
+	} {
+		t.Run(fmt.Sprintf("%s", tc.tagStyle), func(t *testing.T) {
+			gc := gen.Config{PackageName: "Something", Tags: map[string]gen.TagStyle{
+				"json": tc.tagStyle,
+			}}
+			goCode, lines := generate(t, schema, gc)
+
+			fmt.Printf("Generated code:\n%s\n", string(goCode))
+
+			for _, expected := range []string{
+				"package something",
+				"type Test struct {",
+				fmt.Sprintf("SomeString string `avro:\"someString\" %s`", tc.expectedTag),
+				"}",
+			} {
+				assert.Contains(t, lines, expected)
+			}
+		})
+	}
+}
+
 func TestGenFromRecordSchema(t *testing.T) {
 	schema := `{
   "type": "record",
@@ -114,6 +180,15 @@ func TestGenFromRecordSchema(t *testing.T) {
       }
     },
     {
+      "name": "aLogicalFixed",
+      "type": {
+        "type": "fixed",
+        "name": "test",
+        "size": 12,
+        "logicalType": "duration"
+      }
+    },
+    {
       "name": "mapOfStrings",
       "type": {
         "name": "aMapOfStrings",
@@ -140,35 +215,47 @@ func TestGenFromRecordSchema(t *testing.T) {
     },
     {
       "name": "aDate",
-      "type": "int",
-      "logicalType": "date"
+      "type": {
+        "type": "int",
+        "logicalType": "date"
+      }
     },
     {
       "name": "aDuration",
-      "type": "int",
-      "logicalType": "time-millis"
+      "type": {
+        "type": "int",
+        "logicalType": "time-millis"
+      }
     },
     {
       "name": "aLongTimeMicros",
-      "type": "long",
-      "logicalType": "time-micros"
+      "type": {
+        "type": "long",
+        "logicalType": "time-micros"
+      }
     },
     {
       "name": "aLongTimestampMillis",
-      "type": "long",
-      "logicalType": "timestamp-millis"
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }
     },
     {
       "name": "aLongTimestampMicro",
-      "type": "long",
-      "logicalType": "timestamp-micros"
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-micros"
+      }
     },
     {
       "name": "aBytesDecimal",
-      "type": "bytes",
-      "logicalType": "decimal",
-      "precision": 4,
-      "scale": 2
+      "type": {
+        "type": "bytes",
+        "logicalType": "decimal",
+        "precision": 4,
+        "scale": 2
+      }
     },
     {
       "name": "aRecordArray",
@@ -256,17 +343,15 @@ func TestGenFromRecordSchema(t *testing.T) {
       ],
       "default": null
     },
-    {"name": "ref", "type": "record2InNullableUnion"}
+    {
+      "name": "ref",
+      "type": "record2InNullableUnion"
+    }
   ]
 }`
 
 	gc := gen.Config{PackageName: "Something"}
-	buf := &bytes.Buffer{}
-	err := gen.Struct(schema, buf, gc)
-	require.NoError(t, err)
-	goCode, err := io.ReadAll(buf)
-	require.NoError(t, err)
-	lines := removeSpaceAndEmptyLines(goCode)
+	goCode, lines := generate(t, schema, gc)
 
 	fmt.Printf("Generated code:\n%s\n", string(goCode))
 
@@ -288,6 +373,7 @@ func TestGenFromRecordSchema(t *testing.T) {
 		"InnerRecord InnerRecord `avro:\"innerRecord\"`",
 		"AnEnum string `avro:\"anEnum\"`",
 		"AFixed [7]byte `avro:\"aFixed\"`",
+		"ALogicalFixed time.Duration `avro:\"aLogicalFixed\"`",
 		"MapOfStrings map[string]string `avro:\"mapOfStrings\"`",
 		"MapOfRecords map[string]RecordInMap `avro:\"mapOfRecords\"`",
 		"ADate time.Time `avro:\"aDate\"`",
@@ -329,6 +415,16 @@ func TestGenFromRecordSchema(t *testing.T) {
 	} {
 		assert.Contains(t, lines, expected)
 	}
+}
+
+// generate is a utility to run the generation and return the result as a tuple
+func generate(t *testing.T, schema string, gc gen.Config) ([]byte, []string) {
+	buf := &bytes.Buffer{}
+	err := gen.Struct(schema, buf, gc)
+	require.NoError(t, err)
+	goCode, err := io.ReadAll(buf)
+	require.NoError(t, err)
+	return goCode, removeSpaceAndEmptyLines(goCode)
 }
 
 func removeSpaceAndEmptyLines(goCode []byte) []string {
