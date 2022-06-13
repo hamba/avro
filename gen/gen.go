@@ -144,10 +144,7 @@ func resolveType(fieldSchema avro.Schema, logicalType interface{}, acc *data) st
 
 func resolveRefSchema(s *avro.RefSchema) string {
 	typ := ""
-	switch sx := s.Schema().(type) {
-	case *avro.RecordSchema:
-		typ = sx.Name()
-	case avro.NamedSchema:
+	if sx, ok := s.Schema().(*avro.RecordSchema); ok {
 		typ = sx.Name()
 	}
 	return strcase.ToCamel(typ)

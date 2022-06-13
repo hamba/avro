@@ -13,6 +13,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestInvalidSchemaYieldsErr(t *testing.T) {
+	require.Error(t, gen.Struct(`asd`, &bytes.Buffer{}, gen.Conf{}))
+}
+
+func TestNonRecordSchemasAreNotSupported(t *testing.T) {
+	err := gen.Struct(`{"type": "string"}`, &bytes.Buffer{}, gen.Conf{})
+	require.Error(t, err)
+	assert.Contains(t, strings.ToLower(err.Error()), "only")
+	assert.Contains(t, strings.ToLower(err.Error()), "record schema")
+}
+
 func TestGenFromRecordSchema(t *testing.T) {
 	schema := `{
   "type": "record",
