@@ -1,3 +1,4 @@
+// Package gen allows generating Go structs from avro schemas
 package gen
 
 import (
@@ -13,6 +14,7 @@ import (
 	"github.com/iancoleman/strcase"
 )
 
+// Conf exposes the options available for the code generation
 type Conf struct {
 	PackageName string
 }
@@ -63,6 +65,7 @@ var primitiveMappings = map[avro.Type]string{
 	"boolean": "bool",
 }
 
+// Struct generates Go structs based on the schema s and writes them to dst
 func Struct(s string, dst io.Writer, gc Conf) error {
 	schema, err := avro.Parse(s)
 	if err != nil {
@@ -191,7 +194,7 @@ func newType(name string, fields []field) typedef {
 	}
 }
 
-func newField(name string, typ string, tag string) field {
+func newField(name, typ, tag string) field {
 	return field{
 		Name: name,
 		Type: typ,
