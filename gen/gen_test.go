@@ -14,11 +14,11 @@ import (
 )
 
 func TestInvalidSchemaYieldsErr(t *testing.T) {
-	require.Error(t, gen.Struct(`asd`, &bytes.Buffer{}, gen.Conf{}))
+	require.Error(t, gen.Struct(`asd`, &bytes.Buffer{}, gen.Config{}))
 }
 
 func TestNonRecordSchemasAreNotSupported(t *testing.T) {
-	err := gen.Struct(`{"type": "string"}`, &bytes.Buffer{}, gen.Conf{})
+	err := gen.Struct(`{"type": "string"}`, &bytes.Buffer{}, gen.Config{})
 	require.Error(t, err)
 	assert.Contains(t, strings.ToLower(err.Error()), "only")
 	assert.Contains(t, strings.ToLower(err.Error()), "record schema")
@@ -260,7 +260,7 @@ func TestGenFromRecordSchema(t *testing.T) {
   ]
 }`
 
-	gc := gen.Conf{PackageName: "Something"}
+	gc := gen.Config{PackageName: "Something"}
 	buf := &bytes.Buffer{}
 	err := gen.Struct(schema, buf, gc)
 	require.NoError(t, err)

@@ -14,8 +14,8 @@ import (
 	"github.com/iancoleman/strcase"
 )
 
-// Conf exposes the options available for the code generation.
-type Conf struct {
+// Config exposes the options available for the code generation.
+type Config struct {
 	PackageName string
 }
 
@@ -66,7 +66,7 @@ var primitiveMappings = map[avro.Type]string{
 }
 
 // Struct generates Go structs based on the schema s and writes them to dst.
-func Struct(s string, dst io.Writer, gc Conf) error {
+func Struct(s string, dst io.Writer, gc Config) error {
 	schema, err := avro.Parse(s)
 	if err != nil {
 		return err
