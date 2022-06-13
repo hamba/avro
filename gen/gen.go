@@ -121,18 +121,18 @@ func (g generator) generateFrom(schema avro.Schema, acc *data) string {
 		for i, f := range t.Fields() {
 			fSchema := f.Type()
 			fieldName := strcase.ToCamel(f.Name())
-			typ := g.resolveType(fSchema, f.Prop("logicalType"), acc)
+			typ := g.resolveType(fSchema, acc)
 			tag := f.Name()
 			fields[i] = g.newField(fieldName, typ, tag)
 		}
 		acc.Typedefs = append(acc.Typedefs, newType(typeName, fields))
 		return typeName
 	default:
-		return g.resolveType(schema, nil, acc)
+		return g.resolveType(schema, acc)
 	}
 }
 
-func (g generator) resolveType(fieldSchema avro.Schema, logicalType interface{}, acc *data) string {
+func (g generator) resolveType(fieldSchema avro.Schema, acc *data) string {
 	var typ string
 	switch s := fieldSchema.(type) {
 	case *avro.RefSchema:
@@ -140,21 +140,25 @@ func (g generator) resolveType(fieldSchema avro.Schema, logicalType interface{},
 	case *avro.RecordSchema:
 		typ = g.generateFrom(s, acc)
 	case *avro.PrimitiveSchema:
-		typ = resolvePrimitiveLogicalType(logicalType, typ, s)
-		if strings.Contains(typ, "time") {
-			addImport(acc, "time")
-		}
-		if strings.Contains(typ, "big") {
-			addImport(acc, "math/big")
+		logicalSchema := s.Logical()
+		if logicalSchema != nil {
+			typ = resolveLogicalSchema(logicalSchema.Type(), acc)
+		} else {
+			typ = primitiveMappings[s.Type()]
 		}
 	case *avro.ArraySchema:
 		typ = fmt.Sprintf("[]%s", g.generateFrom(s.Items(), acc))
 	case *avro.EnumSchema:
 		typ = "string"
 	case *avro.FixedSchema:
-		typ = fmt.Sprintf("[%d]byte", +s.Size())
+		logicalSchema := s.Logical()
+		if logicalSchema != nil {
+			typ = resolveLogicalSchema(logicalSchema.Type(), acc)
+		} else {
+			typ = fmt.Sprintf("[%d]byte", +s.Size())
+		}
 	case *avro.MapSchema:
-		typ = "map[string]" + g.resolveType(s.Values(), nil, acc)
+		typ = "map[string]" + g.resolveType(s.Values(), acc)
 	case *avro.UnionSchema:
 		typ = g.resolveUnionTypes(s, acc)
 	}
@@ -189,16 +193,23 @@ func (g generator) resolveUnionTypes(unionSchema *avro.UnionSchema, acc *data) s
 	return "interface{}"
 }
 
-func resolvePrimitiveLogicalType(logicalType interface{}, typ string, s avro.Schema) string {
+func resolveLogicalSchema(logicalType avro.LogicalType, acc *data) string {
+	typ := ""
 	switch logicalType {
-	case "", nil:
-		typ = primitiveMappings[s.Type()]
 	case "date", "timestamp-millis", "timestamp-micros":
 		typ = "time.Time"
 	case "time-millis", "time-micros":
 		typ = "time.Duration"
 	case "decimal":
 		typ = "*big.Rat"
+	case "duration":
+		typ = "time.Duration"
+	}
+	if strings.Contains(typ, "time") {
+		addImport(acc, "time")
+	}
+	if strings.Contains(typ, "big") {
+		addImport(acc, "math/big")
 	}
 	return typ
 }

@@ -180,6 +180,15 @@ func TestGenFromRecordSchema(t *testing.T) {
       }
     },
     {
+      "name": "aLogicalFixed",
+      "type": {
+        "type": "fixed",
+        "name": "test",
+        "size": 12,
+        "logicalType": "duration"
+      }
+    },
+    {
       "name": "mapOfStrings",
       "type": {
         "name": "aMapOfStrings",
@@ -206,35 +215,47 @@ func TestGenFromRecordSchema(t *testing.T) {
     },
     {
       "name": "aDate",
-      "type": "int",
-      "logicalType": "date"
+      "type": {
+        "type": "int",
+        "logicalType": "date"
+      }
     },
     {
       "name": "aDuration",
-      "type": "int",
-      "logicalType": "time-millis"
+      "type": {
+        "type": "int",
+        "logicalType": "time-millis"
+      }
     },
     {
       "name": "aLongTimeMicros",
-      "type": "long",
-      "logicalType": "time-micros"
+      "type": {
+        "type": "long",
+        "logicalType": "time-micros"
+      }
     },
     {
       "name": "aLongTimestampMillis",
-      "type": "long",
-      "logicalType": "timestamp-millis"
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }
     },
     {
       "name": "aLongTimestampMicro",
-      "type": "long",
-      "logicalType": "timestamp-micros"
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-micros"
+      }
     },
     {
       "name": "aBytesDecimal",
-      "type": "bytes",
-      "logicalType": "decimal",
-      "precision": 4,
-      "scale": 2
+      "type": {
+        "type": "bytes",
+        "logicalType": "decimal",
+        "precision": 4,
+        "scale": 2
+      }
     },
     {
       "name": "aRecordArray",
@@ -322,7 +343,10 @@ func TestGenFromRecordSchema(t *testing.T) {
       ],
       "default": null
     },
-    {"name": "ref", "type": "record2InNullableUnion"}
+    {
+      "name": "ref",
+      "type": "record2InNullableUnion"
+    }
   ]
 }`
 
@@ -349,6 +373,7 @@ func TestGenFromRecordSchema(t *testing.T) {
 		"InnerRecord InnerRecord `avro:\"innerRecord\"`",
 		"AnEnum string `avro:\"anEnum\"`",
 		"AFixed [7]byte `avro:\"aFixed\"`",
+		"ALogicalFixed time.Duration `avro:\"aLogicalFixed\"`",
 		"MapOfStrings map[string]string `avro:\"mapOfStrings\"`",
 		"MapOfRecords map[string]RecordInMap `avro:\"mapOfRecords\"`",
 		"ADate time.Time `avro:\"aDate\"`",
