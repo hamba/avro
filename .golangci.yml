@@ -16,6 +16,7 @@ linters:
     - cyclop
     - exhaustive
     - exhaustivestruct
+    - exhaustruct
     - forcetypeassert
     - funlen
     - gochecknoglobals
@@ -28,6 +29,7 @@ linters:
     - nestif
     - nilnil
     - nlreturn
+    - nonamedreturns
     - tagliatelle
     - varnamelen
     - wrapcheck
