@@ -10,8 +10,8 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/ettle/strcase"
 	"github.com/hamba/avro"
-	"github.com/iancoleman/strcase"
 )
 
 // Config exposes the options available for the code generation.
@@ -121,11 +121,11 @@ type generator struct {
 func (g generator) generateFrom(schema avro.Schema, acc *data) string {
 	switch t := schema.(type) {
 	case *avro.RecordSchema:
-		typeName := strcase.ToCamel(t.Name())
+		typeName := strcase.ToGoPascal(t.Name())
 		fields := make([]field, len(t.Fields()))
 		for i, f := range t.Fields() {
 			fSchema := f.Type()
-			fieldName := strcase.ToCamel(f.Name())
+			fieldName := strcase.ToGoPascal(f.Name())
 			typ := g.resolveType(fSchema, acc)
 			tag := f.Name()
 			fields[i] = g.newField(fieldName, typ, tag)
@@ -175,7 +175,7 @@ func resolveRefSchema(s *avro.RefSchema) string {
 	if sx, ok := s.Schema().(*avro.RecordSchema); ok {
 		typ = sx.Name()
 	}
-	return strcase.ToCamel(typ)
+	return strcase.ToGoPascal(typ)
 }
 
 func (g generator) resolveUnionTypes(unionSchema *avro.UnionSchema, acc *data) string {
@@ -246,9 +246,9 @@ func (g generator) tagStyleFn(style TagStyle) func(string) string {
 	case Kebab:
 		return strcase.ToKebab
 	case UpperCamel:
-		return strcase.ToCamel
+		return strcase.ToPascal
 	case Camel:
-		return strcase.ToLowerCamel
+		return strcase.ToCamel
 	case Snake:
 		return strcase.ToSnake
 	}

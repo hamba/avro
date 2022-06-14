@@ -16,13 +16,13 @@ import (
 
 var update = flag.Bool("update", false, "Update golden files")
 
-func TestInvalidSchemaYieldsErr(t *testing.T) {
+func TestStruct_InvalidSchemaYieldsErr(t *testing.T) {
 	err := gen.Struct(`asd`, &bytes.Buffer{}, gen.Config{})
 
 	assert.Error(t, err)
 }
 
-func TestNonRecordSchemasAreNotSupported(t *testing.T) {
+func TestStruct_NonRecordSchemasAreNotSupported(t *testing.T) {
 	err := gen.Struct(`{"type": "string"}`, &bytes.Buffer{}, gen.Config{})
 
 	require.Error(t, err)
@@ -30,7 +30,7 @@ func TestNonRecordSchemasAreNotSupported(t *testing.T) {
 	assert.Contains(t, strings.ToLower(err.Error()), "record schema")
 }
 
-func TestAvroStyleCannotBeOverriden(t *testing.T) {
+func TestStruct_AvroStyleCannotBeOverridden(t *testing.T) {
 	schema := `{
   "type": "record",
   "name": "test",
@@ -57,7 +57,24 @@ func TestAvroStyleCannotBeOverriden(t *testing.T) {
 	}
 }
 
-func TestConfigurableFieldTags(t *testing.T) {
+func TestStruct_HandlesGoInitialisms(t *testing.T) {
+	schema := `{
+  "type": "record",
+  "name": "httpRecord",
+  "fields": [
+    { "name": "someString", "type": "string" }
+  ]
+}`
+	gc := gen.Config{
+		PackageName: "Something",
+	}
+
+	_, lines := generate(t, schema, gc)
+
+	assert.Contains(t, lines, "type HTTPRecord struct {")
+}
+
+func TestStruct_ConfigurableFieldTags(t *testing.T) {
 	schema := `{
   "type": "record",
   "name": "test",
@@ -100,7 +117,7 @@ func TestConfigurableFieldTags(t *testing.T) {
 	}
 }
 
-func TestGenFromRecordSchema(t *testing.T) {
+func TestStruct_GenFromRecordSchema(t *testing.T) {
 	schema, err := os.ReadFile("testdata/golden.avsc")
 	require.NoError(t, err)
 
