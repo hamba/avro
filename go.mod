@@ -3,8 +3,8 @@ module github.com/hamba/avro
 go 1.11
 
 require (
+	github.com/ettle/strcase v0.1.1
 	github.com/golang/snappy v0.0.4
-	github.com/iancoleman/strcase v0.2.0
 	github.com/json-iterator/go v1.1.12
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0

@@ -10,18 +10,14 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/ettle/strcase"
 	"github.com/hamba/avro"
-	"github.com/iancoleman/strcase"
 )
 
 // Config exposes the options available for the code generation.
 type Config struct {
 	PackageName string
 	Tags        map[string]TagStyle
-}
-
-type generator struct {
-	Config
 }
 
 // TagStyle defines the styling for a tag.
@@ -84,13 +80,18 @@ var primitiveMappings = map[avro.Type]string{
 	"boolean": "bool",
 }
 
-// Struct generates Go structs based on the schema s and writes them to dst.
-func Struct(s string, dst io.Writer, gc Config) error {
+// Struct generates Go structs based on the schema and writes them to w.
+func Struct(s string, w io.Writer, gc Config) error {
 	schema, err := avro.Parse(s)
 	if err != nil {
 		return err
 	}
 
+	return StructFromSchema(schema, w, gc)
+}
+
+// StructFromSchema generates Go structs based on the schema and writes them to w.
+func StructFromSchema(schema avro.Schema, w io.Writer, gc Config) error {
 	rSchema, ok := schema.(*avro.RecordSchema)
 	if !ok {
 		return errors.New("can only generate Go code from Record Schemas")
@@ -100,7 +101,7 @@ func Struct(s string, dst io.Writer, gc Config) error {
 	_ = generator{Config: gc}.generateFrom(rSchema, &td)
 
 	buf := &bytes.Buffer{}
-	if err = writeCode(buf, &td); err != nil {
+	if err := writeCode(buf, &td); err != nil {
 		return err
 	}
 
@@ -109,18 +110,22 @@ func Struct(s string, dst io.Writer, gc Config) error {
 		return fmt.Errorf("failed formatting. %w", err)
 	}
 
-	_, err = dst.Write(formatted)
+	_, err = w.Write(formatted)
 	return err
+}
+
+type generator struct {
+	Config
 }
 
 func (g generator) generateFrom(schema avro.Schema, acc *data) string {
 	switch t := schema.(type) {
 	case *avro.RecordSchema:
-		typeName := strcase.ToCamel(t.Name())
+		typeName := strcase.ToGoPascal(t.Name())
 		fields := make([]field, len(t.Fields()))
 		for i, f := range t.Fields() {
 			fSchema := f.Type()
-			fieldName := strcase.ToCamel(f.Name())
+			fieldName := strcase.ToGoPascal(f.Name())
 			typ := g.resolveType(fSchema, acc)
 			tag := f.Name()
 			fields[i] = g.newField(fieldName, typ, tag)
@@ -170,7 +175,7 @@ func resolveRefSchema(s *avro.RefSchema) string {
 	if sx, ok := s.Schema().(*avro.RecordSchema); ok {
 		typ = sx.Name()
 	}
-	return strcase.ToCamel(typ)
+	return strcase.ToGoPascal(typ)
 }
 
 func (g generator) resolveUnionTypes(unionSchema *avro.UnionSchema, acc *data) string {
@@ -241,9 +246,9 @@ func (g generator) tagStyleFn(style TagStyle) func(string) string {
 	case Kebab:
 		return strcase.ToKebab
 	case UpperCamel:
-		return strcase.ToCamel
+		return strcase.ToPascal
 	case Camel:
-		return strcase.ToLowerCamel
+		return strcase.ToCamel
 	case Snake:
 		return strcase.ToSnake
 	}
