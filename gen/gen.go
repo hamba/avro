@@ -20,10 +20,6 @@ type Config struct {
 	Tags        map[string]TagStyle
 }
 
-type generator struct {
-	Config
-}
-
 // TagStyle defines the styling for a tag.
 type TagStyle string
 
@@ -84,13 +80,18 @@ var primitiveMappings = map[avro.Type]string{
 	"boolean": "bool",
 }
 
-// Struct generates Go structs based on the schema s and writes them to dst.
-func Struct(s string, dst io.Writer, gc Config) error {
+// Struct generates Go structs based on the schema and writes them to w.
+func Struct(s string, w io.Writer, gc Config) error {
 	schema, err := avro.Parse(s)
 	if err != nil {
 		return err
 	}
 
+	return StructFromSchema(schema, w, gc)
+}
+
+// StructFromSchema generates Go structs based on the schema and writes them to w.
+func StructFromSchema(schema avro.Schema, w io.Writer, gc Config) error {
 	rSchema, ok := schema.(*avro.RecordSchema)
 	if !ok {
 		return errors.New("can only generate Go code from Record Schemas")
@@ -100,7 +101,7 @@ func Struct(s string, dst io.Writer, gc Config) error {
 	_ = generator{Config: gc}.generateFrom(rSchema, &td)
 
 	buf := &bytes.Buffer{}
-	if err = writeCode(buf, &td); err != nil {
+	if err := writeCode(buf, &td); err != nil {
 		return err
 	}
 
@@ -109,8 +110,12 @@ func Struct(s string, dst io.Writer, gc Config) error {
 		return fmt.Errorf("failed formatting. %w", err)
 	}
 
-	_, err = dst.Write(formatted)
+	_, err = w.Write(formatted)
 	return err
+}
+
+type generator struct {
+	Config
 }
 
 func (g generator) generateFrom(schema avro.Schema, acc *data) string {

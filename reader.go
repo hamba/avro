@@ -179,7 +179,6 @@ func (r *Reader) ReadLong() int64 {
 		if b&0x80 == 0 {
 			break
 		}
-
 		offset++
 	}
 
