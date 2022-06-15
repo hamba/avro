@@ -149,7 +149,7 @@ Run it with: avrogen [options]
 
 Options:
   -pkg   , REQUIRED - the file to read from. Defaults to stdin if missing
-  -o	 , REQUIRED - the name of the output file to which write the generated structs
+  -o     , REQUIRED - the name of the output file to which write the generated structs
   -tags  , OPT - a list of key-value pairs: <tag-name>:casing[,...]. example: -tags json:camel,yaml:snake
          , available casings are: camel, snake, upper-camel, kebab
   -schema, REQUIRED - the schema file from which to generate the structs
