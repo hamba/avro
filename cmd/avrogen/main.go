@@ -28,12 +28,11 @@ func main() {
 	flag.BoolVar(&ro.Help, "h", false, "-h")
 	flag.Parse()
 
-	outFile, err := os.OpenFile(ro.OutFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0x644)
+	outFile, err := os.OpenFile(ro.OutFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		_, _ = os.Stderr.Write([]byte("Could not open output file for writing"))
 		os.Exit(1)
 	}
-	defer func() { _ = outFile.Close() }()
 
 	schemaFile, err := os.ReadFile(ro.Schema)
 	if err != nil {
@@ -52,7 +51,7 @@ func main() {
 	}
 }
 
-func execute(schema string, out io.Writer, er io.Writer, rawOpts rawOpts) error {
+func execute(schema string, out, er io.Writer, rawOpts rawOpts) error {
 	if rawOpts.Help {
 		if err := help(out); err != nil {
 			_, _ = er.Write([]byte(fmt.Errorf(`failed to run -help: %w`, err).Error()))
@@ -105,11 +104,11 @@ func parseTags(tags string) (map[string]g.TagStyle, error) {
 	commaCount, colonCount := 0, 0
 	for _, c := range tags {
 		if c == ':' {
-			colonCount += 1
+			colonCount++
 		}
 
 		if c == ',' {
-			commaCount += 1
+			commaCount++
 		}
 	}
 
@@ -150,7 +149,8 @@ Run it with: avrogen [options]
 Options:
   -pkg   , REQUIRED - the file to read from. Defaults to stdin if missing
   -o     , REQUIRED - the name of the output file to which write the generated structs
-  -tags  , OPT - a list of key-value pairs: <tag-name>:casing[,...]. example: -tags json:camel,yaml:snake
+  -tags  , OPT - a list of key-value pairs: <tag-name>:casing[,...].
+         , example: -tags json:camel,yaml:snake
          , available casings are: camel, snake, upper-camel, kebab
   -schema, REQUIRED - the schema file from which to generate the structs
 

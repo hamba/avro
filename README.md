@@ -136,7 +136,7 @@ Go structs can be generated for you from the schema. The types generated follow 
 Install the struct generator with:
 
 ```shell
-go install github.com/hamba/avro/cmd/avrogen
+go install github.com/hamba/avro/cmd/avrogen@<version>
 ```
 
 Check the options and usage with `-h`:
