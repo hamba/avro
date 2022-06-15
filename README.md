@@ -128,3 +128,21 @@ BenchmarkLinkedinEncode-10     	 2641016	       456.0 ns/op	     248 B/op	      
 ```
 
 Always benchmark with your own workload. The result depends heavily on the data input.
+
+## Go structs generation
+
+Go structs can be generated for you from the schema. The types generated follow the same logic in [types conversions](#types-conversions)
+
+Install the struct generator with:
+
+```shell
+go install github.com/hamba/avro/cmd/avrogen
+```
+
+Check the options and usage with `-h`:
+
+```shell
+avrogen -h
+```
+
+Or use it as a lib in internal commands, it's the `gen` package
