@@ -28,7 +28,7 @@ func main() {
 	flag.BoolVar(&ro.Help, "h", false, "-h")
 	flag.Parse()
 
-	outFile, err := os.OpenFile(ro.OutFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0x544)
+	outFile, err := os.OpenFile(ro.OutFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0x644)
 	if err != nil {
 		_, _ = os.Stderr.Write([]byte("Could not open output file for writing"))
 		os.Exit(1)
