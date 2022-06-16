@@ -142,6 +142,21 @@ func TestAvroGen(t *testing.T) {
 	cr.HasLineWith(t, []string{"}"})
 }
 
+func TestAvroGenFailuresArePropagated(t *testing.T) {
+	_, err := runWithArgs(rawOpts{
+		Package: "something",
+		OutFile: "out.go",
+		Schema: `{
+  "type": "record",
+  "name": "test",
+  "fields": 
+}`, // bad schema
+		Tags: "json:snake",
+	})
+
+	require.Error(t, err)
+}
+
 func runWithArgs(args rawOpts) (*cmdResult, error) {
 	outBuf := &bytes.Buffer{}
 	err := execute(args.Schema, outBuf, args)
