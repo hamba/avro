@@ -34,11 +34,11 @@ func realMain(args []string) int {
 		return 1
 	}
 
-	trailing := flgs.Args()
-	if len(trailing) > 0 {
+	if trailing := flgs.Args(); len(trailing) > 0 {
 		ro.Schema = trailing[len(trailing)-1]
 	}
 
+	// nolint: gofumpt
 	outFile, err := os.OpenFile(ro.OutFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, "Could not open output file for writing")
@@ -95,7 +95,8 @@ func execute(schema string, out io.Writer, rawOpts rawOpts) error {
 	return nil
 }
 
-const invalidTagsMsg = "tags should be a comma separated list of key value pairs separated by colon (':'). Valid styles: camel, upper-camel, snake, kebab"
+const invalidTagsMsg = "tags should be a comma separated list of key value pairs separated by colon (':')." +
+	" Valid styles: camel, upper-camel, snake, kebab"
 
 func parseTags(tags string) (map[string]g.TagStyle, error) {
 	result := make(map[string]g.TagStyle)
