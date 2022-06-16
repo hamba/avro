@@ -21,45 +21,51 @@ type rawOpts struct {
 }
 
 func main() {
+	os.Exit(realMain(os.Args))
+}
+
+func realMain(args []string) int {
 	var ro rawOpts
-	flag.StringVar(&ro.Package, "pkg", "", "-pkg <file-name>")
-	flag.StringVar(&ro.OutFile, "o", "", "-o <file-name>")
-	flag.StringVar(&ro.Schema, "schema", "", "-schema <file-name>")
-	flag.BoolVar(&ro.Help, "h", false, "-h")
-	flag.Parse()
+	flgs := flag.NewFlagSet("avrogen", flag.ExitOnError)
+	flgs.StringVar(&ro.Package, "pkg", "", "-pkg <package-name-on-the-generated-file>")
+	flgs.StringVar(&ro.OutFile, "o", "", "-o <file-name>")
+	flgs.StringVar(&ro.Tags, "tags", "", "-tags <tag-name>:{snake|camel|upper-camel|kebab}>[,...]")
+	if err := flgs.Parse(args[1:]); err != nil {
+		return 1
+	}
+
+	trailing := flgs.Args()
+	if len(trailing) > 0 {
+		ro.Schema = trailing[len(trailing)-1]
+	}
 
 	outFile, err := os.OpenFile(ro.OutFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
-		_, _ = os.Stderr.Write([]byte("Could not open output file for writing"))
-		os.Exit(1)
+		_, _ = fmt.Fprintln(os.Stderr, "Could not open output file for writing")
+		return 2
 	}
+	defer func() { _ = outFile.Close() }()
 
 	schemaFile, err := os.ReadFile(ro.Schema)
 	if err != nil {
-		_, _ = os.Stderr.Write([]byte("Could not open schema file"))
-		os.Exit(2)
+		_, _ = fmt.Fprintln(os.Stderr, "Could not open schema file")
+		return 3
 	}
 
 	schema, err := io.ReadAll(bytes.NewReader(schemaFile))
 	if err != nil {
-		_, _ = os.Stderr.Write([]byte("Could not read the schema file"))
-		os.Exit(3)
+		_, _ = fmt.Fprintln(os.Stderr, "Could not read the schema file")
+		return 4
 	}
 
-	if err := execute(string(schema), outFile, os.Stderr, ro); err != nil {
-		os.Exit(4) // already wrote the error
+	if err = execute(string(schema), outFile, ro); err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, err.Error())
+		return 5
 	}
+	return 0
 }
 
-func execute(schema string, out, er io.Writer, rawOpts rawOpts) error {
-	if rawOpts.Help {
-		if err := help(out); err != nil {
-			_, _ = er.Write([]byte(fmt.Errorf(`failed to run -help: %w`, err).Error()))
-			return err
-		}
-		return nil
-	}
-
+func execute(schema string, out io.Writer, rawOpts rawOpts) error {
 	for _, x := range []struct {
 		value   string
 		flagVal string
@@ -69,15 +75,12 @@ func execute(schema string, out, er io.Writer, rawOpts rawOpts) error {
 		{rawOpts.Schema, "-schema"},
 	} {
 		if x.value == "" {
-			err := errors.New(x.flagVal + " is required")
-			_, _ = er.Write([]byte(err.Error()))
-			return err
+			return errors.New(x.flagVal + " is required")
 		}
 	}
 
 	parsedTags, err := parseTags(rawOpts.Tags)
 	if err != nil {
-		_, _ = er.Write([]byte(err.Error()))
 		return err
 	}
 
@@ -86,7 +89,6 @@ func execute(schema string, out, er io.Writer, rawOpts rawOpts) error {
 		Tags:        parsedTags,
 	})
 	if err != nil {
-		_, _ = er.Write([]byte(err.Error()))
 		return err
 	}
 
@@ -139,22 +141,4 @@ func parseTags(tags string) (map[string]g.TagStyle, error) {
 		result[kv[0]] = style
 	}
 	return result, nil
-}
-
-func help(out io.Writer) error {
-	_, err := out.Write([]byte(`avrogen - Generate Golang structs from avro schemas
-
-Run it with: avrogen [options]
-
-Options:
-  -pkg   , REQUIRED - the file to read from. Defaults to stdin if missing
-  -o     , REQUIRED - the name of the output file to which write the generated structs
-  -tags  , OPT - a list of key-value pairs: <tag-name>:casing[,...].
-         , example: -tags json:camel,yaml:snake
-         , available casings are: camel, snake, upper-camel, kebab
-  -schema, REQUIRED - the schema file from which to generate the structs
-
-Example:
-  $ avrogen -pkg somepackage -tags json:camel,yaml:snake -o my/file.go -schema schema.avsc`))
-	return err
 }

@@ -10,67 +10,39 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAvroGenHelp(t *testing.T) {
-	t.Run("help is always given priority", func(t *testing.T) {
-		cr := runWithArgs(rawOpts{
-			Package: "something",
-			OutFile: "out.go",
-			Tags:    "json:camel",
-			Help:    true,
-		})
-		cr.ThereIsNoError(t)
-		cr.HasLineWith(t, []string{"Example"})
-		cr.HasLineWith(t, []string{"-o"})
-		cr.HasLineWith(t, []string{"-pkg"})
-		cr.HasLineWith(t, []string{"-tags"})
-		cr.HasLineWith(t, []string{"-schema"})
-		cr.HasLineWith(t, []string{"$ avrogen"})
-	})
-	t.Run("help shows the options and an example", func(t *testing.T) {
-		cr := runWithArgs(rawOpts{Help: true})
-		cr.ThereIsNoError(t)
-		cr.HasLineWith(t, []string{"Example"})
-		cr.HasLineWith(t, []string{"-o"})
-		cr.HasLineWith(t, []string{"-pkg"})
-		cr.HasLineWith(t, []string{"-tags"})
-		cr.HasLineWith(t, []string{"-schema"})
-		cr.HasLineWith(t, []string{"$ avrogen"})
-	})
-}
-
 func TestAvroGenRequiredFlags(t *testing.T) {
 	t.Run("package is required", func(t *testing.T) {
-		cr := runWithArgs(rawOpts{
+		_, err := runWithArgs(rawOpts{
 			Package: "", // fails here
 			OutFile: "out.go",
 			Schema:  "in.avsc",
 			Tags:    "json:camel",
 		})
-		cr.ThereIsAnError(t)
+		require.Error(t, err)
 	})
 	t.Run("out file is required", func(t *testing.T) {
-		cr := runWithArgs(rawOpts{
+		_, err := runWithArgs(rawOpts{
 			Package: "something",
 			OutFile: "", // fails here
 			Schema:  "in.avsc",
 			Tags:    "json:camel",
 		})
-		cr.ThereIsAnError(t)
+		require.Error(t, err)
 	})
 	t.Run("schema is required", func(t *testing.T) {
-		cr := runWithArgs(rawOpts{
+		_, err := runWithArgs(rawOpts{
 			Package: "something",
 			OutFile: "out.go",
 			Schema:  "", // fails here
 			Tags:    "json:camel",
 		})
-		cr.ThereIsAnError(t)
+		require.Error(t, err)
 	})
 }
 
 func TestAvroGenOptionalFields(t *testing.T) {
 	t.Run("package is required", func(t *testing.T) {
-		cr := runWithArgs(rawOpts{
+		_, err := runWithArgs(rawOpts{
 			Package: "something",
 			OutFile: "out.go",
 			Schema: `{
@@ -82,7 +54,7 @@ func TestAvroGenOptionalFields(t *testing.T) {
 }`,
 			Tags: "", // its fine, tags are optional
 		})
-		cr.ThereIsNoError(t)
+		require.NoError(t, err)
 	})
 }
 
@@ -99,7 +71,7 @@ func TestAvroGenTagsParsingInvalid(t *testing.T) {
 		{desc: "missing style", tags: "json:snake,yaml:"},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			cr := runWithArgs(rawOpts{
+			_, err := runWithArgs(rawOpts{
 				Package: "something",
 				OutFile: "out.go",
 				Schema: `{
@@ -112,7 +84,10 @@ func TestAvroGenTagsParsingInvalid(t *testing.T) {
 				Tags: tc.tags,
 			})
 
-			cr.ThereIsAnErrorWithWords(t, []string{"tags", "valid", "colon", "comma", "separated"})
+			require.Error(t, err)
+			for _, expectedWord := range []string{"tags", "colon", "comma", "separated"} {
+				assert.Contains(t, err.Error(), expectedWord)
+			}
 		})
 	}
 }
@@ -128,7 +103,7 @@ func TestAvroGenTagsParsingValid(t *testing.T) {
 		{desc: "kebab case", tags: "json:kebab"},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			cr := runWithArgs(rawOpts{
+			_, err := runWithArgs(rawOpts{
 				Package: "something",
 				OutFile: "out.go",
 				Schema: `{
@@ -141,13 +116,13 @@ func TestAvroGenTagsParsingValid(t *testing.T) {
 				Tags: tc.tags,
 			})
 
-			cr.ThereIsNoError(t)
+			require.NoError(t, err)
 		})
 	}
 }
 
 func TestAvroGen(t *testing.T) {
-	cr := runWithArgs(rawOpts{
+	cr, err := runWithArgs(rawOpts{
 		Package: "something",
 		OutFile: "out.go",
 		Schema: `{
@@ -160,35 +135,22 @@ func TestAvroGen(t *testing.T) {
 		Tags: "json:snake",
 	})
 
-	cr.ThereIsNoError(t)
+	require.NoError(t, err)
 	cr.HasLineWith(t, []string{"package", "something"})
 	cr.HasLineWith(t, []string{"type", "Test", "struct", "{"})
 	cr.HasLineWith(t, []string{"SomeString", "string", "avro:\"someString\"", "json:\"some_string\""})
 	cr.HasLineWith(t, []string{"}"})
 }
 
-func runWithArgs(args rawOpts) *cmdResult {
+func runWithArgs(args rawOpts) (*cmdResult, error) {
 	outBuf := &bytes.Buffer{}
-	erBuf := &bytes.Buffer{}
-	_ = execute(args.Schema, outBuf, erBuf, args)
-	return &cmdResult{outStream: outBuf, errStream: erBuf}
+	err := execute(args.Schema, outBuf, args)
+	return &cmdResult{outStream: outBuf}, err
 }
 
 type cmdResult struct {
 	outStream io.Reader
-	errStream io.Reader
-
-	errText string
-	outText string
-}
-
-func (cr *cmdResult) err(t *testing.T) string {
-	if cr.errText == "" {
-		all, err := io.ReadAll(cr.errStream)
-		require.NoError(t, err)
-		cr.errText = string(all)
-	}
-	return cr.errText
+	outText   string
 }
 
 func (cr *cmdResult) out(t *testing.T) string {
@@ -198,21 +160,6 @@ func (cr *cmdResult) out(t *testing.T) string {
 		cr.outText = string(all)
 	}
 	return cr.outText
-}
-
-func (cr *cmdResult) ThereIsNoError(t *testing.T) {
-	require.Empty(t, cr.err(t))
-}
-
-func (cr *cmdResult) ThereIsAnError(t *testing.T) {
-	require.NotEmpty(t, cr.err(t))
-}
-
-func (cr *cmdResult) ThereIsAnErrorWithWords(t *testing.T, words []string) {
-	require.NotEmpty(t, cr.err(t))
-	for _, w := range words {
-		assert.Contains(t, strings.ToLower(cr.err(t)), strings.ToLower(w))
-	}
 }
 
 func (cr *cmdResult) HasLineWith(t *testing.T, words []string) {
