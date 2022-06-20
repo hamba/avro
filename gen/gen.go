@@ -11,7 +11,7 @@ import (
 	"text/template"
 
 	"github.com/ettle/strcase"
-	"github.com/hamba/avro"
+	"github.com/hamba/avro/v2"
 )
 
 // Config exposes the options available for the code generation.

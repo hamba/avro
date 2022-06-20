@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hamba/avro/gen"
+	"github.com/hamba/avro/v2/gen"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

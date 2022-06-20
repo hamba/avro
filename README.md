@@ -14,7 +14,7 @@ A fast Go avro codec
 Install with:
 
 ```shell
-go get github.com/hamba/avro
+go get github.com/hamba/avro/v2
 ```
 
 ## Usage
@@ -136,7 +136,7 @@ Go structs can be generated for you from the schema. The types generated follow 
 Install the struct generator with:
 
 ```shell
-go install github.com/hamba/avro/cmd/avrogen@<version>
+go install github.com/hamba/avro/v2/cmd/avrogen@<version>
 ```
 
 Example usage assuming there's a valid schema in `in.avsc`:

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/hamba/avro"
+	"github.com/hamba/avro/v2"
 )
 
 var Schema = `{
@@ -45,6 +45,6 @@ func Example_usage() {
 
 	fmt.Printf("%+v\n", out)
 
-	//Output: [54 6 102 111 111]
+	// Output: [54 6 102 111 111]
 	// {A:27 B:foo}
 }
