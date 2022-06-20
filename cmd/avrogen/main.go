@@ -2,144 +2,127 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
-	g "github.com/hamba/avro/gen"
+	"github.com/hamba/avro/gen"
 )
 
 type rawOpts struct {
-	Package string
-	OutFile string
-	Schema  string
-	Tags    string
-	Help    bool
+	Pkg  string
+	Out  string
+	Tags string
 }
 
 func main() {
-	os.Exit(realMain(os.Args))
+	os.Exit(realMain(os.Args, os.Stderr))
 }
 
-func realMain(args []string) int {
+func realMain(args []string, out io.Writer) int {
 	var ro rawOpts
 	flgs := flag.NewFlagSet("avrogen", flag.ExitOnError)
-	flgs.StringVar(&ro.Package, "pkg", "", "-pkg <package-name-on-the-generated-file>")
-	flgs.StringVar(&ro.OutFile, "o", "", "-o <file-name>")
-	flgs.StringVar(&ro.Tags, "tags", "", "-tags <tag-name>:{snake|camel|upper-camel|kebab}>[,...]")
+	flgs.SetOutput(out)
+	flgs.StringVar(&ro.Pkg, "pkg", "", "The package name of the output file.")
+	flgs.StringVar(&ro.Out, "o", "", "The output file path.")
+	flgs.StringVar(&ro.Tags, "tags", "", "The additional field tags <tag-name>:{snake|camel|upper-camel|kebab}>[,...]")
+	flgs.Usage = func() {
+		_, _ = fmt.Fprintln(out, "Usage: avrogen [options] schema")
+		_, _ = fmt.Fprintln(out, "Options:")
+		flgs.PrintDefaults()
+	}
+
 	if err := flgs.Parse(args[1:]); err != nil {
 		return 1
 	}
+	if err := validateOpts(flgs.Args(), ro); err != nil {
+		_, _ = fmt.Fprintln(out, "Error: "+err.Error())
 
-	if trailing := flgs.Args(); len(trailing) > 0 {
-		ro.Schema = trailing[len(trailing)-1]
+		return 1
+	}
+	tags, err := parseTags(ro.Tags)
+	if err != nil {
+		_, _ = fmt.Fprintln(out, "Error: "+err.Error())
+		return 1
 	}
 
-	// nolint: gofumpt
-	outFile, err := os.OpenFile(ro.OutFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	schema, err := readSchema(flgs.Args()[0])
 	if err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, "Could not open output file for writing")
+		_, _ = fmt.Fprintf(out, "Error: %v\n", err)
 		return 2
 	}
-	defer func() { _ = outFile.Close() }()
 
-	schemaFile, err := os.ReadFile(ro.Schema)
-	if err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, "Could not open schema file")
+	var buf bytes.Buffer
+	cfg := gen.Config{PackageName: ro.Pkg, Tags: tags}
+	if err = gen.Struct(schema, &buf, cfg); err != nil {
+		_, _ = fmt.Fprintln(out, err.Error())
 		return 3
 	}
 
-	schema, err := io.ReadAll(bytes.NewReader(schemaFile))
-	if err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, "Could not read the schema file")
+	if err = os.WriteFile(ro.Out, buf.Bytes(), 0o600); err != nil {
+		_, _ = fmt.Fprintf(out, "Error: could write file: %v\n", err)
 		return 4
-	}
-
-	if err = execute(string(schema), outFile, ro); err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, err.Error())
-		return 5
 	}
 	return 0
 }
 
-func execute(schema string, out io.Writer, rawOpts rawOpts) error {
-	for _, x := range []struct {
-		value   string
-		flagVal string
-	}{
-		{rawOpts.OutFile, "-o"},
-		{rawOpts.Package, "-pkg"},
-		{rawOpts.Schema, "-schema"},
-	} {
-		if x.value == "" {
-			return errors.New(x.flagVal + " is required")
-		}
+func validateOpts(args []string, ro rawOpts) error {
+	if len(args) != 1 {
+		return fmt.Errorf("schema is required")
 	}
 
-	parsedTags, err := parseTags(rawOpts.Tags)
-	if err != nil {
-		return err
+	if ro.Pkg == "" {
+		return fmt.Errorf("a package is required")
 	}
 
-	err = g.Struct(schema, out, g.Config{
-		PackageName: rawOpts.Package,
-		Tags:        parsedTags,
-	})
-	if err != nil {
-		return err
+	if ro.Out == "" {
+		return fmt.Errorf("an output file is reqired")
 	}
 
 	return nil
 }
 
-const invalidTagsMsg = "tags should be a comma separated list of key value pairs separated by colon (':')." +
-	" Valid styles: camel, upper-camel, snake, kebab"
-
-func parseTags(tags string) (map[string]g.TagStyle, error) {
-	result := make(map[string]g.TagStyle)
-	if tags == "" {
-		return result, nil
+func parseTags(raw string) (map[string]gen.TagStyle, error) {
+	if raw == "" {
+		return map[string]gen.TagStyle{}, nil
 	}
 
-	commaCount, colonCount := 0, 0
-	for _, c := range tags {
-		if c == ':' {
-			colonCount++
+	result := map[string]gen.TagStyle{}
+	for _, tag := range strings.Split(raw, ",") {
+		parts := strings.Split(tag, ":")
+		switch {
+		case len(parts) != 2:
+			return nil, fmt.Errorf("%q is not a valid tag, should be in the formet \"tag:style\"", tag)
+		case parts[0] == "":
+			return nil, fmt.Errorf("tag name is required in %q", tag)
 		}
 
-		if c == ',' {
-			commaCount++
-		}
-	}
-
-	if colonCount == 0 || colonCount != commaCount+1 {
-		return nil, errors.New(invalidTagsMsg)
-	}
-
-	for _, kvp := range strings.Split(tags, ",") {
-		kv := strings.Split(kvp, ":")
-		if kv[0] == "" || kv[1] == "" {
-			return nil, errors.New(invalidTagsMsg)
-		}
-		style := g.TagStyle("")
-		switch strings.ToLower(kv[1]) {
-		case string(g.UpperCamel):
-			style = g.UpperCamel
-		case string(g.Camel):
-			style = g.Camel
-		case string(g.Kebab):
-			style = g.Kebab
-		case string(g.Snake):
-			style = g.Snake
+		var style gen.TagStyle
+		switch strings.ToLower(parts[1]) {
+		case string(gen.UpperCamel):
+			style = gen.UpperCamel
+		case string(gen.Camel):
+			style = gen.Camel
+		case string(gen.Kebab):
+			style = gen.Kebab
+		case string(gen.Snake):
+			style = gen.Snake
+		default:
+			return nil, fmt.Errorf("style %q is invalid in %q", parts[1], tag)
 		}
 
-		if style == "" {
-			return nil, errors.New(invalidTagsMsg)
-		}
-		result[kv[0]] = style
+		result[parts[0]] = style
 	}
 	return result, nil
+}
+
+func readSchema(path string) (string, error) {
+	b, err := os.ReadFile(filepath.Clean(path))
+	if err != nil {
+		return "", fmt.Errorf("could not open schema file: %w", err)
+	}
+	return string(b), nil
 }

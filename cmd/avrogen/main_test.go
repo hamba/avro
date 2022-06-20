@@ -1,193 +1,128 @@
 package main
 
 import (
-	"bytes"
+	"flag"
 	"io"
-	"strings"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestAvroGenRequiredFlags(t *testing.T) {
-	t.Run("package is required", func(t *testing.T) {
-		_, err := runWithArgs(rawOpts{
-			Package: "", // fails here
-			OutFile: "out.go",
-			Schema:  "in.avsc",
-			Tags:    "json:camel",
-		})
-		require.Error(t, err)
-	})
-	t.Run("out file is required", func(t *testing.T) {
-		_, err := runWithArgs(rawOpts{
-			Package: "something",
-			OutFile: "", // fails here
-			Schema:  "in.avsc",
-			Tags:    "json:camel",
-		})
-		require.Error(t, err)
-	})
-	t.Run("schema is required", func(t *testing.T) {
-		_, err := runWithArgs(rawOpts{
-			Package: "something",
-			OutFile: "out.go",
-			Schema:  "", // fails here
-			Tags:    "json:camel",
-		})
-		require.Error(t, err)
-	})
-}
+var update = flag.Bool("update", false, "Update golden files")
 
-func TestAvroGenOptionalFields(t *testing.T) {
-	t.Run("package is required", func(t *testing.T) {
-		_, err := runWithArgs(rawOpts{
-			Package: "something",
-			OutFile: "out.go",
-			Schema: `{
-  "type": "record",
-  "name": "test",
-  "fields": [
-    { "name": "someString", "type": "string" }
-  ]
-}`,
-			Tags: "", // its fine, tags are optional
-		})
-		require.NoError(t, err)
-	})
-}
-
-func TestAvroGenTagsParsingInvalid(t *testing.T) {
-	for _, tc := range []struct {
-		desc string
-		tags string
+func TestAvroGen_RequiredFlags(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    []string
+		wantErr bool
 	}{
-		{desc: "gibberish", tags: "asdklasd"},
-		{desc: "trailing comma", tags: "json:snake,"},
-		{desc: "close enough, but unknown style", tags: "json:camel."},
-		{desc: "unknown style", tags: "json:uber"},
-		{desc: "missing tag name", tags: ":snake"},
-		{desc: "missing style", tags: "json:snake,yaml:"},
-	} {
-		t.Run(tc.desc, func(t *testing.T) {
-			_, err := runWithArgs(rawOpts{
-				Package: "something",
-				OutFile: "out.go",
-				Schema: `{
-  "type": "record",
-  "name": "test",
-  "fields": [
-    { "name": "someString", "type": "string" }
-  ]
-}`,
-				Tags: tc.tags,
-			})
+		{
+			name:    "validates schema is set",
+			args:    []string{"avrogen", "-pkg", "test", "-o", "some/file"},
+			wantErr: true,
+		},
+		{
+			name:    "validates schema exists",
+			args:    []string{"avrogen", "-pkg", "test", "-o", "some/file", "some/schema"},
+			wantErr: true,
+		},
+		{
+			name:    "validates package is set",
+			args:    []string{"avrogen", "-o", "some/file", "schema.avsc"},
+			wantErr: true,
+		},
+		{
+			name:    "validates output file is set",
+			args:    []string{"avrogen", "-pkg", "test", "schema.avsc"},
+			wantErr: true,
+		},
+		{
+			name:    "validates tag format are valid",
+			args:    []string{"avrogen", "-o", "some/file", "-pkg", "test", "-tags", "snake", "schema.avsc"},
+			wantErr: true,
+		},
+		{
+			name:    "validates tag key are valid",
+			args:    []string{"avrogen", "-o", "some/file", "-pkg", "test", "-tags", ":snake", "schema.avsc"},
+			wantErr: true,
+		},
+		{
+			name:    "validates tag style are valid",
+			args:    []string{"avrogen", "-o", "some/file", "-pkg", "test", "-tags", "json:something", "schema.avsc"},
+			wantErr: true,
+		},
+	}
 
-			require.Error(t, err)
-			for _, expectedWord := range []string{"tags", "colon", "comma", "separated"} {
-				assert.Contains(t, err.Error(), expectedWord)
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			got := realMain(test.args, io.Discard)
+
+			if !test.wantErr {
+				assert.Equal(t, 0, got)
+				return
 			}
+
+			assert.NotEqual(t, 0, got)
 		})
 	}
 }
 
-func TestAvroGenTagsParsingValid(t *testing.T) {
-	for _, tc := range []struct {
-		desc string
+func TestAvroGen_GeneratesSchema(t *testing.T) {
+	path, err := os.MkdirTemp("./", "avrogen")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll(path) })
+
+	file := filepath.Join(path, "test.go")
+	args := []string{"avrogen", "-pkg", "testpkg", "-o", file, "testdata/schema.avsc"}
+	gotCode := realMain(args, io.Discard)
+	require.Equal(t, 0, gotCode)
+
+	got, err := os.ReadFile(file)
+	require.NoError(t, err)
+
+	if *update {
+		err = os.WriteFile("testdata/golden.go", got, 0600)
+		require.NoError(t, err)
+	}
+
+	want, err := os.ReadFile("testdata/golden.go")
+	require.NoError(t, err)
+	assert.Equal(t, want, got)
+}
+
+func TestParseTags(t *testing.T) {
+	tests := []struct {
+		name string
 		tags string
 	}{
-		{desc: "snake case", tags: "json:snake"},
-		{desc: "camel case", tags: "json:camel"},
-		{desc: "upper camel case", tags: "json:upper-camel"},
-		{desc: "kebab case", tags: "json:kebab"},
-	} {
-		t.Run(tc.desc, func(t *testing.T) {
-			_, err := runWithArgs(rawOpts{
-				Package: "something",
-				OutFile: "out.go",
-				Schema: `{
-  "type": "record",
-  "name": "test",
-  "fields": [
-    { "name": "someString", "type": "string" }
-  ]
-}`,
-				Tags: tc.tags,
-			})
+		{
+			name: "snake case",
+			tags: "json:snake",
+		},
+		{
+			name: "camel case",
+			tags: "json:camel",
+		},
+		{
+			name: "upper camel case",
+			tags: "json:upper-camel",
+		},
+		{
+			name: "kebab case",
+			tags: "json:kebab",
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			_, err := parseTags(test.tags)
 
 			require.NoError(t, err)
 		})
 	}
-}
-
-func TestAvroGen(t *testing.T) {
-	cr, err := runWithArgs(rawOpts{
-		Package: "something",
-		OutFile: "out.go",
-		Schema: `{
-  "type": "record",
-  "name": "test",
-  "fields": [
-    { "name": "someString", "type": "string" }
-  ]
-}`,
-		Tags: "json:snake",
-	})
-
-	require.NoError(t, err)
-	cr.HasLineWith(t, []string{"package", "something"})
-	cr.HasLineWith(t, []string{"type", "Test", "struct", "{"})
-	cr.HasLineWith(t, []string{"SomeString", "string", "avro:\"someString\"", "json:\"some_string\""})
-	cr.HasLineWith(t, []string{"}"})
-}
-
-func TestAvroGenFailuresArePropagated(t *testing.T) {
-	_, err := runWithArgs(rawOpts{
-		Package: "something",
-		OutFile: "out.go",
-		Schema: `{
-  "type": "record",
-  "name": "test",
-  "fields": 
-}`, // bad schema
-		Tags: "json:snake",
-	})
-
-	require.Error(t, err)
-}
-
-func runWithArgs(args rawOpts) (*cmdResult, error) {
-	outBuf := &bytes.Buffer{}
-	err := execute(args.Schema, outBuf, args)
-	return &cmdResult{outStream: outBuf}, err
-}
-
-type cmdResult struct {
-	outStream io.Reader
-	outText   string
-}
-
-func (cr *cmdResult) out(t *testing.T) string {
-	if cr.outText == "" {
-		all, err := io.ReadAll(cr.outStream)
-		require.NoError(t, err)
-		cr.outText = string(all)
-	}
-	return cr.outText
-}
-
-func (cr *cmdResult) HasLineWith(t *testing.T, words []string) {
-	for _, line := range strings.Split(cr.out(t), "\n") {
-		for j, w := range words {
-			if !strings.Contains(line, w) {
-				break
-			}
-
-			if j == len(words)-1 {
-				return // all words are contained in the line
-			}
-		}
-	}
-	t.Fatalf("did not find any line with any of these words: %s. Output was: %s", strings.Join(words, ","), cr.out(t))
 }
