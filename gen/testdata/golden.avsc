@@ -1,0 +1,258 @@
+{
+  "type": "record",
+  "name": "test",
+  "fields": [
+    {
+      "name": "aString",
+      "type": "string"
+    },
+    {
+      "name": "aBoolean",
+      "type": "boolean"
+    },
+    {
+      "name": "anInt",
+      "type": "int"
+    },
+    {
+      "name": "aFloat",
+      "type": "float"
+    },
+    {
+      "name": "aDouble",
+      "type": "double"
+    },
+    {
+      "name": "aLong",
+      "type": "long"
+    },
+    {
+      "name": "justBytes",
+      "type": "bytes"
+    },
+    {
+      "name": "primitiveNullableArrayUnion",
+      "type": [
+        "null",
+        {
+          "type": "array",
+          "items": "string"
+        }
+      ],
+      "default": null
+    },
+    {
+      "name": "innerRecord",
+      "type": {
+        "name": "InnerRecord",
+        "type": "record",
+        "fields": [
+          {
+            "name": "innerJustBytes",
+            "type": "bytes"
+          },
+          {
+            "name": "innerPrimitiveNullableArrayUnion",
+            "type": [
+              "null",
+              {
+                "type": "array",
+                "items": "string"
+              }
+            ],
+            "default": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "anEnum",
+      "type": {
+        "type": "enum",
+        "name": "Cards",
+        "symbols": [
+          "SPADES",
+          "HEARTS",
+          "DIAMONDS",
+          "CLUBS"
+        ]
+      }
+    },
+    {
+      "name": "aFixed",
+      "type": {
+        "type": "fixed",
+        "name": "fixedField",
+        "size": 7
+      }
+    },
+    {
+      "name": "aLogicalFixed",
+      "type": {
+        "type": "fixed",
+        "name": "test",
+        "size": 12,
+        "logicalType": "duration"
+      }
+    },
+    {
+      "name": "mapOfStrings",
+      "type": {
+        "name": "aMapOfStrings",
+        "type": "map",
+        "values": "string"
+      }
+    },
+    {
+      "name": "mapOfRecords",
+      "type": {
+        "name": "aMapOfRecords",
+        "type": "map",
+        "values": {
+          "name": "RecordInMap",
+          "type": "record",
+          "fields": [
+            {
+              "type": "string",
+              "name": "name"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "aDate",
+      "type": {
+        "type": "int",
+        "logicalType": "date"
+      }
+    },
+    {
+      "name": "aDuration",
+      "type": {
+        "type": "int",
+        "logicalType": "time-millis"
+      }
+    },
+    {
+      "name": "aLongTimeMicros",
+      "type": {
+        "type": "long",
+        "logicalType": "time-micros"
+      }
+    },
+    {
+      "name": "aLongTimestampMillis",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }
+    },
+    {
+      "name": "aLongTimestampMicro",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-micros"
+      }
+    },
+    {
+      "name": "aBytesDecimal",
+      "type": {
+        "type": "bytes",
+        "logicalType": "decimal",
+        "precision": 4,
+        "scale": 2
+      }
+    },
+    {
+      "name": "aRecordArray",
+      "type": {
+        "name": "someRecordArray",
+        "type": "array",
+        "items": {
+          "name": "recordInArray",
+          "type": "record",
+          "fields": [
+            {
+              "type": "string",
+              "name": "aString"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "nullableRecordUnion",
+      "type": [
+        "null",
+        {
+          "name": "recordInNullableUnion",
+          "type": "record",
+          "fields": [
+            {
+              "name": "aString",
+              "type": "string"
+            }
+          ]
+        }
+      ],
+      "default": null
+    },
+    {
+      "name": "nonNullableRecordUnion",
+      "type": [
+        {
+          "name": "record1InNonNullableUnion",
+          "type": "record",
+          "fields": [
+            {
+              "name": "aString",
+              "type": "string"
+            }
+          ]
+        },
+        {
+          "name": "record2InNonNullableUnion",
+          "type": "record",
+          "fields": [
+            {
+              "name": "aString",
+              "type": "string"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "nullableRecordUnionWith3Options",
+      "type": [
+        "null",
+        {
+          "name": "record1InNullableUnion",
+          "type": "record",
+          "fields": [
+            {
+              "name": "aString",
+              "type": "string"
+            }
+          ]
+        },
+        {
+          "name": "record2InNullableUnion",
+          "type": "record",
+          "fields": [
+            {
+              "name": "aString",
+              "type": "string"
+            }
+          ]
+        }
+      ],
+      "default": null
+    },
+    {
+      "name": "ref",
+      "type": "record2InNullableUnion"
+    }
+  ]
+}

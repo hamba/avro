@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/hamba/avro"
+	"github.com/hamba/avro/v2"
 )
 
 func ExampleParse() {
@@ -82,7 +82,7 @@ func ExampleNewDecoderForSchema() {
 
 	fmt.Printf("%+v", simple)
 
-	//Output: {A:27 B:foo}
+	// Output: {A:27 B:foo}
 }
 
 func ExampleUnmarshal() {
@@ -109,7 +109,7 @@ func ExampleUnmarshal() {
 
 	fmt.Printf("%+v", simple)
 
-	//Output: {A:27 B:foo}
+	// Output: {A:27 B:foo}
 }
 
 func ExampleNewEncoder() {
@@ -141,7 +141,7 @@ func ExampleNewEncoder() {
 
 	fmt.Println(w.Bytes())
 
-	//Output: [54 6 102 111 111]
+	// Output: [54 6 102 111 111]
 }
 
 func ExampleNewEncoderForSchema() {
@@ -170,7 +170,7 @@ func ExampleNewEncoderForSchema() {
 
 	fmt.Println(w.Bytes())
 
-	//Output: [54 6 102 111 111]
+	// Output: [54 6 102 111 111]
 }
 
 func ExampleMarshal() {
@@ -197,5 +197,5 @@ func ExampleMarshal() {
 
 	fmt.Println(b)
 
-	//Output: [54 6 102 111 111]
+	// Output: [54 6 102 111 111]
 }

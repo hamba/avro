@@ -60,6 +60,14 @@ func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 	fields := make([]*structFieldDecoder, 0, len(rec.Fields()))
 	for _, field := range rec.Fields() {
 		sf := structDesc.Fields.Get(field.Name())
+		if sf == nil {
+			for _, alias := range field.Aliases() {
+				sf = structDesc.Fields.Get(alias)
+				if sf != nil {
+					break
+				}
+			}
+		}
 
 		// Skip field if it doesnt exist
 		if sf == nil {

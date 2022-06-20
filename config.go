@@ -5,7 +5,6 @@ import (
 	"io"
 	"sync"
 
-	"github.com/modern-go/concurrent"
 	"github.com/modern-go/reflect2"
 )
 
@@ -30,10 +29,8 @@ type Config struct {
 // Freeze makes the configuration immutable.
 func (c Config) Freeze() API {
 	api := &frozenConfig{
-		config:       c,
-		decoderCache: concurrent.NewMap(),
-		encoderCache: concurrent.NewMap(),
-		resolver:     NewTypeResolver(),
+		config:   c,
+		resolver: NewTypeResolver(),
 	}
 
 	api.readerPool = &sync.Pool{
@@ -89,8 +86,8 @@ type API interface {
 type frozenConfig struct {
 	config Config
 
-	decoderCache *concurrent.Map // map[cacheKey]ValDecoder
-	encoderCache *concurrent.Map // map[cacheKey]ValEncoder
+	decoderCache sync.Map // map[cacheKey]ValDecoder
+	encoderCache sync.Map // map[cacheKey]ValEncoder
 
 	readerPool *sync.Pool
 	writerPool *sync.Pool
@@ -154,7 +151,10 @@ func (c *frozenConfig) returnReader(reader *Reader) {
 }
 
 func (c *frozenConfig) NewEncoder(schema Schema, w io.Writer) *Encoder {
-	writer := NewWriter(w, 512, WithWriterConfig(c))
+	writer, ok := w.(*Writer)
+	if !ok {
+		writer = NewWriter(w, 512, WithWriterConfig(c))
+	}
 	return &Encoder{
 		s: schema,
 		w: writer,

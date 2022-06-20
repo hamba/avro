@@ -112,5 +112,5 @@ func (c *fixedDecimalCodec) Encode(ptr unsafe.Pointer, w *Writer) {
 		b = i.Add(i, (&big.Int{}).Lsh(one, uint(c.size*8))).Bytes()
 	}
 
-	w.Write(b)
+	_, _ = w.Write(b)
 }

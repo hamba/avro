@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/hamba/avro"
+	"github.com/hamba/avro/v2"
 )
 
 func ExampleRegister() {
@@ -21,5 +21,5 @@ func ExampleRegister() {
 
 	fmt.Println(result)
 
-	//Output: B
+	// Output: B
 }

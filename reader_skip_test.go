@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/hamba/avro"
+	"github.com/hamba/avro/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReader_SkipNBytes(t *testing.T) {
@@ -14,7 +15,7 @@ func TestReader_SkipNBytes(t *testing.T) {
 
 	r.SkipNBytes(3)
 
-	assert.NoError(t, r.Error)
+	require.NoError(t, r.Error)
 	assert.Equal(t, int32(27), r.ReadInt())
 }
 
@@ -33,7 +34,7 @@ func TestReader_SkipBool(t *testing.T) {
 
 	r.SkipBool()
 
-	assert.NoError(t, r.Error)
+	require.NoError(t, r.Error)
 	assert.Equal(t, int32(27), r.ReadInt())
 }
 
@@ -53,13 +54,14 @@ func TestReader_SkipInt(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := avro.NewReader(bytes.NewReader(tt.data), 10)
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			r := avro.NewReader(bytes.NewReader(test.data), 10)
 
 			r.SkipInt()
 
-			assert.NoError(t, r.Error)
+			require.NoError(t, r.Error)
 			assert.Equal(t, int32(27), r.ReadInt())
 		})
 	}
@@ -81,13 +83,14 @@ func TestReader_SkipLong(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := avro.NewReader(bytes.NewReader(tt.data), 10)
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			r := avro.NewReader(bytes.NewReader(test.data), 10)
 
 			r.SkipLong()
 
-			assert.NoError(t, r.Error)
+			require.NoError(t, r.Error)
 			assert.Equal(t, int32(27), r.ReadInt())
 		})
 	}
@@ -99,7 +102,7 @@ func TestReader_SkipFloat(t *testing.T) {
 
 	r.SkipFloat()
 
-	assert.NoError(t, r.Error)
+	require.NoError(t, r.Error)
 	assert.Equal(t, int32(27), r.ReadInt())
 }
 
@@ -109,7 +112,7 @@ func TestReader_SkipDouble(t *testing.T) {
 
 	r.SkipDouble()
 
-	assert.NoError(t, r.Error)
+	require.NoError(t, r.Error)
 	assert.Equal(t, int32(27), r.ReadInt())
 }
 
@@ -119,7 +122,7 @@ func TestReader_SkipString(t *testing.T) {
 
 	r.SkipString()
 
-	assert.NoError(t, r.Error)
+	require.NoError(t, r.Error)
 	assert.Equal(t, int32(27), r.ReadInt())
 }
 
@@ -129,7 +132,7 @@ func TestReader_SkipStringEmpty(t *testing.T) {
 
 	r.SkipString()
 
-	assert.NoError(t, r.Error)
+	require.NoError(t, r.Error)
 	assert.Equal(t, int32(27), r.ReadInt())
 }
 
@@ -139,7 +142,7 @@ func TestReader_SkipBytes(t *testing.T) {
 
 	r.SkipBytes()
 
-	assert.NoError(t, r.Error)
+	require.NoError(t, r.Error)
 	assert.Equal(t, int32(27), r.ReadInt())
 }
 
@@ -149,6 +152,6 @@ func TestReader_SkipBytesEmpty(t *testing.T) {
 
 	r.SkipBytes()
 
-	assert.NoError(t, r.Error)
+	require.NoError(t, r.Error)
 	assert.Equal(t, int32(27), r.ReadInt())
 }

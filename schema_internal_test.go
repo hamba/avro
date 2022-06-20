@@ -4,10 +4,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestName_NameAndNamespace(t *testing.T) {
-	n, _ := newName("bar", "foo")
+	n, err := newName("bar", "foo", nil)
+	require.NoError(t, err)
 
 	assert.Equal(t, "bar", n.Name())
 	assert.Equal(t, "foo", n.Namespace())
@@ -15,52 +17,76 @@ func TestName_NameAndNamespace(t *testing.T) {
 }
 
 func TestName_QualifiedName(t *testing.T) {
-	n, _ := newName("foo.bar", "test")
+	n, err := newName("foo.bar", "test", nil)
+	require.NoError(t, err)
 
 	assert.Equal(t, "bar", n.Name())
 	assert.Equal(t, "foo", n.Namespace())
 	assert.Equal(t, "foo.bar", n.FullName())
 }
 
+func TestName_NameAndNamespaceAndAlias(t *testing.T) {
+	n, err := newName("bar", "foo", []string{"baz", "test.bat"})
+	require.NoError(t, err)
+
+	assert.Equal(t, "bar", n.Name())
+	assert.Equal(t, "foo", n.Namespace())
+	assert.Equal(t, "foo.bar", n.FullName())
+	assert.Equal(t, []string{"foo.baz", "test.bat"}, n.Aliases())
+}
+
+func TestName_EmpryName(t *testing.T) {
+	_, err := newName("", "foo", nil)
+
+	assert.Error(t, err)
+}
+
 func TestName_InvalidNameFirstChar(t *testing.T) {
-	_, err := newName("+bar", "foo")
+	_, err := newName("+bar", "foo", nil)
 
 	assert.Error(t, err)
 }
 
 func TestName_InvalidNameOtherChar(t *testing.T) {
-	_, err := newName("bar+", "foo")
+	_, err := newName("bar+", "foo", nil)
 
 	assert.Error(t, err)
 }
 
 func TestName_InvalidNamespaceFirstChar(t *testing.T) {
-	_, err := newName("bar", "+foo")
+	_, err := newName("bar", "+foo", nil)
 
 	assert.Error(t, err)
 }
 
 func TestName_InvalidNamespaceOtherChar(t *testing.T) {
-	_, err := newName("bar", "foo+")
+	_, err := newName("bar", "foo+", nil)
 
 	assert.Error(t, err)
 }
 
-func TestProperties_AddPropDoesNotAddReservedProperties(t *testing.T) {
-	p := properties{reserved: []string{"test"}}
+func TestName_InvalidAliasFirstChar(t *testing.T) {
+	_, err := newName("bar", "foo", []string{"+bar"})
 
-	p.AddProp("test", "foo")
-
-	assert.Nil(t, p.Prop("test"))
+	assert.Error(t, err)
 }
 
-func TestProperties_AddPropDoesNotOverwriteProperties(t *testing.T) {
-	p := properties{}
+func TestName_InvalidAliasOtherChar(t *testing.T) {
+	_, err := newName("bar", "foo", []string{"bar+"})
 
-	p.AddProp("test", "foo")
-	p.AddProp("test", "bar")
+	assert.Error(t, err)
+}
 
-	assert.Equal(t, "foo", p.Prop("test"))
+func TestName_InvalidAliasFQNFirstChar(t *testing.T) {
+	_, err := newName("bar", "foo", []string{"test.+bar"})
+
+	assert.Error(t, err)
+}
+
+func TestName_InvalidAliasFQNOtherChar(t *testing.T) {
+	_, err := newName("bar", "foo", []string{"test.bar+"})
+
+	assert.Error(t, err)
 }
 
 func TestProperties_PropGetsFromEmptySet(t *testing.T) {
@@ -308,13 +334,14 @@ func TestIsValidDefault(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, ok := isValidDefault(tt.schemaFn(), tt.def)
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			got, ok := isValidDefault(test.schemaFn(), test.def)
 
-			assert.Equal(t, tt.wantOk, ok)
+			assert.Equal(t, test.wantOk, ok)
 			if ok {
-				assert.Equal(t, tt.want, got)
+				assert.Equal(t, test.want, got)
 			}
 		})
 	}
@@ -334,7 +361,7 @@ func TestSchema_FingerprintUsingCaches(t *testing.T) {
 	got, _ := schema.FingerprintUsing(CRC64Avro)
 
 	value, ok := schema.cache.Load(CRC64Avro)
-	assert.True(t, ok)
+	require.True(t, ok)
 	assert.Equal(t, want, value)
 	assert.Equal(t, want, got)
 }

@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/hamba/avro"
+	"github.com/hamba/avro/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDecoder_Interface(t *testing.T) {
@@ -46,16 +47,17 @@ func TestDecoder_Interface(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
 			defer ConfigTeardown()
 
-			dec, _ := avro.NewDecoder(tt.schema, bytes.NewReader(tt.data))
+			dec, _ := avro.NewDecoder(test.schema, bytes.NewReader(test.data))
 
-			err := dec.Decode(&tt.got)
+			err := dec.Decode(&test.got)
 
-			assert.NoError(t, err)
-			assert.Equal(t, tt.want, tt.got)
+			require.NoError(t, err)
+			assert.Equal(t, test.want, test.got)
 		})
 	}
 }

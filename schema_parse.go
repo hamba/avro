@@ -9,14 +9,7 @@ import (
 	"strings"
 
 	jsoniter "github.com/json-iterator/go"
-)
-
-var (
-	schemaReserved = []string{
-		"doc", "fields", "items", "name", "namespace", "size", "symbols",
-		"values", "type", "aliases", "logicalType", "precision", "scale",
-	}
-	fieldReserved = []string{"default", "doc", "name", "order", "type", "aliases"}
+	"github.com/mitchellh/mapstructure"
 )
 
 // DefaultSchemaCache is the default cache for schemas.
@@ -142,28 +135,35 @@ func parseComplexType(namespace string, m map[string]interface{}, cache *SchemaC
 	}
 }
 
-func parsePrimitive(typ Type, m map[string]interface{}) (Schema, error) {
-	logical := parsePrimitiveLogicalType(typ, m)
-
-	prim := NewPrimitiveSchema(typ, logical)
-
-	for k, v := range m {
-		prim.AddProp(k, v)
-	}
-
-	return prim, nil
+type primitiveSchema struct {
+	LogicalType string                 `mapstructure:"logicalType"`
+	Precision   int                    `mapstructure:"precision"`
+	Scale       int                    `mapstructure:"scale"`
+	Props       map[string]interface{} `mapstructure:",remain"`
 }
 
-func parsePrimitiveLogicalType(typ Type, m map[string]interface{}) LogicalSchema {
+func parsePrimitive(typ Type, m map[string]interface{}) (Schema, error) {
 	if m == nil {
-		return nil
+		return NewPrimitiveSchema(typ, nil), nil
 	}
 
-	lt, ok := m["logicalType"].(string)
-	if !ok {
-		return nil
+	var (
+		p    primitiveSchema
+		meta mapstructure.Metadata
+	)
+	if err := decodeMap(m, &p, &meta); err != nil {
+		return nil, fmt.Errorf("avro: error decoding primitive: %w", err)
 	}
 
+	var logical LogicalSchema
+	if p.LogicalType != "" {
+		logical = parsePrimitiveLogicalType(typ, p.LogicalType, p.Precision, p.Scale)
+	}
+
+	return NewPrimitiveSchema(typ, logical, WithProps(p.Props)), nil
+}
+
+func parsePrimitiveLogicalType(typ Type, lt string, prec, scale int) LogicalSchema {
 	ltyp := LogicalType(lt)
 	if (typ == String && ltyp == UUID) ||
 		(typ == Int && ltyp == Date) ||
@@ -175,174 +175,213 @@ func parsePrimitiveLogicalType(typ Type, m map[string]interface{}) LogicalSchema
 	}
 
 	if typ == Bytes && ltyp == Decimal {
-		return parseDecimalLogicalType(-1, m)
+		return parseDecimalLogicalType(-1, prec, scale)
 	}
 
 	return nil
 }
 
+type recordSchema struct {
+	Type      string                   `mapstructure:"type"`
+	Name      string                   `mapstructure:"name"`
+	Namespace string                   `mapstructure:"namespace"`
+	Aliases   []string                 `mapstructure:"aliases"`
+	Doc       string                   `mapstructure:"doc"`
+	Fields    []map[string]interface{} `mapstructure:"fields"`
+	Props     map[string]interface{}   `mapstructure:",remain"`
+}
+
 func parseRecord(typ Type, namespace string, m map[string]interface{}, cache *SchemaCache) (Schema, error) {
-	name, newNamespace, err := resolveFullName(m)
-	if err != nil {
-		return nil, err
-	}
-	if newNamespace != "" {
-		namespace = newNamespace
+	var (
+		r    recordSchema
+		meta mapstructure.Metadata
+	)
+	if err := decodeMap(m, &r, &meta); err != nil {
+		return nil, fmt.Errorf("avro: error decoding record: %w", err)
 	}
 
-	fs, ok := m["fields"].([]interface{})
-	if !ok {
+	if err := checkParsedName(r.Name, r.Namespace, hasKey(meta.Keys, "namespace")); err != nil {
+		return nil, err
+	}
+	if r.Namespace == "" {
+		r.Namespace = namespace
+	}
+
+	if !hasKey(meta.Keys, "fields") {
 		return nil, errors.New("avro: record must have an array of fields")
 	}
-	fields := make([]*Field, len(fs))
+	fields := make([]*Field, len(r.Fields))
 
-	var rec *RecordSchema
+	var (
+		rec *RecordSchema
+		err error
+	)
 	switch typ {
 	case Record:
-		rec, err = NewRecordSchema(name, namespace, fields)
+		rec, err = NewRecordSchema(r.Name, r.Namespace, fields,
+			WithAliases(r.Aliases), WithDoc(r.Doc), WithProps(r.Props),
+		)
 	case Error:
-		rec, err = NewErrorRecordSchema(name, namespace, fields)
+		rec, err = NewErrorRecordSchema(r.Name, r.Namespace, fields,
+			WithAliases(r.Aliases), WithDoc(r.Doc), WithProps(r.Props),
+		)
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	doc := resolveDoc(m)
-	rec.AddDoc(doc)
-
-	cache.Add(rec.FullName(), NewRefSchema(rec))
-
-	for k, v := range m {
-		rec.AddProp(k, v)
+	ref := NewRefSchema(rec)
+	cache.Add(rec.FullName(), ref)
+	for _, alias := range rec.Aliases() {
+		cache.Add(alias, ref)
 	}
 
-	for i, f := range fs {
-		field, err := parseField(namespace, f, cache)
+	for i, f := range r.Fields {
+		field, err := parseField(r.Namespace, f, cache)
 		if err != nil {
 			return nil, err
 		}
-
 		fields[i] = field
 	}
 
 	return rec, nil
 }
 
-func parseField(namespace string, v interface{}, cache *SchemaCache) (*Field, error) {
-	m, ok := v.(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("avro: invalid field: %+v", v)
+type fieldSchema struct {
+	Name    string                 `mapstructure:"name"`
+	Aliases []string               `mapstructure:"aliases"`
+	Type    interface{}            `mapstructure:"type"`
+	Doc     string                 `mapstructure:"doc"`
+	Default interface{}            `mapstructure:"default"`
+	Order   Order                  `mapstructure:"order"`
+	Props   map[string]interface{} `mapstructure:",remain"`
+}
+
+func parseField(namespace string, m map[string]interface{}, cache *SchemaCache) (*Field, error) {
+	var (
+		f    fieldSchema
+		meta mapstructure.Metadata
+	)
+	if err := decodeMap(m, &f, &meta); err != nil {
+		return nil, fmt.Errorf("avro: error decoding field: %w", err)
 	}
 
-	name, err := resolveName(m)
-	if err != nil {
+	if err := checkParsedName(f.Name, "", false); err != nil {
 		return nil, err
 	}
 
-	if _, ok := m["type"]; !ok {
+	if !hasKey(meta.Keys, "type") {
 		return nil, errors.New("avro: field requires a type")
 	}
-	typ, err := parseType(namespace, m["type"], cache)
+	typ, err := parseType(namespace, f.Type, cache)
 	if err != nil {
 		return nil, err
 	}
 
-	def, ok := m["default"]
-	if !ok {
-		def = NoDefault
+	if !hasKey(meta.Keys, "default") {
+		f.Default = NoDefault
 	}
 
-	field, err := NewField(name, typ, def)
+	field, err := NewField(f.Name, typ,
+		WithDefault(f.Default), WithAliases(f.Aliases), WithDoc(f.Doc), WithOrder(f.Order), WithProps(f.Props),
+	)
 	if err != nil {
 		return nil, err
-	}
-
-	doc := resolveDoc(m)
-	field.AddDoc(doc)
-
-	for k, v := range m {
-		field.AddProp(k, v)
 	}
 
 	return field, nil
 }
 
+type enumSchema struct {
+	Name      string                 `mapstructure:"name"`
+	Namespace string                 `mapstructure:"namespace"`
+	Aliases   []string               `mapstructure:"aliases"`
+	Type      string                 `mapstructure:"type"`
+	Doc       string                 `mapstructure:"doc"`
+	Symbols   []string               `mapstructure:"symbols"`
+	Default   string                 `mapstructure:"default"`
+	Props     map[string]interface{} `mapstructure:",remain"`
+}
+
 func parseEnum(namespace string, m map[string]interface{}, cache *SchemaCache) (Schema, error) {
-	name, newNamespace, err := resolveFullName(m)
-	if err != nil {
+	var (
+		e    enumSchema
+		meta mapstructure.Metadata
+	)
+	if err := decodeMap(m, &e, &meta); err != nil {
+		return nil, fmt.Errorf("avro: error decoding enum: %w", err)
+	}
+
+	if err := checkParsedName(e.Name, e.Namespace, hasKey(meta.Keys, "namespace")); err != nil {
 		return nil, err
 	}
-	if newNamespace != "" {
-		namespace = newNamespace
+	if e.Namespace == "" {
+		e.Namespace = namespace
 	}
 
-	syms, ok := m["symbols"].([]interface{})
-	if !ok {
-		return nil, errors.New("avro: enum must have a non-empty array of symbols")
-	}
-
-	symbols := make([]string, len(syms))
-	for i, sym := range syms {
-		str, ok := sym.(string)
-		if !ok {
-			return nil, fmt.Errorf("avro: invalid symbol: %+v", sym)
-		}
-
-		symbols[i] = str
-	}
-
-	enum, err := NewEnumSchema(name, namespace, symbols)
+	enum, err := NewEnumSchema(e.Name, e.Namespace, e.Symbols,
+		WithDefault(e.Default), WithAliases(e.Aliases), WithDoc(e.Doc), WithProps(e.Props),
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	cache.Add(enum.FullName(), enum)
-
-	for k, v := range m {
-		enum.AddProp(k, v)
+	for _, alias := range enum.Aliases() {
+		cache.Add(alias, enum)
 	}
 
 	return enum, nil
 }
 
+type arraySchema struct {
+	Items interface{}            `mapstructure:"items"`
+	Props map[string]interface{} `mapstructure:",remain"`
+}
+
 func parseArray(namespace string, m map[string]interface{}, cache *SchemaCache) (Schema, error) {
-	items, ok := m["items"]
-	if !ok {
-		return nil, errors.New("avro: array must have an items key")
+	var (
+		a    arraySchema
+		meta mapstructure.Metadata
+	)
+	if err := decodeMap(m, &a, &meta); err != nil {
+		return nil, fmt.Errorf("avro: error decoding array: %w", err)
 	}
 
-	schema, err := parseType(namespace, items, cache)
+	if !hasKey(meta.Keys, "items") {
+		return nil, errors.New("avro: array must have an items key")
+	}
+	schema, err := parseType(namespace, a.Items, cache)
 	if err != nil {
 		return nil, err
 	}
 
-	arr := NewArraySchema(schema)
+	return NewArraySchema(schema, WithProps(a.Props)), nil
+}
 
-	for k, v := range m {
-		arr.AddProp(k, v)
-	}
-
-	return arr, nil
+type mapSchema struct {
+	Values interface{}            `mapstructure:"values"`
+	Props  map[string]interface{} `mapstructure:",remain"`
 }
 
 func parseMap(namespace string, m map[string]interface{}, cache *SchemaCache) (Schema, error) {
-	values, ok := m["values"]
-	if !ok {
-		return nil, errors.New("avro: map must have an values key")
+	var (
+		ms   mapSchema
+		meta mapstructure.Metadata
+	)
+	if err := decodeMap(m, &ms, &meta); err != nil {
+		return nil, fmt.Errorf("avro: error decoding map: %w", err)
 	}
 
-	schema, err := parseType(namespace, values, cache)
+	if !hasKey(meta.Keys, "values") {
+		return nil, errors.New("avro: map must have an values key")
+	}
+	schema, err := parseType(namespace, ms.Values, cache)
 	if err != nil {
 		return nil, err
 	}
 
-	ms := NewMapSchema(schema)
-
-	for k, v := range m {
-		ms.AddProp(k, v)
-	}
-
-	return ms, nil
+	return NewMapSchema(schema, WithProps(ms.Props)), nil
 }
 
 func parseUnion(namespace string, v []interface{}, cache *SchemaCache) (Schema, error) {
@@ -358,68 +397,80 @@ func parseUnion(namespace string, v []interface{}, cache *SchemaCache) (Schema, 
 	return NewUnionSchema(types)
 }
 
+type fixedSchema struct {
+	Name        string                 `mapstructure:"name"`
+	Namespace   string                 `mapstructure:"namespace"`
+	Aliases     []string               `mapstructure:"aliases"`
+	Type        string                 `mapstructure:"type"`
+	Size        int                    `mapstructure:"size"`
+	LogicalType string                 `mapstructure:"logicalType"`
+	Precision   int                    `mapstructure:"precision"`
+	Scale       int                    `mapstructure:"scale"`
+	Props       map[string]interface{} `mapstructure:",remain"`
+}
+
 func parseFixed(namespace string, m map[string]interface{}, cache *SchemaCache) (Schema, error) {
-	name, newNamespace, err := resolveFullName(m)
-	if err != nil {
-		return nil, err
-	}
-	if newNamespace != "" {
-		namespace = newNamespace
+	var (
+		f    fixedSchema
+		meta mapstructure.Metadata
+	)
+	if err := decodeMap(m, &f, &meta); err != nil {
+		return nil, fmt.Errorf("avro: error decoding fixed: %w", err)
 	}
 
-	size, ok := m["size"].(float64)
-	if !ok {
+	if err := checkParsedName(f.Name, f.Namespace, hasKey(meta.Keys, "namespace")); err != nil {
+		return nil, err
+	}
+	if f.Namespace == "" {
+		f.Namespace = namespace
+	}
+
+	if !hasKey(meta.Keys, "size") {
 		return nil, errors.New("avro: fixed must have a size")
 	}
 
-	logical := parseFixedLogicalType(int(size), m)
+	var logical LogicalSchema
+	if f.LogicalType != "" {
+		logical = parseFixedLogicalType(f.Size, f.LogicalType, f.Precision, f.Scale)
+	}
 
-	fixed, err := NewFixedSchema(name, namespace, int(size), logical)
+	fixed, err := NewFixedSchema(f.Name, f.Namespace, f.Size, logical, WithAliases(f.Aliases), WithProps(f.Props))
 	if err != nil {
 		return nil, err
 	}
 
 	cache.Add(fixed.FullName(), fixed)
-
-	for k, v := range m {
-		fixed.AddProp(k, v)
+	for _, alias := range fixed.Aliases() {
+		cache.Add(alias, fixed)
 	}
 
 	return fixed, nil
 }
 
-func parseFixedLogicalType(size int, m map[string]interface{}) LogicalSchema {
-	lt, ok := m["logicalType"].(string)
-	if !ok {
-		return nil
-	}
-
+func parseFixedLogicalType(size int, lt string, prec, scale int) LogicalSchema {
 	ltyp := LogicalType(lt)
-	if ltyp == Duration && size == 12 {
+	switch {
+	case ltyp == Duration && size == 12:
 		return NewPrimitiveLogicalSchema(Duration)
-	}
-
-	if ltyp == Decimal {
-		return parseDecimalLogicalType(size, m)
+	case ltyp == Decimal:
+		return parseDecimalLogicalType(size, prec, scale)
 	}
 
 	return nil
 }
 
-func parseDecimalLogicalType(size int, m map[string]interface{}) LogicalSchema {
-	prec, ok := m["precision"].(float64)
-	if !ok || prec <= 0 {
+func parseDecimalLogicalType(size, prec, scale int) LogicalSchema {
+	if prec <= 0 {
 		return nil
 	}
 
 	if size > 0 {
-		maxPrecision := math.Round(math.Floor(math.Log10(2) * (8*float64(size) - 1)))
+		maxPrecision := int(math.Round(math.Floor(math.Log10(2) * (8*float64(size) - 1))))
 		if prec > maxPrecision {
 			return nil
 		}
 	}
 
-	scale, _ := m["scale"].(float64)
 	if scale < 0 {
 		return nil
 	}
@@ -429,7 +480,7 @@ func parseDecimalLogicalType(size int, m map[string]interface{}) LogicalSchema {
 		return nil
 	}
 
-	return NewDecimalLogicalSchema(int(prec), int(scale))
+	return NewDecimalLogicalSchema(prec, scale)
 }
 
 func fullName(namespace, name string) string {
@@ -440,36 +491,32 @@ func fullName(namespace, name string) string {
 	return namespace + "." + name
 }
 
-func resolveName(m map[string]interface{}) (string, error) {
-	name, ok := m["name"].(string)
-	if !ok {
-		return "", errors.New("avro: name key required")
+func checkParsedName(name, ns string, hasNS bool) error {
+	if name == "" {
+		return errors.New("avro: non-empty name key required")
 	}
-
-	return name, nil
+	if hasNS && ns == "" {
+		return errors.New("avro: namespace key must be non-empty or omitted")
+	}
+	return nil
 }
 
-func resolveDoc(m map[string]interface{}) string {
-	doc, ok := m["doc"].(string)
-	if !ok {
-		return ""
+func hasKey(keys []string, k string) bool {
+	for _, key := range keys {
+		if key == k {
+			return true
+		}
 	}
-	return doc
+	return false
 }
 
-func resolveFullName(m map[string]interface{}) (string, string, error) {
-	name, err := resolveName(m)
-	if err != nil {
-		return "", "", err
+func decodeMap(in, v interface{}, meta *mapstructure.Metadata) error {
+	cfg := &mapstructure.DecoderConfig{
+		ZeroFields: true,
+		Metadata:   meta,
+		Result:     v,
 	}
 
-	namespace, ok := m["namespace"].(string)
-	if !ok {
-		return name, "", nil
-	}
-	if namespace == "" {
-		return "", "", errors.New("avro: namespace key must be non-empty or omitted")
-	}
-
-	return name, namespace, nil
+	decoder, _ := mapstructure.NewDecoder(cfg)
+	return decoder.Decode(in)
 }

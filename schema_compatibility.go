@@ -3,8 +3,7 @@ package avro
 import (
 	"errors"
 	"fmt"
-
-	"github.com/modern-go/concurrent"
+	"sync"
 )
 
 type recursionError struct{}
@@ -20,14 +19,12 @@ type compatKey struct {
 
 // SchemaCompatibility determines the compatibility of schemas.
 type SchemaCompatibility struct {
-	cache *concurrent.Map // map[compatKey]error
+	cache sync.Map // map[compatKey]error
 }
 
 // NewSchemaCompatibility creates a new schema compatibility instance.
 func NewSchemaCompatibility() *SchemaCompatibility {
-	return &SchemaCompatibility{
-		cache: concurrent.NewMap(),
-	}
+	return &SchemaCompatibility{}
 }
 
 // Compatible determines the compatibility if the reader and writer schemas.

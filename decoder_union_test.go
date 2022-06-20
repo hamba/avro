@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hamba/avro"
+	"github.com/hamba/avro/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDecoder_UnionInvalidType(t *testing.T) {
@@ -16,7 +17,7 @@ func TestDecoder_UnionInvalidType(t *testing.T) {
 	data := []byte{0x02, 0x06, 0x66, 0x6F, 0x6F}
 	schema := `["null", "string"]`
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var str string
 	err = dec.Decode(&str)
@@ -34,7 +35,7 @@ func TestDecoder_UnionMap(t *testing.T) {
 	var got map[string]interface{}
 	err := dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, map[string]interface{}{"string": "foo"}, got)
 }
 
@@ -48,7 +49,7 @@ func TestDecoder_UnionMapNamed(t *testing.T) {
 	var got map[string]interface{}
 	err := dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, map[string]interface{}{"test": "bar"}, got)
 }
 
@@ -62,7 +63,7 @@ func TestDecoder_UnionMapNull(t *testing.T) {
 	var got map[string]interface{}
 	err := dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, map[string]interface{}(nil), got)
 }
 
@@ -76,7 +77,7 @@ func TestDecoder_UnionMapWithTime(t *testing.T) {
 	var got map[string]interface{}
 	err := dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC), got["long.timestamp-micros"])
 }
 
@@ -90,7 +91,7 @@ func TestDecoder_UnionMapWithDuration(t *testing.T) {
 	var got map[string]interface{}
 	err := dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 123456789*time.Millisecond, got["int.time-millis"])
 }
 
@@ -105,7 +106,7 @@ func TestDecoder_UnionMapWithDecimal(t *testing.T) {
 		var got map[string]interface{}
 		err := dec.Decode(&got)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, big.NewRat(1734, 5), got["bytes.decimal"])
 	})
 
@@ -117,7 +118,7 @@ func TestDecoder_UnionMapWithDecimal(t *testing.T) {
 		var got map[string]interface{}
 		err := dec.Decode(&got)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, big.NewRat(1734, 5), got["bytes.decimal"])
 	})
 }
@@ -159,7 +160,7 @@ func TestDecoder_UnionPtr(t *testing.T) {
 	err := dec.Decode(&got)
 
 	want := "foo"
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, &want, got)
 }
 
@@ -174,7 +175,7 @@ func TestDecoder_UnionPtrReversed(t *testing.T) {
 	err := dec.Decode(&got)
 
 	want := "foo"
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, &want, got)
 }
 
@@ -190,7 +191,7 @@ func TestDecoder_UnionPtrReuseInstance(t *testing.T) {
 	got := &TestRecord{}
 	err := dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.IsType(t, &TestRecord{}, got)
 	assert.Equal(t, int64(27), got.A)
 	assert.Equal(t, "foo", got.B)
@@ -206,7 +207,7 @@ func TestDecoder_UnionPtrNull(t *testing.T) {
 	var got *string
 	err := dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Nil(t, got)
 }
 
@@ -220,7 +221,7 @@ func TestDecoder_UnionPtrReversedNull(t *testing.T) {
 	var got *string
 	err := dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Nil(t, got)
 }
 
@@ -260,7 +261,7 @@ func TestDecoder_UnionInterface(t *testing.T) {
 	var got interface{}
 	err := dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 27, got)
 }
 
@@ -280,7 +281,7 @@ func TestDecoder_UnionInterfaceInRecord(t *testing.T) {
 	got := &TestUnion{}
 	err := dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 27, got.A)
 }
 
@@ -296,7 +297,7 @@ func TestDecoder_UnionInterfaceInMap(t *testing.T) {
 	var got map[string]interface{}
 	err := dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, map[string]interface{}{"foo": 27}, got)
 }
 
@@ -310,7 +311,7 @@ func TestDecoder_UnionInterfaceInMapWithBool(t *testing.T) {
 	var got map[string]interface{}
 	err := dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, map[string]interface{}{"foo": true}, got)
 }
 
@@ -326,7 +327,7 @@ func TestDecoder_UnionInterfaceMap(t *testing.T) {
 	var got interface{}
 	err := dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, map[string]int{"foo": 27}, got)
 }
 
@@ -342,7 +343,7 @@ func TestDecoder_UnionInterfaceMapNamed(t *testing.T) {
 	var got interface{}
 	err := dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, map[string]string{"foo": "B"}, got)
 }
 
@@ -358,7 +359,7 @@ func TestDecoder_UnionInterfaceArray(t *testing.T) {
 	var got interface{}
 	err := dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []int{27}, got)
 }
 
@@ -374,7 +375,7 @@ func TestDecoder_UnionInterfaceArrayNamed(t *testing.T) {
 	var got interface{}
 	err := dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []string{"B"}, got)
 }
 
@@ -388,7 +389,7 @@ func TestDecoder_UnionInterfaceNull(t *testing.T) {
 	var got interface{}
 	err := dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, nil, got)
 }
 
@@ -404,7 +405,7 @@ func TestDecoder_UnionInterfaceNamed(t *testing.T) {
 	var got interface{}
 	err := dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "B", got)
 }
 
@@ -420,7 +421,7 @@ func TestDecoder_UnionInterfaceRecord(t *testing.T) {
 	var got interface{}
 	err := dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.IsType(t, &TestRecord{}, got)
 	rec := got.(*TestRecord)
 	assert.Equal(t, int64(27), rec.A)
@@ -439,7 +440,7 @@ func TestDecoder_UnionInterfaceRecordNotReused(t *testing.T) {
 	var got interface{} = ""
 	err := dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.IsType(t, &TestRecord{}, got)
 	rec := got.(*TestRecord)
 	assert.Equal(t, int64(27), rec.A)
@@ -456,7 +457,7 @@ func TestDecoder_UnionInterfaceUnresolvableType(t *testing.T) {
 	var got interface{}
 	err := dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.IsType(t, map[string]interface{}{}, got)
 	m := got.(map[string]interface{})
 	assert.IsType(t, map[string]interface{}{}, m["test"])
@@ -474,7 +475,7 @@ func TestDecoder_UnionInterfaceWithTime(t *testing.T) {
 	var got interface{}
 	err := dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC), got)
 }
 
@@ -488,7 +489,7 @@ func TestDecoder_UnionInterfaceWithDuration(t *testing.T) {
 	var got interface{}
 	err := dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 123456789*time.Millisecond, got)
 }
 
@@ -503,7 +504,7 @@ func TestDecoder_UnionInterfaceWithDecimal(t *testing.T) {
 		var got interface{}
 		err := dec.Decode(&got)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, big.NewRat(1734, 5), got)
 	})
 
@@ -515,7 +516,7 @@ func TestDecoder_UnionInterfaceWithDecimal(t *testing.T) {
 		var got interface{}
 		err := dec.Decode(&got)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, big.NewRat(1734, 5), got)
 	})
 }
@@ -531,7 +532,7 @@ func TestDecoder_UnionInterfaceWithDecimal_Negative(t *testing.T) {
 		var got interface{}
 		err := dec.Decode(&got)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, big.NewRat(-1734, 5), got)
 	})
 	t.Run("high scale", func(t *testing.T) {
@@ -542,7 +543,7 @@ func TestDecoder_UnionInterfaceWithDecimal_Negative(t *testing.T) {
 		var got interface{}
 		err := dec.Decode(&got)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, big.NewRat(-1734, 5), got)
 	})
 }

@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/hamba/avro"
+	"github.com/hamba/avro/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEncoder_EnumInvalidType(t *testing.T) {
@@ -14,7 +15,7 @@ func TestEncoder_EnumInvalidType(t *testing.T) {
 	schema := `{"type":"enum", "name": "test", "symbols": ["foo", "bar"]}`
 	buf := bytes.NewBuffer([]byte{})
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode(27)
 
@@ -27,11 +28,11 @@ func TestEncoder_Enum(t *testing.T) {
 	schema := `{"type":"enum", "name": "test", "symbols": ["foo", "bar"]}`
 	buf := bytes.NewBuffer([]byte{})
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode("bar")
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte{0x02}, buf.Bytes())
 }
 
@@ -41,7 +42,7 @@ func TestEncoder_EnumInvalidSymbol(t *testing.T) {
 	schema := `{"type":"enum", "name": "test", "symbols": ["foo", "bar"]}`
 	buf := bytes.NewBuffer([]byte{})
 	enc, err := avro.NewEncoder(schema, buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Encode("baz")
 

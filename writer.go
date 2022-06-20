@@ -85,8 +85,9 @@ func (w *Writer) writeByte(b byte) {
 }
 
 // Write writes raw bytes to the Writer.
-func (w *Writer) Write(b []byte) {
+func (w *Writer) Write(b []byte) (int, error) {
 	w.buf = append(w.buf, b...)
+	return len(b), nil
 }
 
 // WriteBool writes a Bool to the Writer.
@@ -176,7 +177,7 @@ func (w *Writer) WriteBlockCB(callback func(w *Writer) int64) int64 {
 	headerStart := len(w.buf)
 
 	// Write dummy header
-	w.Write(dummyHeader[:])
+	_, _ = w.Write(dummyHeader[:])
 
 	// Write block data
 	capturedAt := len(w.buf)

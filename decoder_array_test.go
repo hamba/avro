@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/hamba/avro"
+	"github.com/hamba/avro/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDecoder_ArrayInvalidType(t *testing.T) {
@@ -14,7 +15,7 @@ func TestDecoder_ArrayInvalidType(t *testing.T) {
 	data := []byte{0x04, 0x36, 0x38, 0x0}
 	schema := `{"type":"array", "items": "int"}`
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var str string
 	err = dec.Decode(&str)
@@ -32,7 +33,7 @@ func TestDecoder_ArraySlice(t *testing.T) {
 	var got []int
 	err := dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []int{27, 28}, got)
 }
 
@@ -46,7 +47,7 @@ func TestDecoder_ArraySliceOfStruct(t *testing.T) {
 	var got []TestRecord
 	err := dec.Decode(&got)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []TestRecord{{A: 27, B: "foo"}, {A: 27, B: "foo"}}, got)
 }
 
@@ -56,7 +57,7 @@ func TestDecoder_ArraySliceError(t *testing.T) {
 	data := []byte{0xE2, 0xA2, 0xF3, 0xAD, 0xAD, 0xAD, 0xE2, 0xA2, 0xF3, 0xAD, 0xAD}
 	schema := `{"type":"array", "items": "int"}`
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var got []int
 	err = dec.Decode(&got)

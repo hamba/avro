@@ -7,8 +7,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hamba/avro"
-	"github.com/hamba/avro/ocf"
+	"github.com/hamba/avro/v2"
+	"github.com/hamba/avro/v2/ocf"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -137,11 +137,11 @@ func TestDecoder(t *testing.T) {
 		var got FullRecord
 		err = dec.Decode(&got)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, want, got)
 	}
 
-	assert.NoError(t, dec.Error())
+	require.NoError(t, dec.Error())
 	assert.Equal(t, 1, count)
 }
 
@@ -189,11 +189,11 @@ func TestDecoderDeflate(t *testing.T) {
 		var got FullRecord
 		err = dec.Decode(&got)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, want, got)
 	}
 
-	assert.NoError(t, dec.Error())
+	require.NoError(t, dec.Error())
 	assert.Equal(t, 1, count)
 }
 
@@ -260,11 +260,11 @@ func TestDecoderSnappy(t *testing.T) {
 		var got FullRecord
 		err = dec.Decode(&got)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, want, got)
 	}
 
-	assert.NoError(t, dec.Error())
+	require.NoError(t, dec.Error())
 	assert.Equal(t, 1, count)
 }
 
@@ -420,7 +420,7 @@ func TestEncoder(t *testing.T) {
 	}
 
 	err = enc.Encode(record)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Close()
 	assert.NoError(t, err)
@@ -534,11 +534,11 @@ func TestEncoder_EncodeCompressesDeflateWithLevel(t *testing.T) {
 	enc, _ := ocf.NewEncoder(schema, buf, ocf.WithCompressionLevel(flate.BestCompression))
 
 	err := enc.Encode(record)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Close()
-	assert.NoError(t, err)
 
+	require.NoError(t, err)
 	assert.Equal(t, 926, buf.Len())
 }
 
@@ -571,11 +571,11 @@ func TestEncoder_EncodeCompressesSnappy(t *testing.T) {
 	enc, _ := ocf.NewEncoder(schema, buf, ocf.WithBlockLength(1), ocf.WithCodec(ocf.Snappy))
 
 	err := enc.Encode(record)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = enc.Close()
-	assert.NoError(t, err)
 
+	require.NoError(t, err)
 	assert.Equal(t, 938, buf.Len())
 }
 
@@ -595,7 +595,7 @@ func TestEncoder_EncodeWritesBlocks(t *testing.T) {
 
 	err := enc.Encode(int64(1))
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 77, buf.Len())
 }
 
@@ -626,13 +626,13 @@ func TestEncodeDecodeMetadata(t *testing.T) {
 	}))
 
 	err := enc.Encode(int64(1))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	_ = enc.Close()
 
 	dec, err := ocf.NewDecoder(buf)
-	assert.NoError(t, err)
 
+	require.NoError(t, err)
 	assert.Equal(t, []byte("foo"), dec.Metadata()["test"])
 }
 

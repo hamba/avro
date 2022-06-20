@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/hamba/avro"
+	"github.com/hamba/avro/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewEncoder_SchemaError(t *testing.T) {
@@ -36,7 +37,7 @@ func TestMarshal(t *testing.T) {
 
 	b, err := avro.Marshal(schema, true)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte{0x01}, b)
 }
 

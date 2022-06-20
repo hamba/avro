@@ -4,8 +4,9 @@ import (
 	"io"
 	"testing"
 
-	"github.com/hamba/avro/internal/bytesx"
+	"github.com/hamba/avro/v2/internal/bytesx"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewResetReader(t *testing.T) {
@@ -21,7 +22,7 @@ func TestResetReader_Read(t *testing.T) {
 	b := make([]byte, 4)
 	n, err := r.Read(b)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 4, n)
 	assert.Equal(t, []byte("test"), b)
 }

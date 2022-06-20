@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/hamba/avro"
+	"github.com/hamba/avro/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -187,6 +187,10 @@ func TestSchema_Canonical(t *testing.T) {
 		},
 		{
 			input:     `{"name":"foo","type":"fixed","logicalType":"decimal","size":12,"precision":4,"scale":2}`,
+			canonical: `{"name":"foo","type":"fixed","size":12,"logicalType":"decimal","precision":4,"scale":2}`,
+		},
+		{
+			input:     `{"name":"foo","type":"fixed","logicalType":"decimal","size":12,"precision":4,"scale":2,"someProp":"foobar"}`,
 			canonical: `{"name":"foo","type":"fixed","size":12,"logicalType":"decimal","precision":4,"scale":2}`,
 		},
 		{

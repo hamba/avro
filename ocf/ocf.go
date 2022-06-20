@@ -13,8 +13,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/hamba/avro"
-	"github.com/hamba/avro/internal/bytesx"
+	"github.com/hamba/avro/v2"
+	"github.com/hamba/avro/v2/internal/bytesx"
 )
 
 const (
@@ -314,9 +314,9 @@ func (e *Encoder) writerBlock() error {
 	b := e.codec.Encode(e.buf.Bytes())
 
 	e.writer.WriteLong(int64(len(b)))
-	e.writer.Write(b)
+	_, _ = e.writer.Write(b)
 
-	e.writer.Write(e.sync[:])
+	_, _ = e.writer.Write(e.sync[:])
 
 	e.count = 0
 	e.buf.Reset()
