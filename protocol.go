@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/mitchellh/mapstructure"
@@ -201,7 +201,7 @@ func (m *Message) String() string {
 
 // ParseProtocolFile parses an Avro protocol from a file.
 func ParseProtocolFile(path string) (*Protocol, error) {
-	s, err := ioutil.ReadFile(path)
+	s, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}

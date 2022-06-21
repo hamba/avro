@@ -1,7 +1,7 @@
 package avro_test
 
 import (
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/hamba/avro/v2"
@@ -33,7 +33,7 @@ type PartialSuperhero struct {
 }
 
 func BenchmarkSuperheroDecode(b *testing.B) {
-	data, err := ioutil.ReadFile("testdata/superhero.bin")
+	data, err := os.ReadFile("testdata/superhero.bin")
 	if err != nil {
 		panic(err)
 	}
@@ -79,7 +79,7 @@ func BenchmarkSuperheroEncode(b *testing.B) {
 }
 
 func BenchmarkPartialSuperheroDecode(b *testing.B) {
-	data, err := ioutil.ReadFile("testdata/superhero.bin")
+	data, err := os.ReadFile("testdata/superhero.bin")
 	if err != nil {
 		panic(err)
 	}
@@ -99,7 +99,7 @@ func BenchmarkPartialSuperheroDecode(b *testing.B) {
 }
 
 func BenchmarkSuperheroGenericDecode(b *testing.B) {
-	data, err := ioutil.ReadFile("testdata/superhero.bin")
+	data, err := os.ReadFile("testdata/superhero.bin")
 	if err != nil {
 		panic(err)
 	}
