@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/crc32"
-	"io/ioutil"
+	"io"
 
 	"github.com/golang/snappy"
 )
@@ -67,7 +67,7 @@ type DeflateCodec struct {
 // Decode decodes the given bytes.
 func (c *DeflateCodec) Decode(b []byte) ([]byte, error) {
 	r := flate.NewReader(bytes.NewBuffer(b))
-	data, err := ioutil.ReadAll(r)
+	data, err := io.ReadAll(r)
 	if err != nil {
 		_ = r.Close()
 		return nil, err

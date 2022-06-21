@@ -3,8 +3,8 @@ package avro
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -46,7 +46,7 @@ func MustParse(schema string) Schema {
 func ParseFiles(paths ...string) (Schema, error) {
 	var schema Schema
 	for _, path := range paths {
-		s, err := ioutil.ReadFile(filepath.Clean(path))
+		s, err := os.ReadFile(filepath.Clean(path))
 		if err != nil {
 			return nil, err
 		}
