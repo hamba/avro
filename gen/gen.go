@@ -181,19 +181,16 @@ func resolveRefSchema(s *avro.RefSchema) string {
 func (g generator) resolveUnionTypes(unionSchema *avro.UnionSchema, acc *data) string {
 	nullIsAllowed := false
 	typesInUnion := make([]string, 0)
-	for _, elementSchema := range unionSchema.Types() {
-		if _, ok := elementSchema.(*avro.NullSchema); ok {
+	for _, elem := range unionSchema.Types() {
+		if _, ok := elem.(*avro.NullSchema); ok {
 			nullIsAllowed = true
-		} else {
-			typesInUnion = append(typesInUnion, g.generateFrom(elementSchema, acc))
+			continue
 		}
+
+		typesInUnion = append(typesInUnion, g.generateFrom(elem, acc))
 	}
 	if nullIsAllowed && len(typesInUnion) == 1 {
-		typ := typesInUnion[0]
-		if strings.HasPrefix(typ, "[]") {
-			return typ
-		}
-		return "*" + typ
+		return "*" + typesInUnion[0]
 	}
 	return "interface{}"
 }
