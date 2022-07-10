@@ -7,8 +7,8 @@ import (
 )
 
 type InnerRecord struct {
-	InnerJustBytes                   []byte   `avro:"innerJustBytes"`
-	InnerPrimitiveNullableArrayUnion []string `avro:"innerPrimitiveNullableArrayUnion"`
+	InnerJustBytes                   []byte    `avro:"innerJustBytes"`
+	InnerPrimitiveNullableArrayUnion *[]string `avro:"innerPrimitiveNullableArrayUnion"`
 }
 
 type RecordInMap struct {
@@ -47,7 +47,7 @@ type Test struct {
 	ADouble                         float64                `avro:"aDouble"`
 	ALong                           int64                  `avro:"aLong"`
 	JustBytes                       []byte                 `avro:"justBytes"`
-	PrimitiveNullableArrayUnion     []string               `avro:"primitiveNullableArrayUnion"`
+	PrimitiveNullableArrayUnion     *[]string              `avro:"primitiveNullableArrayUnion"`
 	InnerRecord                     InnerRecord            `avro:"innerRecord"`
 	AnEnum                          string                 `avro:"anEnum"`
 	AFixed                          [7]byte                `avro:"aFixed"`
