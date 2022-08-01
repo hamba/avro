@@ -56,12 +56,14 @@ func (d *arrayDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		for i := start; i < size; i++ {
 			elemPtr := sliceType.UnsafeGetIndex(ptr, i)
 			d.decoder.Decode(elemPtr, r)
+
+			if r.Error != nil && !errors.Is(r.Error, io.EOF) {
+				r.Error = fmt.Errorf("%v: %w", d.typ, r.Error)
+				return
+			}
 		}
 	}
 
-	if r.Error != nil && !errors.Is(r.Error, io.EOF) {
-		r.Error = fmt.Errorf("%v: %w", d.typ, r.Error)
-	}
 }
 
 func encoderOfArray(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncoder {
@@ -92,6 +94,12 @@ func (e *arrayEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 			for j := i; j < i+blockLength && j < length; j++ {
 				elemPtr := e.typ.UnsafeGetIndex(ptr, j)
 				e.encoder.Encode(elemPtr, w)
+
+				if w.Error != nil && !errors.Is(w.Error, io.EOF) {
+					w.Error = fmt.Errorf("%v: %w", e.typ, w.Error)
+					return count
+				}
+
 				count++
 			}
 
@@ -100,8 +108,4 @@ func (e *arrayEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 	}
 
 	w.WriteBlockHeader(0, 0)
-
-	if w.Error != nil && !errors.Is(w.Error, io.EOF) {
-		w.Error = fmt.Errorf("%v: %w", e.typ, w.Error)
-	}
 }
