@@ -137,6 +137,7 @@ func parseComplexType(namespace string, m map[string]interface{}, cache *SchemaC
 
 type primitiveSchema struct {
 	LogicalType string                 `mapstructure:"logicalType"`
+	SqlType     string                 `mapstructure:"sqlType"`
 	Precision   int                    `mapstructure:"precision"`
 	Scale       int                    `mapstructure:"scale"`
 	Props       map[string]interface{} `mapstructure:",remain"`
@@ -144,7 +145,7 @@ type primitiveSchema struct {
 
 func parsePrimitive(typ Type, m map[string]interface{}) (Schema, error) {
 	if m == nil {
-		return NewPrimitiveSchema(typ, nil), nil
+		return NewPrimitiveSchema(typ, nil, nil), nil
 	}
 
 	var (
@@ -154,13 +155,21 @@ func parsePrimitive(typ Type, m map[string]interface{}) (Schema, error) {
 	if err := decodeMap(m, &p, &meta); err != nil {
 		return nil, fmt.Errorf("avro: error decoding primitive: %w", err)
 	}
+	if p.LogicalType != "" && p.SqlType != "" {
+		return nil, fmt.Errorf("avro: error decoding primitive: provided logical and sql type at the same time")
+	}
 
 	var logical LogicalSchema
 	if p.LogicalType != "" {
 		logical = parsePrimitiveLogicalType(typ, p.LogicalType, p.Precision, p.Scale)
 	}
 
-	return NewPrimitiveSchema(typ, logical, WithProps(p.Props)), nil
+	var sql SqlSchema
+	if p.SqlType != "" {
+		sql = parsePrimitiveSqlType(typ, p.SqlType)
+	}
+
+	return NewPrimitiveSchema(typ, logical, sql, WithProps(p.Props)), nil
 }
 
 func parsePrimitiveLogicalType(typ Type, lt string, prec, scale int) LogicalSchema {
@@ -176,6 +185,15 @@ func parsePrimitiveLogicalType(typ Type, lt string, prec, scale int) LogicalSche
 
 	if typ == Bytes && ltyp == Decimal {
 		return parseDecimalLogicalType(-1, prec, scale)
+	}
+
+	return nil
+}
+
+func parsePrimitiveSqlType(typ Type, st string) SqlSchema {
+	styp := SqlType(st)
+	if typ == String && styp == Json {
+		return NewPrimitiveSqlSchema(styp)
 	}
 
 	return nil

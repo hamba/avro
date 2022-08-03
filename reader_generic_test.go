@@ -98,6 +98,20 @@ func TestReader_ReadNext(t *testing.T) {
 			wantErr: require.NoError,
 		},
 		{
+			name:    "String JSON",
+			data:    []byte{0x22, 0x7b, 0x22, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x22, 0x3a, 0x22, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x22, 0x7d},
+			schema:  `{"type":"string","sqlType":"JSON"}`,
+			want:    `{"field":"value"}`,
+			wantErr: require.NoError,
+		},
+		{
+			name:    "String JSON complex",
+			data:    []byte{0x32, 0x7b, 0x22, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x22, 0x3a, 0x20, 0x7b, 0x22, 0x63, 0x6f, 0x6d, 0x70, 0x6c, 0x65, 0x78, 0x22, 0x3a, 0x20, 0x31, 0x7d, 0x7d},
+			schema:  `{"type":"string","sqlType":"JSON"}`,
+			want:    `{"field": {"complex": 1}}`,
+			wantErr: require.NoError,
+		},
+		{
 			name:    "Bytes",
 			data:    []byte{0x08, 0xEC, 0xAB, 0x44, 0x00},
 			schema:  "bytes",
@@ -212,7 +226,7 @@ func TestReader_ReadNext(t *testing.T) {
 }
 
 func TestReader_ReadNextUnsupportedType(t *testing.T) {
-	schema := avro.NewPrimitiveSchema(avro.Type("test"), nil)
+	schema := avro.NewPrimitiveSchema(avro.Type("test"), nil, nil)
 	r := avro.NewReader(bytes.NewReader([]byte{0x01}), 10)
 
 	_ = r.ReadNext(schema)

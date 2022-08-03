@@ -7,7 +7,7 @@ import (
 )
 
 func TestCreateSkipDecoder_UnsupportedType(t *testing.T) {
-	schema := NewPrimitiveSchema(Type("test"), nil)
+	schema := NewPrimitiveSchema(Type("test"), nil, nil)
 
 	dec := createSkipDecoder(schema)
 

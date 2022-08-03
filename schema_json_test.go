@@ -116,6 +116,10 @@ func TestSchema_JSON(t *testing.T) {
 			json:  `{"type":"string","logicalType":"uuid"}`,
 		},
 		{
+			input: `{"type":"string","sqlType":"JSON"}`,
+			json:  `{"type":"string","sqlType":"JSON"}`,
+		},
+		{
 			input: `[  ]`,
 			json:  `[]`,
 		},
@@ -269,6 +273,18 @@ func TestSchema_JSON(t *testing.T) {
 				]
 			}`,
 			json: `{"name":"org.hamba.avro.X","type":"record","fields":[{"name":"union_no_def","type":["null","int"]},{"name":"union_with_def","type":["null","string"],"default":null}]}`,
+		},
+		{
+			input: `{
+				"type":"record",
+				"namespace": "org.hamba.avro",
+				"name":"X",
+  				"fields":[
+					{"name":"union","type":["null", "string"]},
+					{"name":"union_with_json_string","type":["null", {"type": "string", "sqlType": "JSON"}]}
+				]
+			}`,
+			json: `{"name":"org.hamba.avro.X","type":"record","fields":[{"name":"union","type":["null","string"]},{"name":"union_with_json_string","type":["null",{"type":"string","sqlType":"JSON"}]}]}`,
 		},
 	}
 

@@ -1,6 +1,7 @@
 package avro_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/hamba/avro/v2"
@@ -668,7 +669,7 @@ func TestArraySchema(t *testing.T) {
 		{
 			name:    "Valid",
 			schema:  `{"type":"array", "items": "int"}`,
-			want:    avro.NewArraySchema(avro.NewPrimitiveSchema(avro.Int, nil)),
+			want:    avro.NewArraySchema(avro.NewPrimitiveSchema(avro.Int, nil, nil)),
 			wantErr: require.NoError,
 		},
 		{
@@ -714,7 +715,7 @@ func TestMapSchema(t *testing.T) {
 		{
 			name:    "Valid",
 			schema:  `{"type":"map", "values": "int"}`,
-			want:    avro.NewMapSchema(avro.NewPrimitiveSchema(avro.Int, nil)),
+			want:    avro.NewMapSchema(avro.NewPrimitiveSchema(avro.Int, nil, nil)),
 			wantErr: require.NoError,
 		},
 		{
@@ -1110,6 +1111,72 @@ func TestSchema_LogicalTypes(t *testing.T) {
 			if test.assertFn != nil {
 				test.assertFn(t, ls)
 			}
+		})
+	}
+}
+func TestSchema_SqlType(t *testing.T) {
+	tests := []struct {
+		name          string
+		schema        string
+		wantType      avro.Type
+		wantSql       bool
+		wantSqlType   avro.SqlType
+		expectedError error
+	}{
+		{
+			name:     "Invalid",
+			schema:   `{"type": "int", "sqlType": "test"}`,
+			wantType: avro.Int,
+			wantSql:  false,
+		},
+		{
+			name:        "JSON",
+			schema:      `{"type": "string", "sqlType": "JSON"}`,
+			wantType:    avro.String,
+			wantSql:     true,
+			wantSqlType: avro.Json,
+		},
+		{
+			name:     "Ivalid json",
+			schema:   `{"type": "string", "sqlType": "json"}`,
+			wantType: avro.String,
+			wantSql:  false,
+		},
+		{
+			name:          "logical and sql type",
+			schema:        `{"type": "string", "logicalType": "uuid", "sqlType": "JSON"}`,
+			wantType:      avro.String,
+			wantSql:       false,
+			expectedError: errors.New("avro: error decoding primitive: provided logical and sql type at the same time"),
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			schema, err := avro.Parse(test.schema)
+
+			if test.expectedError == nil {
+				require.NoError(t, err)
+			} else {
+				assert.EqualError(t, err, test.expectedError.Error())
+				return
+			}
+			assert.Equal(t, test.wantType, schema.Type())
+
+			sts, ok := schema.(avro.SqlTypeSchema)
+			if !ok {
+				assert.Fail(t, "sql type schema expected")
+				return
+			}
+
+			s := sts.Sql()
+			require.Equal(t, test.wantSql, s != nil)
+			if !test.wantSql {
+				return
+			}
+
+			assert.Equal(t, test.wantSqlType, s.Type())
 		})
 	}
 }

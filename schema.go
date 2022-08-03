@@ -20,7 +20,7 @@ var nullDefault = struct{}{}
 var (
 	schemaReserved = []string{
 		"doc", "fields", "items", "name", "namespace", "size", "symbols",
-		"values", "type", "aliases", "logicalType", "precision", "scale",
+		"values", "type", "aliases", "logicalType", "sqlType", "precision", "scale",
 	}
 	fieldReserved = []string{"default", "doc", "name", "order", "type", "aliases"}
 )
@@ -71,6 +71,14 @@ const (
 	TimestampMillis LogicalType = "timestamp-millis"
 	TimestampMicros LogicalType = "timestamp-micros"
 	Duration        LogicalType = "duration"
+)
+
+// SqlType is a schema sql type.
+type SqlType string
+
+// Schema sql type constants.
+const (
+	Json SqlType = "JSON"
 )
 
 // FingerprintType is a fingerprinting algorithm.
@@ -146,6 +154,15 @@ type LogicalSchema interface {
 	String() string
 }
 
+// SqlSchema represents an Avro schema with a sql type.
+type SqlSchema interface {
+	// Type returns the type of the sql schema.
+	Type() SqlType
+
+	// String returns the canonical form of the Sql schema.
+	String() string
+}
+
 // PropertySchema represents a schema with properties.
 type PropertySchema interface {
 	// Prop gets a property from the schema.
@@ -171,6 +188,12 @@ type NamedSchema interface {
 type LogicalTypeSchema interface {
 	// Logical returns the logical schema or nil.
 	Logical() LogicalSchema
+}
+
+// SqlTypeSchema represents a schema that can contain a sql type.
+type SqlTypeSchema interface {
+	// Sql returns the sql schema or nil.
+	Sql() SqlSchema
 }
 
 type name struct {
@@ -367,10 +390,11 @@ type PrimitiveSchema struct {
 
 	typ     Type
 	logical LogicalSchema
+	sql     SqlSchema
 }
 
 // NewPrimitiveSchema creates a new PrimitiveSchema.
-func NewPrimitiveSchema(t Type, l LogicalSchema, opts ...SchemaOption) *PrimitiveSchema {
+func NewPrimitiveSchema(t Type, l LogicalSchema, s SqlSchema, opts ...SchemaOption) *PrimitiveSchema {
 	var cfg schemaConfig
 	for _, opt := range opts {
 		opt(&cfg)
@@ -380,6 +404,7 @@ func NewPrimitiveSchema(t Type, l LogicalSchema, opts ...SchemaOption) *Primitiv
 		properties: newProperties(cfg.props, schemaReserved),
 		typ:        t,
 		logical:    l,
+		sql:        s,
 	}
 }
 
@@ -393,13 +418,20 @@ func (s *PrimitiveSchema) Logical() LogicalSchema {
 	return s.logical
 }
 
+// Sql returns the Sql schema or nil.
+func (s *PrimitiveSchema) Sql() SqlSchema {
+	return s.sql
+}
+
 // String returns the canonical form of the schema.
 func (s *PrimitiveSchema) String() string {
-	if s.logical == nil {
-		return `"` + string(s.typ) + `"`
+	if s.logical != nil {
+		return `{"type":"` + string(s.typ) + `",` + s.logical.String() + `}`
+	} else if s.sql != nil {
+		return `{"type":"` + string(s.typ) + `",` + s.sql.String() + `}`
 	}
 
-	return `{"type":"` + string(s.typ) + `",` + s.logical.String() + `}`
+	return `"` + string(s.typ) + `"`
 }
 
 // MarshalJSON marshals the schema to json.
@@ -1191,6 +1223,28 @@ func (s *PrimitiveLogicalSchema) Type() LogicalType {
 // String returns the canonical form of the logical schema.
 func (s *PrimitiveLogicalSchema) String() string {
 	return `"logicalType":"` + string(s.typ) + `"`
+}
+
+// SqlLogicalSchema is a sql type with no properties.
+type PrimitiveSqlSchema struct {
+	typ SqlType
+}
+
+// NewPrimitiveSqlSchema creates a new primitive sql schema instance.
+func NewPrimitiveSqlSchema(typ SqlType) *PrimitiveSqlSchema {
+	return &PrimitiveSqlSchema{
+		typ: typ,
+	}
+}
+
+// Type returns the type of the sql schema.
+func (s *PrimitiveSqlSchema) Type() SqlType {
+	return s.typ
+}
+
+// String returns the canonical form of the sql schema.
+func (s *PrimitiveSqlSchema) String() string {
+	return `"sqlType":"` + string(s.typ) + `"`
 }
 
 // DecimalLogicalSchema is a decimal logical type.

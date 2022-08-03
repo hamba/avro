@@ -46,6 +46,27 @@ func TestEncoder_UnionMapRecord(t *testing.T) {
 	assert.Equal(t, []byte{0x02, 0x00, 0x08, 0x74, 0x65, 0x73, 0x74, 0x06, 0x66, 0x6F, 0x6F}, buf.Bytes())
 }
 
+func TestEncoder_UnionMapJSON(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `["null", {
+	"type": "record",
+	"name": "test",
+	"fields" : [
+		{"name": "a", "type": [{"type": "string", "sqlType": "JSON"}, "null"], "default": "{\"test\": 1}"},
+	    {"name": "b", "type": {"type": "string", "sqlType": "JSON"}}
+	]
+}]`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode(map[string]interface{}{"test": map[string]interface{}{"b": "{\"foo\": null}"}})
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x2, 0x0, 0x16, 0x7b, 0x22, 0x74, 0x65, 0x73, 0x74, 0x22, 0x3a, 0x20, 0x31, 0x7d, 0x1a, 0x7b, 0x22, 0x66, 0x6f, 0x6f, 0x22, 0x3a, 0x20, 0x6e, 0x75, 0x6c, 0x6c, 0x7d}, buf.Bytes())
+}
+
 func TestEncoder_UnionMapNamed(t *testing.T) {
 	defer ConfigTeardown()
 

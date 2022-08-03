@@ -550,3 +550,18 @@ func TestDecoder_BytesRatInvalidLogicalSchema(t *testing.T) {
 
 	assert.Error(t, err)
 }
+
+func TestDecoder_String_JSON(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x2a, 0x5b, 0x7b, 0x22, 0x66, 0x31, 0x22, 0x3a, 0x22, 0x31, 0x22, 0x7d, 0x2c, 0x7b, 0x22, 0x66, 0x32, 0x22, 0x3a, 0x32, 0x7d, 0x5d}
+	schema := `{"type":"string", "sqlType": "JSON"}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	var got string
+	err = dec.Decode(&got)
+
+	require.NoError(t, err)
+	assert.Equal(t, `[{"f1":"1"},{"f2":2}]`, got)
+}

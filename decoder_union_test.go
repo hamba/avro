@@ -39,6 +39,20 @@ func TestDecoder_UnionMap(t *testing.T) {
 	assert.Equal(t, map[string]interface{}{"string": "foo"}, got)
 }
 
+func TestDecoder_UnionMapJSON(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x2, 0x1a, 0x7b, 0x22, 0x66, 0x6f, 0x6f, 0x22, 0x3a, 0x20, 0x6e, 0x75, 0x6c, 0x6c, 0x7d}
+	schema := `["null", {"type": "string", "sqlType": "JSON"}]`
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	var got map[string]interface{}
+	err := dec.Decode(&got)
+
+	require.NoError(t, err)
+	assert.Equal(t, map[string]interface{}{"string": `{"foo": null}`}, got)
+}
+
 func TestDecoder_UnionMapNamed(t *testing.T) {
 	defer ConfigTeardown()
 

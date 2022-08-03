@@ -583,3 +583,17 @@ func TestEncoder_BytesRatInvalidLogicalSchema(t *testing.T) {
 
 	assert.Error(t, err)
 }
+
+func TestEncoder_String_JSON(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"string","sqlType":"JSON"}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode(`{"field":"value"}`)
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x22, 0x7b, 0x22, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x22, 0x3a, 0x22, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x22, 0x7d}, buf.Bytes())
+}

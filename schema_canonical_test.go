@@ -118,6 +118,10 @@ func TestSchema_Canonical(t *testing.T) {
 			canonical: `{"type":"string","logicalType":"uuid"}`,
 		},
 		{
+			input:     `{"type":"string","sqlType":"JSON"}`,
+			canonical: `{"type":"string","sqlType":"JSON"}`,
+		},
+		{
 			input:     `[  ]`,
 			canonical: `[]`,
 		},

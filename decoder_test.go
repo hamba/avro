@@ -21,7 +21,7 @@ func TestDecoder_DecodeUnsupportedTypeError(t *testing.T) {
 	defer ConfigTeardown()
 
 	data := []byte{0x01}
-	schema := avro.NewPrimitiveSchema(avro.Type("test"), nil)
+	schema := avro.NewPrimitiveSchema(avro.Type("test"), nil, nil)
 	dec := avro.NewDecoderForSchema(schema, bytes.NewReader(data))
 
 	var b bool
