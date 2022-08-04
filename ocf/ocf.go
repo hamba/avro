@@ -2,7 +2,6 @@
 Package ocf implements encoding and decoding of Avro Object Container Files as defined by the Avro specification.
 
 See the Avro specification for an understanding of Avro: http://avro.apache.org/docs/current/
-
 */
 package ocf
 
