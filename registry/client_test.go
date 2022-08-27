@@ -315,6 +315,60 @@ func TestClient_GetLatestSchemaSchemaError(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestClient_GetSchemaInfo(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "/subjects/foobar/versions/1", r.URL.Path)
+
+		_, _ = w.Write([]byte(`{"subject": "foobar", "version": 1, "id": 2, "schema":"[\"null\",\"string\",\"int\"]"}`))
+	}))
+	defer s.Close()
+	client, _ := registry.NewClient(s.URL)
+
+	schemaInfo, err := client.GetSchemaInfo(context.Background(), "foobar", 1)
+
+	require.NoError(t, err)
+	assert.Equal(t, `["null","string","int"]`, schemaInfo.Schema.String())
+	assert.Equal(t, 2, schemaInfo.ID)
+	assert.Equal(t, 1, schemaInfo.Version)
+}
+
+func TestClient_GetSchemaInfoRequestError(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(500)
+	}))
+	defer s.Close()
+	client, _ := registry.NewClient(s.URL)
+
+	_, err := client.GetSchemaInfo(context.Background(), "foobar", 1)
+
+	assert.Error(t, err)
+}
+
+func TestClient_GetSchemaInfoJsonError(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"subject": "foobar", "version": 1, "id": 2, "schema":"[\"null\",\"string\",\"int\"]"`))
+	}))
+	defer s.Close()
+	client, _ := registry.NewClient(s.URL)
+
+	_, err := client.GetSchemaInfo(context.Background(), "foobar", 1)
+
+	assert.Error(t, err)
+}
+
+func TestClient_GetSchemaInfoSchemaError(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"schema":""}`))
+	}))
+	defer s.Close()
+	client, _ := registry.NewClient(s.URL)
+
+	_, err := client.GetSchemaInfo(context.Background(), "foobar", 1)
+
+	assert.Error(t, err)
+}
+
 func TestClient_GetLatestSchemaInfo(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
