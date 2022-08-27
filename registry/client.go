@@ -45,7 +45,7 @@ type Registry interface {
 	// GetLatestSchema gets the latest schema for a subject.
 	GetLatestSchema(ctx context.Context, subject string) (avro.Schema, error)
 
-	// GetSchemaInfo gets the schema and schema metadata for a subject and version
+	// GetSchemaInfo gets the schema and schema metadata for a subject and version.
 	GetSchemaInfo(ctx context.Context, subject string, version int) (SchemaInfo, error)
 
 	// GetLatestSchemaInfo gets the latest schema and schema metadata for a subject.
