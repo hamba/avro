@@ -3,7 +3,6 @@ Package registry implements a Confluent Schema Registry compliant client.
 
 See the Confluent Schema Registry docs for an understanding of the
 API: https://docs.confluent.io/current/schema-registry/docs/api.html
-
 */
 package registry
 
@@ -45,6 +44,9 @@ type Registry interface {
 
 	// GetLatestSchema gets the latest schema for a subject.
 	GetLatestSchema(ctx context.Context, subject string) (avro.Schema, error)
+
+	// GetSchemaInfo gets the schema and schema metadata for a subject and version.
+	GetSchemaInfo(ctx context.Context, subject string, version int) (SchemaInfo, error)
 
 	// GetLatestSchemaInfo gets the latest schema and schema metadata for a subject.
 	GetLatestSchemaInfo(ctx context.Context, subject string) (SchemaInfo, error)
@@ -231,6 +233,18 @@ func (c *Client) GetLatestSchema(ctx context.Context, subject string) (avro.Sche
 	}
 
 	return avro.Parse(payload.Schema)
+}
+
+// GetSchemaInfo gets the schema and schema metadata for a subject and version.
+func (c *Client) GetSchemaInfo(ctx context.Context, subject string, version int) (SchemaInfo, error) {
+	var payload schemaInfoPayload
+	p := path.Join("subjects", subject, "versions", strconv.Itoa(version))
+	err := c.request(ctx, http.MethodGet, p, nil, &payload)
+	if err != nil {
+		return SchemaInfo{}, err
+	}
+
+	return payload.Parse()
 }
 
 // GetLatestSchemaInfo gets the latest schema and schema metadata for a subject.
