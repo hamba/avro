@@ -1,4 +1,8 @@
-![Logo](http://svg.wiersma.co.za/hamba/project?title=avro&tag=A%20fast%20Go%20avro%20codec)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="http://svg.wiersma.co.za/hamba/project?title=avro&tag=A%20fast%20Go%20avro%20codec&mode=dark">
+  <source media="(prefers-color-scheme: light)" srcset="http://svg.wiersma.co.za/hamba/project?title=avro&tag=A%20fast%20Go%20avro%20codec">
+  <img alt="Logo" src="http://svg.wiersma.co.za/hamba/project?title=avro&tag=A%20fast%20Go%20avro%20codec">
+</picture>
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/hamba/avro)](https://goreportcard.com/report/github.com/hamba/avro)
 [![Build Status](https://github.com/hamba/avro/actions/workflows/test.yml/badge.svg)](https://github.com/hamba/avro/actions)
