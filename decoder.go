@@ -43,6 +43,17 @@ func (d *Decoder) Decode(obj interface{}) error {
 	return d.r.Error
 }
 
+// Read reads the next Avro encoded value from its input and returns it as byte array.
+func (d *Decoder) Read() ([]byte, error) {
+	if d.r.head == d.r.tail && d.r.reader != nil {
+		if !d.r.loadMore() {
+			return nil, io.EOF
+		}
+	}
+
+	return d.r.buf, d.r.Error
+}
+
 // Unmarshal parses the Avro encoded data and stores the result in the value pointed to by v.
 // If v is nil or not a pointer, Unmarshal returns an error.
 func Unmarshal(schema Schema, data []byte, v interface{}) error {

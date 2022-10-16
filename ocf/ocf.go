@@ -119,6 +119,17 @@ func (d *Decoder) Decode(v interface{}) error {
 	return d.decoder.Decode(v)
 }
 
+// Read reads the next Avro encoded value from its input and returns it as byte array.
+func (d *Decoder) Read() ([]byte, error) {
+	if d.count <= 0 {
+		return nil, errors.New("decoder: no data found, call HasNext first")
+	}
+
+	d.count--
+
+	return d.decoder.Read()
+}
+
 // Error returns the last reader error.
 func (d *Decoder) Error() error {
 	if errors.Is(d.reader.Error, io.EOF) {

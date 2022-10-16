@@ -56,6 +56,41 @@ func TestDecoder_DecodeNonPtr(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestDecoder_Read(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x01}
+	schema := "boolean"
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	assert.NoError(t, err)
+
+	byteArr, err := dec.Read()
+
+	assert.NoError(t, err)
+	assert.NotEqual(t, 0, len(byteArr))
+
+	byteArr, err = dec.Read()
+	assert.NoError(t, err)
+	assert.NotEqual(t, 0, len(byteArr))
+
+	byteArr, err = dec.Read()
+	assert.NoError(t, err)
+	assert.NotEqual(t, 0, len(byteArr))
+}
+
+func TestDecoder_ReadEOF(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{}
+	schema := "int"
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	byteArr, err := dec.Read()
+
+	assert.Error(t, err)
+	assert.Equal(t, 0, len(byteArr))
+}
+
 func TestDecoder_DecodeNilPtr(t *testing.T) {
 	defer ConfigTeardown()
 

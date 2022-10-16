@@ -145,6 +145,52 @@ func TestDecoder(t *testing.T) {
 	assert.Equal(t, 1, count)
 }
 
+func TestDecoderRead(t *testing.T) {
+	f, err := os.Open("../testdata/full.avro")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	t.Cleanup(func() { _ = f.Close() })
+
+	dec, err := ocf.NewDecoder(f)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	var count int
+	for dec.HasNext() {
+		count++
+
+		byteArr, err := dec.Read()
+
+		require.NoError(t, err)
+		assert.NotEqual(t, 0, len(byteArr))
+	}
+
+	require.NoError(t, dec.Error())
+	assert.Equal(t, 1, count)
+}
+
+func TestDecoderRead_Error(t *testing.T) {
+	f, err := os.Open("../testdata/full.avro")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	t.Cleanup(func() { _ = f.Close() })
+
+	dec, err := ocf.NewDecoder(f)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	_, err = dec.Read()
+	assert.Error(t, err)
+}
+
 func TestDecoderDeflate(t *testing.T) {
 	unionStr := "union value"
 	want := FullRecord{
