@@ -314,7 +314,7 @@ func (c *Client) request(ctx context.Context, method, path string, in, out inter
 		_ = resp.Body.Close()
 	}()
 
-	if resp.StatusCode >= 400 {
+	if resp.StatusCode >= http.StatusBadRequest {
 		err := Error{StatusCode: resp.StatusCode}
 		_ = jsoniter.NewDecoder(resp.Body).Decode(&err)
 		return err
