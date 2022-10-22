@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"compress/flate"
 	"errors"
+	"flag"
+	"io"
 	"os"
 	"testing"
 
@@ -12,6 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var update = flag.Bool("update", false, "update the golden files")
 
 var schema = `{
 	"type":"record",
@@ -118,7 +122,7 @@ func TestDecoder(t *testing.T) {
 		},
 	}
 
-	f, err := os.Open("../testdata/full.avro")
+	f, err := os.Open("testdata/full.avro")
 	if err != nil {
 		t.Error(err)
 		return
@@ -126,10 +130,7 @@ func TestDecoder(t *testing.T) {
 	t.Cleanup(func() { _ = f.Close() })
 
 	dec, err := ocf.NewDecoder(f)
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	require.NoError(t, err)
 
 	var count int
 	for dec.HasNext() {
@@ -170,7 +171,7 @@ func TestDecoderDeflate(t *testing.T) {
 		},
 	}
 
-	f, err := os.Open("../testdata/full-deflate.avro")
+	f, err := os.Open("testdata/full-deflate.avro")
 	if err != nil {
 		t.Error(err)
 		return
@@ -178,10 +179,7 @@ func TestDecoderDeflate(t *testing.T) {
 	t.Cleanup(func() { _ = f.Close() })
 
 	dec, err := ocf.NewDecoder(f)
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	require.NoError(t, err)
 
 	var count int
 	for dec.HasNext() {
@@ -198,7 +196,7 @@ func TestDecoderDeflate(t *testing.T) {
 }
 
 func TestDecoderDeflate_InvalidData(t *testing.T) {
-	f, err := os.Open("../testdata/deflate-invalid-data.avro")
+	f, err := os.Open("testdata/deflate-invalid-data.avro")
 	if err != nil {
 		t.Error(err)
 		return
@@ -206,10 +204,7 @@ func TestDecoderDeflate_InvalidData(t *testing.T) {
 	t.Cleanup(func() { _ = f.Close() })
 
 	dec, err := ocf.NewDecoder(f)
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	require.NoError(t, err)
 
 	dec.HasNext()
 
@@ -241,7 +236,7 @@ func TestDecoderSnappy(t *testing.T) {
 		},
 	}
 
-	f, err := os.Open("../testdata/full-snappy.avro")
+	f, err := os.Open("testdata/full-snappy.avro")
 	if err != nil {
 		t.Error(err)
 		return
@@ -249,10 +244,7 @@ func TestDecoderSnappy(t *testing.T) {
 	t.Cleanup(func() { _ = f.Close() })
 
 	dec, err := ocf.NewDecoder(f)
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	require.NoError(t, err)
 
 	var count int
 	for dec.HasNext() {
@@ -269,7 +261,7 @@ func TestDecoderSnappy(t *testing.T) {
 }
 
 func TestDecoderSnappy_InvalidData(t *testing.T) {
-	f, err := os.Open("../testdata/snappy-invalid-data.avro")
+	f, err := os.Open("testdata/snappy-invalid-data.avro")
 	if err != nil {
 		t.Error(err)
 		return
@@ -277,10 +269,7 @@ func TestDecoderSnappy_InvalidData(t *testing.T) {
 	t.Cleanup(func() { _ = f.Close() })
 
 	dec, err := ocf.NewDecoder(f)
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	require.NoError(t, err)
 
 	dec.HasNext()
 
@@ -288,7 +277,7 @@ func TestDecoderSnappy_InvalidData(t *testing.T) {
 }
 
 func TestDecoderSnappy_ShortCRC(t *testing.T) {
-	f, err := os.Open("../testdata/snappy-short-crc.avro")
+	f, err := os.Open("testdata/snappy-short-crc.avro")
 	if err != nil {
 		t.Error(err)
 		return
@@ -296,10 +285,7 @@ func TestDecoderSnappy_ShortCRC(t *testing.T) {
 	t.Cleanup(func() { _ = f.Close() })
 
 	dec, err := ocf.NewDecoder(f)
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	require.NoError(t, err)
 
 	dec.HasNext()
 
@@ -307,7 +293,7 @@ func TestDecoderSnappy_ShortCRC(t *testing.T) {
 }
 
 func TestDecoderSnappy_InvalidCRC(t *testing.T) {
-	f, err := os.Open("../testdata/snappy-invalid-crc.avro")
+	f, err := os.Open("testdata/snappy-invalid-crc.avro")
 	if err != nil {
 		t.Error(err)
 		return
@@ -414,16 +400,56 @@ func TestEncoder(t *testing.T) {
 
 	buf := &bytes.Buffer{}
 	enc, err := ocf.NewEncoder(schema, buf)
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	require.NoError(t, err)
 
 	err = enc.Encode(record)
 	require.NoError(t, err)
 
 	err = enc.Close()
 	assert.NoError(t, err)
+}
+
+func TestEncoder_ExistingOCF(t *testing.T) {
+	record := FullRecord{
+		Strings: []string{"another", "record"},
+		Enum:    "A",
+		Record:  &TestRecord{},
+	}
+
+	file := copyToTemp(t, "testdata/full.avro")
+	t.Cleanup(func() {
+		_ = file.Close()
+		_ = os.Remove(file.Name())
+	})
+
+	enc, err := ocf.NewEncoder(schema, file)
+	require.NoError(t, err)
+
+	err = enc.Encode(record)
+	require.NoError(t, err)
+
+	err = enc.Close()
+	assert.NoError(t, err)
+
+	_, err = file.Seek(0, 0)
+	require.NoError(t, err)
+	got, err := io.ReadAll(file)
+	require.NoError(t, err)
+
+	if *update {
+		err = os.WriteFile("testdata/full-appended.avro", got, 0o644)
+		require.NoError(t, err)
+	}
+
+	want, err := os.ReadFile("testdata/full-appended.avro")
+	require.NoError(t, err)
+	assert.Equal(t, want, got)
+}
+
+func TestEncoder_NilWriter(t *testing.T) {
+	_, err := ocf.NewEncoder(schema, nil)
+
+	assert.Error(t, err)
 }
 
 func TestEncoder_Write(t *testing.T) {
@@ -500,8 +526,8 @@ func TestEncoder_EncodeCompressesDeflate(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = enc.Close()
-	assert.NoError(t, err)
 
+	require.NoError(t, err)
 	assert.Equal(t, 926, buf.Len())
 }
 
@@ -531,9 +557,10 @@ func TestEncoder_EncodeCompressesDeflateWithLevel(t *testing.T) {
 	}
 
 	buf := &bytes.Buffer{}
-	enc, _ := ocf.NewEncoder(schema, buf, ocf.WithCompressionLevel(flate.BestCompression))
+	enc, err := ocf.NewEncoder(schema, buf, ocf.WithCompressionLevel(flate.BestCompression))
+	require.NoError(t, err)
 
-	err := enc.Encode(record)
+	err = enc.Encode(record)
 	require.NoError(t, err)
 
 	err = enc.Close()
@@ -568,9 +595,10 @@ func TestEncoder_EncodeCompressesSnappy(t *testing.T) {
 	}
 
 	buf := &bytes.Buffer{}
-	enc, _ := ocf.NewEncoder(schema, buf, ocf.WithBlockLength(1), ocf.WithCodec(ocf.Snappy))
+	enc, err := ocf.NewEncoder(schema, buf, ocf.WithBlockLength(1), ocf.WithCodec(ocf.Snappy))
+	require.NoError(t, err)
 
-	err := enc.Encode(record)
+	err = enc.Encode(record)
 	require.NoError(t, err)
 
 	err = enc.Close()
@@ -581,9 +609,11 @@ func TestEncoder_EncodeCompressesSnappy(t *testing.T) {
 
 func TestEncoder_EncodeError(t *testing.T) {
 	buf := &bytes.Buffer{}
-	enc, _ := ocf.NewEncoder(`"long"`, buf)
+	enc, err := ocf.NewEncoder(`"long"`, buf)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = enc.Close() })
 
-	err := enc.Encode("test")
+	err = enc.Encode("test")
 
 	assert.Error(t, err)
 }
@@ -652,15 +682,37 @@ func TestEncode_WithSyncBlock(t *testing.T) {
 
 func TestEncoder_NoBlocks(t *testing.T) {
 	buf := &bytes.Buffer{}
+
 	_, err := ocf.NewEncoder(`"long"`, buf)
+
 	require.NoError(t, err)
 	assert.Equal(t, 58, buf.Len())
 }
 
 func TestEncoder_WriteHeaderError(t *testing.T) {
 	w := &errorHeaderWriter{}
+
 	_, err := ocf.NewEncoder(`"long"`, w)
+
 	assert.Error(t, err)
+}
+
+func copyToTemp(t *testing.T, src string) *os.File {
+	t.Helper()
+
+	file, err := os.CreateTemp(".", "temp-*.avro")
+	require.NoError(t, err)
+
+	b, err := os.ReadFile(src)
+	require.NoError(t, err)
+
+	_, err = io.Copy(file, bytes.NewReader(b))
+	require.NoError(t, err)
+
+	_, err = file.Seek(0, 0)
+	require.NoError(t, err)
+
+	return file
 }
 
 type errorBlockWriter struct {

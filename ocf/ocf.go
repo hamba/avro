@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/hamba/avro/v2"
 	"github.com/hamba/avro/v2/internal/bytesx"
@@ -58,23 +59,9 @@ type Decoder struct {
 func NewDecoder(r io.Reader) (*Decoder, error) {
 	reader := avro.NewReader(r, 1024)
 
-	var h Header
-	reader.ReadVal(HeaderSchema, &h)
-	if reader.Error != nil {
-		return nil, fmt.Errorf("decoder: unexpected error: %w", reader.Error)
-	}
-
-	if h.Magic != magicBytes {
-		return nil, errors.New("decoder: invalid avro file")
-	}
-	schema, err := avro.Parse(string(h.Meta[schemaKey]))
+	h, err := readHeader(reader)
 	if err != nil {
-		return nil, err
-	}
-
-	codec, err := resolveCodec(CodecName(h.Meta[codecKey]), -1)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decoder: %w", err)
 	}
 
 	decReader := bytesx.NewResetReader([]byte{})
@@ -82,10 +69,10 @@ func NewDecoder(r io.Reader) (*Decoder, error) {
 	return &Decoder{
 		reader:      reader,
 		resetReader: decReader,
-		decoder:     avro.NewDecoderForSchema(schema, decReader),
+		decoder:     avro.NewDecoderForSchema(h.Schema, decReader),
 		meta:        h.Meta,
 		sync:        h.Sync,
-		codec:       codec,
+		codec:       h.Codec,
 	}, nil
 }
 
@@ -215,12 +202,10 @@ type Encoder struct {
 }
 
 // NewEncoder returns a new encoder that writes to w using schema s.
+//
+// If the writer is an existing ocf file, it will append data using the
+// existing schema.
 func NewEncoder(s string, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
-	schema, err := avro.Parse(s)
-	if err != nil {
-		return nil, err
-	}
-
 	cfg := encoderConfig{
 		BlockLength:      100,
 		CodecName:        Null,
@@ -231,7 +216,43 @@ func NewEncoder(s string, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
 		opt(&cfg)
 	}
 
-	writer := avro.NewWriter(w, 512)
+	switch file := w.(type) {
+	case nil:
+		return nil, errors.New("writer cannot be nil")
+	case *os.File:
+		info, err := file.Stat()
+		if err != nil {
+			return nil, err
+		}
+
+		if info.Size() > 0 {
+			reader := avro.NewReader(file, 1024)
+			h, err := readHeader(reader)
+			if err != nil {
+				return nil, err
+			}
+			if err = skipToEnd(reader, h.Sync); err != nil {
+				return nil, err
+			}
+
+			writer := avro.NewWriter(w, 512)
+			buf := &bytes.Buffer{}
+			e := &Encoder{
+				writer:      writer,
+				buf:         buf,
+				encoder:     avro.NewEncoderForSchema(h.Schema, buf),
+				sync:        h.Sync,
+				codec:       h.Codec,
+				blockLength: cfg.BlockLength,
+			}
+			return e, nil
+		}
+	}
+
+	schema, err := avro.Parse(s)
+	if err != nil {
+		return nil, err
+	}
 
 	cfg.Metadata[schemaKey] = []byte(schema.String())
 	cfg.Metadata[codecKey] = []byte(cfg.CodecName)
@@ -243,19 +264,19 @@ func NewEncoder(s string, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
 	if header.Sync == [16]byte{} {
 		_, _ = rand.Read(header.Sync[:])
 	}
-	writer.WriteVal(HeaderSchema, header)
-	err = writer.Flush()
-	if err != nil {
-		return nil, err
-	}
 
 	codec, err := resolveCodec(cfg.CodecName, cfg.CodecCompression)
 	if err != nil {
 		return nil, err
 	}
 
-	buf := &bytes.Buffer{}
+	writer := avro.NewWriter(w, 512)
+	writer.WriteVal(HeaderSchema, header)
+	if err = writer.Flush(); err != nil {
+		return nil, err
+	}
 
+	buf := &bytes.Buffer{}
 	e := &Encoder{
 		writer:      writer,
 		buf:         buf,
@@ -264,7 +285,6 @@ func NewEncoder(s string, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
 		codec:       codec,
 		blockLength: cfg.BlockLength,
 	}
-
 	return e, nil
 }
 
@@ -280,7 +300,7 @@ func (e *Encoder) Write(p []byte) (n int, err error) {
 
 	e.count++
 	if e.count >= e.blockLength {
-		if err := e.writerBlock(); err != nil {
+		if err = e.writerBlock(); err != nil {
 			return n, err
 		}
 	}
@@ -335,4 +355,59 @@ func (e *Encoder) writerBlock() error {
 	e.count = 0
 	e.buf.Reset()
 	return e.writer.Flush()
+}
+
+type ocfHeader struct {
+	Schema avro.Schema
+	Codec  Codec
+	Meta   map[string][]byte
+	Sync   [16]byte
+}
+
+func readHeader(reader *avro.Reader) (*ocfHeader, error) {
+	var h Header
+	reader.ReadVal(HeaderSchema, &h)
+	if reader.Error != nil {
+		return nil, fmt.Errorf("unexpected error: %w", reader.Error)
+	}
+
+	if h.Magic != magicBytes {
+		return nil, errors.New("invalid avro file")
+	}
+	schema, err := avro.Parse(string(h.Meta[schemaKey]))
+	if err != nil {
+		return nil, err
+	}
+
+	codec, err := resolveCodec(CodecName(h.Meta[codecKey]), -1)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ocfHeader{
+		Schema: schema,
+		Codec:  codec,
+		Meta:   h.Meta,
+		Sync:   h.Sync,
+	}, nil
+}
+
+func skipToEnd(reader *avro.Reader, sync [16]byte) error {
+	for {
+		_ = reader.ReadLong()
+		if errors.Is(reader.Error, io.EOF) {
+			return nil
+		}
+		size := reader.ReadLong()
+		reader.SkipNBytes(int(size))
+		if reader.Error != nil {
+			return reader.Error
+		}
+
+		var synMark [16]byte
+		reader.Read(synMark[:])
+		if sync != synMark && !errors.Is(reader.Error, io.EOF) {
+			reader.Error = errors.New("invalid block")
+		}
+	}
 }
