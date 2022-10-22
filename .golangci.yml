@@ -13,9 +13,14 @@ linters:
     - scopelint # deprecated
     - maligned # deprecated
     - golint # deprecated
+    - deadcode # deprecated
+    - exhaustivestruct # deprecated
+    - ifshort # deprecated
+    - nosnakecase # deprecated
+    - structcheck # deprecated
+    - varcheck # deprecated
     - cyclop
     - exhaustive
-    - exhaustivestruct
     - exhaustruct
     - forcetypeassert
     - funlen
@@ -38,6 +43,7 @@ linters:
 issues:
   exclude-use-default: false
   exclude:
+    - 'package-comments: should have a package comment'
     - 'G103: Use of unsafe calls should be audited'
   exclude-rules:
   - path: (schema|protocol)\.go
