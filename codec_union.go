@@ -236,6 +236,12 @@ func decoderOfResolvedUnion(cfg *frozenConfig, schema Schema) ValDecoder {
 			continue
 		}
 
+		if cfg.config.PartialUnionTypeResolution {
+			decoders[i] = nil
+			types[i] = nil
+			continue
+		}
+
 		decoders = []ValDecoder{}
 		types = []reflect2.Type{}
 		break
@@ -269,7 +275,7 @@ func (d *unionResolvedDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		return
 	}
 
-	if i >= len(d.decoders) {
+	if i >= len(d.decoders) || d.decoders[i] == nil {
 		if d.cfg.config.UnionResolutionError {
 			r.ReportError("decode union type", "unknown union type")
 			return

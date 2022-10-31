@@ -101,10 +101,13 @@ type name, or scheam full name in the case of a named schema (enum, fixed or rec
 with one of the types being `null` (ie. `["null", "string"]` or `["string", "null"]`), in this case 
 a `*T` is allowed, with `T` matching the conversion table above.
 * **interface{}:** An `interface` can be provided and the type or name resolved. Primitive types
-are pre-registered, but named types, maps and slices will need to be registered with the `Register` function. In the 
-case of arrays and maps the enclosed schema type or name is postfix to the type
-with a `:` separator, e.g `"map:string"`. If any type cannot be resolved the map type above is used unless
-`Config.UnionResolutionError` is set to `true` in which case an error is returned.
+are pre-registered, but named types, maps and slices will need to be registered with the `Register` function. 
+In the case of arrays and maps the enclosed schema type or name is postfix to the type with a `:` separator, 
+e.g `"map:string"`. Behavior when a type cannot be resolved will depend on your chosen configuation options:
+	* !Config.UnionResolutionError && !Config.PartialUnionTypeResolution: the map type above is used
+	* Config.UnionResolutionError && !Config.PartialUnionTypeResolution: an error is returned
+	* !Config.UnionResolutionError && Config.PartialUnionTypeResolution: any registered type will get resolved while any unregistered type will fallback to the map type above.
+	* Config.UnionResolutionError && !Config.PartialUnionTypeResolution: any registered type will get resolved while any unregistered type will return an error.
 
 ##### TextMarshaler and TextUnmarshaler
 
