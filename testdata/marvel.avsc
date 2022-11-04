@@ -1,0 +1,11 @@
+{
+  "type": "record",
+  "name": "Marvel",
+  "namespace": "com.model",
+  "fields": [
+    {
+      "name": "hero",
+      "type": "com.model.Superhero"
+    }
+  ]
+}

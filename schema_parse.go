@@ -20,7 +20,12 @@ func Parse(schema string) (Schema, error) {
 	return ParseWithCache(schema, "", DefaultSchemaCache)
 }
 
-// ParseWithCache parses a schema string using the given namespace and  schema cache.
+// Serialize serializes a schema object.
+func Serialize(schema Schema) string {
+	return SerializeWithCache(schema, DefaultSchemaCache)
+}
+
+// ParseWithCache parses a schema string using the given namespace and schema cache.
 func ParseWithCache(schema, namespace string, cache *SchemaCache) (Schema, error) {
 	var json interface{}
 	if err := jsoniter.Unmarshal([]byte(schema), &json); err != nil {
@@ -28,6 +33,11 @@ func ParseWithCache(schema, namespace string, cache *SchemaCache) (Schema, error
 	}
 
 	return parseType(namespace, json, cache)
+}
+
+// SerializeWithCache serializes a schema using the given namespace and schema cache.
+func SerializeWithCache(schema Schema, cache *SchemaCache) string {
+	return serializeType(schema, cache)
 }
 
 // MustParse parses a schema string, panicing if there is an error.
@@ -76,6 +86,10 @@ func parseType(namespace string, v interface{}, cache *SchemaCache) (Schema, err
 	}
 
 	return nil, fmt.Errorf("avro: unknown type: %v", v)
+}
+
+func serializeType(schema Schema, cache *SchemaCache) string {
+	return schema.Resolve(cache)
 }
 
 func parsePrimitiveType(namespace, s string, cache *SchemaCache) (Schema, error) {

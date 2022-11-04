@@ -1,6 +1,7 @@
 package avro_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/hamba/avro/v2"
@@ -38,6 +39,29 @@ func TestParseFiles(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, avro.String, s.Type())
+}
+
+func TestSerialize(t *testing.T) {
+	s, err := avro.ParseFiles("testdata/superhero.avsc", "testdata/marvel.avsc")
+
+	data := avro.Serialize(s)
+	fmt.Println(data)
+	n, err := avro.Parse(data)
+	require.NoError(t, err)
+	assert.Equal(t, avro.Record, n.Type())
+}
+
+func TestParseFailedDependentFiles(t *testing.T) {
+	_, err := avro.ParseFiles("testdata/marvel.avsc")
+
+	assert.Error(t, err)
+}
+
+func TestParseDependentFiles(t *testing.T) {
+	s, err := avro.ParseFiles("testdata/superhero.avsc", "testdata/marvel.avsc")
+
+	require.NoError(t, err)
+	assert.Equal(t, avro.Record, s.Type())
 }
 
 func TestParseFiles_FileDoesntExist(t *testing.T) {
