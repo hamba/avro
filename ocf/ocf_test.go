@@ -600,7 +600,7 @@ func TestEncoder_EncodeWritesBlocks(t *testing.T) {
 }
 
 func TestEncoder_EncodeHandlesWriteBlockError(t *testing.T) {
-	w := &errorWriter{}
+	w := &errorBlockWriter{}
 	enc, _ := ocf.NewEncoder(`"long"`, w, ocf.WithBlockLength(1))
 	t.Cleanup(func() { _ = enc.Close() })
 
@@ -610,7 +610,7 @@ func TestEncoder_EncodeHandlesWriteBlockError(t *testing.T) {
 }
 
 func TestEncoder_CloseHandlesWriteBlockError(t *testing.T) {
-	w := &errorWriter{}
+	w := &errorBlockWriter{}
 	enc, _ := ocf.NewEncoder(`"long"`, w)
 	_ = enc.Encode(int64(1))
 
@@ -636,8 +636,33 @@ func TestEncodeDecodeMetadata(t *testing.T) {
 	assert.Equal(t, []byte("foo"), dec.Metadata()["test"])
 }
 
-type errorWriter struct{}
+func TestEncoder_NoBlocks(t *testing.T) {
+	buf := &bytes.Buffer{}
+	_, err := ocf.NewEncoder(`"long"`, buf)
+	require.NoError(t, err)
+	assert.Equal(t, 58, buf.Len())
+}
 
-func (*errorWriter) Write(p []byte) (n int, err error) {
+func TestEncoder_WriteHeaderError(t *testing.T) {
+	w := &errorHeaderWriter{}
+	_, err := ocf.NewEncoder(`"long"`, w)
+	assert.Error(t, err)
+}
+
+type errorBlockWriter struct {
+	headerWritten bool
+}
+
+func (ew *errorBlockWriter) Write(p []byte) (n int, err error) {
+	if !ew.headerWritten {
+		ew.headerWritten = true
+		return len(p), nil
+	}
+	return 0, errors.New("test")
+}
+
+type errorHeaderWriter struct{}
+
+func (*errorHeaderWriter) Write(p []byte) (int, error) {
 	return 0, errors.New("test")
 }

@@ -233,6 +233,10 @@ func NewEncoder(s string, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
 	}
 	_, _ = rand.Read(header.Sync[:])
 	writer.WriteVal(HeaderSchema, header)
+	err = writer.Flush()
+	if err != nil {
+		return nil, err
+	}
 
 	codec, err := resolveCodec(cfg.CodecName, cfg.CodecCompression)
 	if err != nil {
