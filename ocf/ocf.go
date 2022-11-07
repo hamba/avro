@@ -158,6 +158,7 @@ type encoderConfig struct {
 	CodecName        CodecName
 	CodecCompression int
 	Metadata         map[string][]byte
+	Sync             [16]byte
 }
 
 // EncoderFunc represents an configuration function for Encoder.
@@ -190,6 +191,13 @@ func WithCompressionLevel(compLvl int) EncoderFunc {
 func WithMetadata(meta map[string][]byte) EncoderFunc {
 	return func(cfg *encoderConfig) {
 		cfg.Metadata = meta
+	}
+}
+
+// WithSyncBlock sets the sync block.
+func WithSyncBlock(sync [16]byte) EncoderFunc {
+	return func(cfg *encoderConfig) {
+		cfg.Sync = sync
 	}
 }
 
@@ -231,7 +239,10 @@ func NewEncoder(s string, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
 		Magic: magicBytes,
 		Meta:  cfg.Metadata,
 	}
-	_, _ = rand.Read(header.Sync[:])
+	header.Sync = cfg.Sync
+	if header.Sync == [16]byte{} {
+		_, _ = rand.Read(header.Sync[:])
+	}
 	writer.WriteVal(HeaderSchema, header)
 	err = writer.Flush()
 	if err != nil {
