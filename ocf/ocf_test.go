@@ -636,6 +636,20 @@ func TestEncodeDecodeMetadata(t *testing.T) {
 	assert.Equal(t, []byte("foo"), dec.Metadata()["test"])
 }
 
+func TestEncode_WithSyncBlock(t *testing.T) {
+	buf := &bytes.Buffer{}
+	syncBlock := [16]byte{9, 9, 9, 9, 9, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
+	_, err := ocf.NewEncoder(`"long"`, buf, ocf.WithSyncBlock(syncBlock))
+	require.NoError(t, err)
+
+	reader := avro.NewReader(buf, 1024)
+
+	var h ocf.Header
+	reader.ReadVal(ocf.HeaderSchema, &h)
+	require.NoError(t, reader.Error)
+	assert.Equal(t, syncBlock, h.Sync)
+}
+
 func TestEncoder_NoBlocks(t *testing.T) {
 	buf := &bytes.Buffer{}
 	_, err := ocf.NewEncoder(`"long"`, buf)
