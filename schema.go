@@ -522,7 +522,7 @@ func (s *RecordSchema) Resolve(cache *SchemaCache) string {
 				if strings.Contains(found.full, ".") {
 					dependency := cache.Get(found.full)
 					if dependency != nil {
-						fields += `{"name":"` + found.Name() + `","type":{` + dependency.Resolve(cache) + `}},`
+						fields += `{"name":"` + f.Name() + `","type":` + dependency.Resolve(cache) + `},`
 						fmt.Println(fields)
 					} else {
 						fields += found.Resolve(cache) + ","
