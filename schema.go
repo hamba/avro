@@ -520,12 +520,7 @@ func (s *RecordSchema) Resolve(cache *SchemaCache) string {
 			switch found := lookup.actual.(type) {
 			case *RecordSchema:
 				if strings.Contains(found.full, ".") {
-					dependency := cache.Get(found.full)
-					if dependency != nil {
-						fields += `{"name":"` + f.Name() + `","type":` + dependency.Resolve(cache) + `},`
-					} else {
-						fields += found.Resolve(cache) + ","
-					}
+					fields += `{"name":"` + f.Name() + `","type":` + found.Resolve(cache) + `},`
 				} else {
 					fields += f.String() + ","
 				}
@@ -1047,8 +1042,16 @@ func (s *UnionSchema) String() string {
 }
 
 // Resolve returns the resolved form of the schema.
-func (s *UnionSchema) Resolve(_ *SchemaCache) string {
-	return s.String()
+func (s *UnionSchema) Resolve(cache *SchemaCache) string {
+	types := ""
+	for _, typ := range s.types {
+		types += typ.Resolve(cache) + ","
+	}
+	if len(types) > 0 {
+		types = types[:len(types)-1]
+	}
+
+	return `[` + types + `]`
 }
 
 // MarshalJSON marshals the schema to json.
