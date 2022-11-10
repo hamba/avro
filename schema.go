@@ -523,7 +523,6 @@ func (s *RecordSchema) Resolve(cache *SchemaCache) string {
 					dependency := cache.Get(found.full)
 					if dependency != nil {
 						fields += `{"name":"` + f.Name() + `","type":` + dependency.Resolve(cache) + `},`
-						fmt.Println(fields)
 					} else {
 						fields += found.Resolve(cache) + ","
 					}
