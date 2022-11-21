@@ -56,6 +56,10 @@ func (d *arrayDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		for i := start; i < size; i++ {
 			elemPtr := sliceType.UnsafeGetIndex(ptr, i)
 			d.decoder.Decode(elemPtr, r)
+			if r.Error != nil && !errors.Is(r.Error, io.EOF) {
+				r.Error = fmt.Errorf("%s: %w", d.typ.String(), r.Error)
+				return
+			}
 		}
 	}
 
@@ -92,6 +96,10 @@ func (e *arrayEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 			for j := i; j < i+blockLength && j < length; j++ {
 				elemPtr := e.typ.UnsafeGetIndex(ptr, j)
 				e.encoder.Encode(elemPtr, w)
+				if w.Error != nil && !errors.Is(w.Error, io.EOF) {
+					w.Error = fmt.Errorf("%s: %w", e.typ.String(), w.Error)
+					return count
+				}
 				count++
 			}
 

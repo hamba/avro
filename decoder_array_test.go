@@ -64,3 +64,17 @@ func TestDecoder_ArraySliceError(t *testing.T) {
 
 	assert.Error(t, err)
 }
+
+func TestDecoder_ArraySliceItemError(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x04, 0xE2, 0xA2, 0xF3, 0xAD, 0xAD, 0xAD, 0xE2, 0xA2, 0xF3, 0xAD, 0xAD}
+	schema := `{"type":"array", "items": "int"}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	var got []int
+	err = dec.Decode(&got)
+
+	assert.Error(t, err)
+}
