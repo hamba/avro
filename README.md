@@ -115,7 +115,9 @@ e.g `"map:string"`. Behavior when a type cannot be resolved will depend on your 
 
 The interfaces `TextMarshaler` and `TextUnmarshaler` are supported for a `string` schema type. The object will
 be tested first for implementation of these interfaces, in the case of a `string` schema, before trying regular
-encoding and decoding. 
+encoding and decoding.
+
+Enums may also implement `TextMarshaler` and `TextUnmarshaler`, and must resolve to valid symbols in the given enum schema.
 
 ### Recursive Structs
 
