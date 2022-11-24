@@ -80,6 +80,42 @@ func TestDecoder_EnumTextUnmarshaler(t *testing.T) {
 	assert.Equal(t, testEnumTextUnmarshaler(1), *got)
 }
 
+func TestDecoder_EnumTextUnmarshalerNonPtr(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x02}
+	schema := `{"type":"enum", "name": "test", "symbols": ["foo", "bar"]}`
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	var got testEnumTextUnmarshaler
+	err := dec.Decode(&got)
+
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	assert.Equal(t, testEnumTextUnmarshaler(1), got)
+}
+
+func TestDecoder_EnumTextUnmarshalerObj(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x02}
+	schema := `{
+	"type": "record",
+	"name": "test",
+	"fields" : [
+		{"name": "a", "type": {"type":"enum", "name": "test", "symbols": ["foo", "bar"]}}
+    ]
+}`
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	var got testEnumUnmarshalerObj
+	err := dec.Decode(&got)
+
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	assert.Equal(t, testEnumUnmarshalerObj{A: testEnumTextUnmarshaler(1)}, got)
+}
+
 func TestDecoder_EnumTextUnmarshalerInvalidSymbol(t *testing.T) {
 	defer ConfigTeardown()
 
@@ -119,6 +155,10 @@ func TestDecoder_EnumTextUnmarshalerError(t *testing.T) {
 	err = dec.Decode(&got)
 
 	assert.Error(t, err)
+}
+
+type testEnumUnmarshalerObj struct {
+	A testEnumTextUnmarshaler `avro:"a"`
 }
 
 type testEnumTextUnmarshaler int
