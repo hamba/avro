@@ -162,11 +162,23 @@ func createEncoderOfNative(schema Schema, typ reflect2.Type) ValEncoder {
 		}
 		return &int8Codec{}
 
+	case reflect.Uint8:
+		if schema.Type() != Int {
+			break
+		}
+		return &uint8Codec{}
+
 	case reflect.Int16:
 		if schema.Type() != Int {
 			break
 		}
 		return &int16Codec{}
+
+	case reflect.Uint16:
+		if schema.Type() != Int {
+			break
+		}
+		return &uint16Codec{}
 
 	case reflect.Int32:
 		switch schema.Type() {
@@ -176,6 +188,12 @@ func createEncoderOfNative(schema Schema, typ reflect2.Type) ValEncoder {
 		case Int:
 			return &int32Codec{}
 		}
+
+	case reflect.Uint32:
+		if schema.Type() != Long {
+			break
+		}
+		return &uint32Codec{}
 
 	case reflect.Int64:
 		st := schema.Type()

@@ -105,6 +105,33 @@ func TestEncoder_Int8InvalidSchema(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestEncoder_Uint8(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := "int"
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode(uint8(27))
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x36}, buf.Bytes())
+}
+
+func TestEncoder_Uint8InvalidSchema(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := "string"
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode(uint8(27))
+
+	assert.Error(t, err)
+}
+
 func TestEncoder_Int16(t *testing.T) {
 	defer ConfigTeardown()
 
@@ -132,6 +159,33 @@ func TestEncoder_Int16InvalidSchema(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestEncoder_Uint16(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := "int"
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode(uint16(27))
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x36}, buf.Bytes())
+}
+
+func TestEncoder_Uint16InvalidSchema(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := "string"
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode(uint16(27))
+
+	assert.Error(t, err)
+}
+
 func TestEncoder_Int32(t *testing.T) {
 	defer ConfigTeardown()
 
@@ -155,6 +209,33 @@ func TestEncoder_Int32InvalidSchema(t *testing.T) {
 	require.NoError(t, err)
 
 	err = enc.Encode(int32(27))
+
+	assert.Error(t, err)
+}
+
+func TestEncoder_Uint32(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := "long"
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode(uint32(27))
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x36}, buf.Bytes())
+}
+
+func TestEncoder_Uint32InvalidSchema(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := "int"
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode(uint32(27))
 
 	assert.Error(t, err)
 }
