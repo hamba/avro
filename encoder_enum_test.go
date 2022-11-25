@@ -74,8 +74,28 @@ func TestEncoder_EnumTextMarshalerPtr(t *testing.T) {
 	require.NoError(t, err)
 
 	m := testEnumTextMarshaler(1)
-	ptr := &m
-	err = enc.Encode(ptr)
+	err = enc.Encode(&m)
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x02}, buf.Bytes())
+}
+
+func TestEncoder_EnumTextMarshalerObj(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{
+	"type": "record",
+	"name": "test",
+	"fields" : [
+		{"name": "a", "type": {"type":"enum", "name": "test", "symbols": ["foo", "bar"]}}
+    ]
+}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	m := testEnumMarshlaerObj{A: testEnumTextMarshaler(1)}
+	err = enc.Encode(&m)
 
 	require.NoError(t, err)
 	assert.Equal(t, []byte{0x02}, buf.Bytes())
@@ -123,10 +143,14 @@ func TestEncoder_EnumTextMarshalerError(t *testing.T) {
 	assert.Error(t, err)
 }
 
+type testEnumMarshlaerObj struct {
+	A testEnumTextMarshaler `avro:"a"`
+}
+
 type testEnumTextMarshaler int
 
-func (m testEnumTextMarshaler) MarshalText() ([]byte, error) {
-	switch m {
+func (m *testEnumTextMarshaler) MarshalText() ([]byte, error) {
+	switch *m {
 	case 0:
 		return []byte("foo"), nil
 	case 1:

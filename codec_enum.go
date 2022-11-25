@@ -16,6 +16,8 @@ func createDecoderOfEnum(schema Schema, typ reflect2.Type) ValDecoder {
 		return &enumCodec{symbols: schema.(*EnumSchema).Symbols()}
 	case typ.Implements(textUnmarshalerType):
 		return &enumTextMarshalerCodec{typ: typ, symbols: schema.(*EnumSchema).Symbols()}
+	case reflect2.PtrTo(typ).Implements(textUnmarshalerType):
+		return &enumTextMarshalerCodec{typ: typ, symbols: schema.(*EnumSchema).Symbols(), ptr: true}
 	}
 
 	return &errorDecoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s", typ.String(), schema.Type())}
@@ -27,6 +29,8 @@ func createEncoderOfEnum(schema Schema, typ reflect2.Type) ValEncoder {
 		return &enumCodec{symbols: schema.(*EnumSchema).Symbols()}
 	case typ.Implements(textMarshalerType):
 		return &enumTextMarshalerCodec{typ: typ, symbols: schema.(*EnumSchema).Symbols()}
+	case reflect2.PtrTo(typ).Implements(textMarshalerType):
+		return &enumTextMarshalerCodec{typ: typ, symbols: schema.(*EnumSchema).Symbols(), ptr: true}
 	}
 
 	return &errorEncoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s", typ.String(), schema.Type())}
@@ -64,6 +68,7 @@ func (c *enumCodec) Encode(ptr unsafe.Pointer, w *Writer) {
 type enumTextMarshalerCodec struct {
 	typ     reflect2.Type
 	symbols []string
+	ptr     bool
 }
 
 func (c *enumTextMarshalerCodec) Decode(ptr unsafe.Pointer, r *Reader) {
@@ -74,7 +79,12 @@ func (c *enumTextMarshalerCodec) Decode(ptr unsafe.Pointer, r *Reader) {
 		return
 	}
 
-	obj := c.typ.UnsafeIndirect(ptr)
+	var obj interface{}
+	if c.ptr {
+		obj = c.typ.PackEFace(ptr)
+	} else {
+		obj = c.typ.UnsafeIndirect(ptr)
+	}
 	if reflect2.IsNil(obj) {
 		ptrType := c.typ.(*reflect2.UnsafePtrType)
 		newPtr := ptrType.Elem().UnsafeNew()
@@ -88,7 +98,12 @@ func (c *enumTextMarshalerCodec) Decode(ptr unsafe.Pointer, r *Reader) {
 }
 
 func (c *enumTextMarshalerCodec) Encode(ptr unsafe.Pointer, w *Writer) {
-	obj := c.typ.UnsafeIndirect(ptr)
+	var obj interface{}
+	if c.ptr {
+		obj = c.typ.PackEFace(ptr)
+	} else {
+		obj = c.typ.UnsafeIndirect(ptr)
+	}
 	if c.typ.IsNullable() && reflect2.IsNil(obj) {
 		w.Error = errors.New("encoding nil enum text marshaler")
 		return
