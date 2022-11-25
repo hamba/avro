@@ -30,17 +30,35 @@ func createDecoderOfNative(schema Schema, typ reflect2.Type) ValDecoder {
 		}
 		return &int8Codec{}
 
+	case reflect.Uint8:
+		if schema.Type() != Int {
+			break
+		}
+		return &uint8Codec{}
+
 	case reflect.Int16:
 		if schema.Type() != Int {
 			break
 		}
 		return &int16Codec{}
 
+	case reflect.Uint16:
+		if schema.Type() != Int {
+			break
+		}
+		return &uint16Codec{}
+
 	case reflect.Int32:
 		if schema.Type() != Int {
 			break
 		}
 		return &int32Codec{}
+
+	case reflect.Uint32:
+		if schema.Type() != Long {
+			break
+		}
+		return &uint32Codec{}
 
 	case reflect.Int64:
 		st := schema.Type()
@@ -301,6 +319,16 @@ func (*int8Codec) Encode(ptr unsafe.Pointer, w *Writer) {
 	w.WriteInt(int32(*((*int8)(ptr))))
 }
 
+type uint8Codec struct{}
+
+func (*uint8Codec) Decode(ptr unsafe.Pointer, r *Reader) {
+	*((*uint8)(ptr)) = uint8(r.ReadInt())
+}
+
+func (*uint8Codec) Encode(ptr unsafe.Pointer, w *Writer) {
+	w.WriteInt(int32(*((*uint8)(ptr))))
+}
+
 type int16Codec struct{}
 
 func (*int16Codec) Decode(ptr unsafe.Pointer, r *Reader) {
@@ -311,6 +339,16 @@ func (*int16Codec) Encode(ptr unsafe.Pointer, w *Writer) {
 	w.WriteInt(int32(*((*int16)(ptr))))
 }
 
+type uint16Codec struct{}
+
+func (*uint16Codec) Decode(ptr unsafe.Pointer, r *Reader) {
+	*((*uint16)(ptr)) = uint16(r.ReadInt())
+}
+
+func (*uint16Codec) Encode(ptr unsafe.Pointer, w *Writer) {
+	w.WriteInt(int32(*((*uint16)(ptr))))
+}
+
 type int32Codec struct{}
 
 func (*int32Codec) Decode(ptr unsafe.Pointer, r *Reader) {
@@ -319,6 +357,16 @@ func (*int32Codec) Decode(ptr unsafe.Pointer, r *Reader) {
 
 func (*int32Codec) Encode(ptr unsafe.Pointer, w *Writer) {
 	w.WriteInt(*((*int32)(ptr)))
+}
+
+type uint32Codec struct{}
+
+func (*uint32Codec) Decode(ptr unsafe.Pointer, r *Reader) {
+	*((*uint32)(ptr)) = uint32(r.ReadLong())
+}
+
+func (*uint32Codec) Encode(ptr unsafe.Pointer, w *Writer) {
+	w.WriteLong(int64(*((*uint32)(ptr))))
 }
 
 type int32LongCodec struct{}
