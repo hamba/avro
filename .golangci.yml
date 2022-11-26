@@ -9,6 +9,9 @@ linters-settings:
 linters:
   enable-all: true
   disable:
+    - sqlclosecheck # not relevant (SQL)
+    - rowserrcheck # not relevant (SQL)
+    - execinquery # not relevant (SQL)
     - interfacer # deprecated
     - scopelint # deprecated
     - maligned # deprecated
@@ -19,7 +22,7 @@ linters:
     - nosnakecase # deprecated
     - structcheck # deprecated
     - varcheck # deprecated
-    - cyclop
+    - cyclop # duplicate of gocyclo
     - exhaustive
     - exhaustruct
     - forcetypeassert
@@ -32,7 +35,6 @@ linters:
     - gomnd
     - ireturn
     - nestif
-    - nilnil
     - nlreturn
     - nonamedreturns
     - tagliatelle

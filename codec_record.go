@@ -140,45 +140,43 @@ func encoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEnc
 	fields := make([]*structFieldEncoder, 0, len(rec.Fields()))
 	for _, field := range rec.Fields() {
 		sf := structDesc.Fields.Get(field.Name())
-
-		if sf == nil {
-			if !field.HasDefault() {
-				// In all other cases, this is a required field
-				return &errorEncoder{err: fmt.Errorf("avro: record %s is missing required field %q", rec.FullName(), field.Name())}
-			}
-
-			def := field.Default()
-			if field.Default() == nil {
-				if field.Type().Type() == Null {
-					// We write nothing in a Null case, just skip it
-					continue
-				}
-
-				if field.Type().Type() == Union && field.Type().(*UnionSchema).Nullable() {
-					defaultType := reflect2.TypeOf(&def)
-					fields = append(fields, &structFieldEncoder{
-						defaultPtr: reflect2.PtrOf(&def),
-						encoder:    encoderOfPtrUnion(cfg, field.Type(), defaultType),
-					})
-					continue
-				}
-			}
-
-			defaultType := reflect2.TypeOf(def)
+		if sf != nil {
 			fields = append(fields, &structFieldEncoder{
-				defaultPtr: reflect2.PtrOf(def),
-				encoder:    encoderOfType(cfg, field.Type(), defaultType),
+				field:   sf.Field,
+				encoder: encoderOfType(cfg, field.Type(), sf.Field[len(sf.Field)-1].Type()),
 			})
-
 			continue
 		}
 
+		if !field.HasDefault() {
+			// In all other cases, this is a required field
+			err := fmt.Errorf("avro: record %s is missing required field %q", rec.FullName(), field.Name())
+			return &errorEncoder{err: err}
+		}
+
+		def := field.Default()
+		if field.Default() == nil {
+			if field.Type().Type() == Null {
+				// We write nothing in a Null case, just skip it
+				continue
+			}
+
+			if field.Type().Type() == Union && field.Type().(*UnionSchema).Nullable() {
+				defaultType := reflect2.TypeOf(&def)
+				fields = append(fields, &structFieldEncoder{
+					defaultPtr: reflect2.PtrOf(&def),
+					encoder:    encoderOfPtrUnion(cfg, field.Type(), defaultType),
+				})
+				continue
+			}
+		}
+
+		defaultType := reflect2.TypeOf(def)
 		fields = append(fields, &structFieldEncoder{
-			field:   sf.Field,
-			encoder: encoderOfType(cfg, field.Type(), sf.Field[len(sf.Field)-1].Type()),
+			defaultPtr: reflect2.PtrOf(def),
+			encoder:    encoderOfType(cfg, field.Type(), defaultType),
 		})
 	}
-
 	return &structEncoder{typ: typ, fields: fields}
 }
 

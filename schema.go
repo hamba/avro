@@ -552,7 +552,7 @@ var NoDefault = noDef{}
 
 // NewField creates a new field instance.
 func NewField(name string, typ Schema, opts ...SchemaOption) (*Field, error) {
-	var cfg schemaConfig
+	cfg := schemaConfig{def: NoDefault}
 	for _, opt := range opts {
 		opt(&cfg)
 	}
@@ -1257,13 +1257,6 @@ func validateName(name string) error {
 }
 
 func validateDefault(name string, schema Schema, def interface{}) (interface{}, error) {
-	if def == nil {
-		if schema.Type() != Null && !(schema.Type() == Union && schema.(*UnionSchema).Nullable()) {
-			// This is an empty default value.
-			return nil, nil
-		}
-	}
-
 	def, ok := isValidDefault(schema, def)
 	if !ok {
 		return nil, fmt.Errorf("avro: invalid default for field %s. %+v not a %s", name, def, schema.Type())
