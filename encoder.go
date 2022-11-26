@@ -16,7 +16,6 @@ func NewEncoder(s string, w io.Writer) (*Encoder, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return NewEncoderForSchema(sch, w), nil
 }
 
@@ -29,7 +28,6 @@ func NewEncoderForSchema(schema Schema, w io.Writer) *Encoder {
 func (e *Encoder) Encode(v interface{}) error {
 	e.w.WriteVal(e.s, v)
 	_ = e.w.Flush()
-
 	return e.w.Error
 }
 

@@ -3,7 +3,6 @@ package avro
 // SkipNBytes skips the given number of bytes in the reader.
 func (r *Reader) SkipNBytes(n int) {
 	read := 0
-
 	for read < n {
 		if r.head == r.tail {
 			if !r.loadMore() {
@@ -30,7 +29,6 @@ func (r *Reader) SkipBool() {
 // SkipInt skips an Int in the reader.
 func (r *Reader) SkipInt() {
 	var offset int8
-
 	for r.Error == nil {
 		if offset == maxIntBufSize {
 			return
@@ -40,7 +38,6 @@ func (r *Reader) SkipInt() {
 		if b&0x80 == 0 {
 			break
 		}
-
 		offset++
 	}
 }
@@ -48,7 +45,6 @@ func (r *Reader) SkipInt() {
 // SkipLong skips a Long in the reader.
 func (r *Reader) SkipLong() {
 	var offset int8
-
 	for r.Error == nil {
 		if offset == maxLongBufSize {
 			return
@@ -58,7 +54,6 @@ func (r *Reader) SkipLong() {
 		if b&0x80 == 0 {
 			break
 		}
-
 		offset++
 	}
 }
@@ -79,7 +74,6 @@ func (r *Reader) SkipString() {
 	if size <= 0 {
 		return
 	}
-
 	r.SkipNBytes(int(size))
 }
 
@@ -89,6 +83,5 @@ func (r *Reader) SkipBytes() {
 	if size <= 0 {
 		return
 	}
-
 	r.SkipNBytes(int(size))
 }

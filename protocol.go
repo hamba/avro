@@ -185,16 +185,13 @@ func (m *Message) String() string {
 	}
 
 	str := `{"request":[` + fields + `]`
-
 	if m.resp != nil {
 		str += `,"response":` + m.resp.String()
 	}
-
 	if m.errs != nil && len(m.errs.Types()) > 1 {
 		errs, _ := NewUnionSchema(m.errs.Types()[1:])
 		str += `,"errors":` + errs.String()
 	}
-
 	str += "}"
 	return str
 }
@@ -227,7 +224,6 @@ func ParseProtocol(protocol string) (*Protocol, error) {
 	if err := jsoniter.Unmarshal([]byte(protocol), &m); err != nil {
 		return nil, err
 	}
-
 	return parseProtocol(m, cache)
 }
 

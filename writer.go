@@ -61,7 +61,6 @@ func (w *Writer) Flush() error {
 	if w.out == nil {
 		return nil
 	}
-
 	if w.Error != nil {
 		return w.Error
 	}
@@ -71,12 +70,9 @@ func (w *Writer) Flush() error {
 		if w.Error == nil {
 			w.Error = err
 		}
-
 		return err
 	}
-
 	w.buf = w.buf[n:]
-
 	return nil
 }
 
@@ -96,21 +92,18 @@ func (w *Writer) WriteBool(b bool) {
 		w.writeByte(0x01)
 		return
 	}
-
 	w.writeByte(0x00)
 }
 
 // WriteInt writes an Int to the Writer.
 func (w *Writer) WriteInt(i int32) {
 	e := uint64((uint32(i) << 1) ^ uint32(i>>31))
-
 	w.encodeInt(e)
 }
 
 // WriteLong writes a Long to the Writer.
 func (w *Writer) WriteLong(i int64) {
 	e := (uint64(i) << 1) ^ uint64(i>>63)
-
 	w.encodeInt(e)
 }
 
@@ -127,7 +120,6 @@ func (w *Writer) encodeInt(i uint64) {
 		if i != 0 {
 			b |= 0x80
 		}
-
 		w.writeByte(b)
 	}
 }
@@ -167,7 +159,6 @@ func (w *Writer) WriteBlockHeader(l, s int64) {
 		w.WriteLong(s)
 		return
 	}
-
 	w.WriteLong(l)
 }
 
