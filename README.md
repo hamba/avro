@@ -145,7 +145,7 @@ BenchmarkLinkedinEncode-10     	 2641016	       456.0 ns/op	     248 B/op	      
 
 Always benchmark with your own workload. The result depends heavily on the data input.
 
-## EXPERIMENTAL - Go structs generation
+## Go structs generation
 
 Go structs can be generated for you from the schema. The types generated follow the same logic in [types conversions](#types-conversions)
 
@@ -168,3 +168,9 @@ avrogen -h
 ```
 
 Or use it as a lib in internal commands, it's the `gen` package
+
+## Go Version Support
+
+This library supports the last two versions of Go. While the minimum Go version is
+not guarantee to increase along side Go, it may jump from time to time to support 
+additional features. This will be not be considered a breaking change.
