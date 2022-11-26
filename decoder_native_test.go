@@ -112,6 +112,35 @@ func TestDecoder_Int8InvalidSchema(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestDecoder_Uint8(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x36}
+	schema := "int"
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	var i uint8
+	err = dec.Decode(&i)
+
+	require.NoError(t, err)
+	assert.Equal(t, uint8(27), i)
+}
+
+func TestDecoder_Uint8InvalidSchema(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x36}
+	schema := "string"
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	var i uint8
+	err = dec.Decode(&i)
+
+	assert.Error(t, err)
+}
+
 func TestDecoder_Int16(t *testing.T) {
 	defer ConfigTeardown()
 
@@ -141,6 +170,35 @@ func TestDecoder_Int16InvalidSchema(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestDecoder_Uint16(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x36}
+	schema := "int"
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	var i uint16
+	err = dec.Decode(&i)
+
+	require.NoError(t, err)
+	assert.Equal(t, uint16(27), i)
+}
+
+func TestDecoder_Uint16InvalidSchema(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x36}
+	schema := "string"
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	var i uint16
+	err = dec.Decode(&i)
+
+	assert.Error(t, err)
+}
+
 func TestDecoder_Int32(t *testing.T) {
 	defer ConfigTeardown()
 
@@ -165,6 +223,35 @@ func TestDecoder_Int32InvalidSchema(t *testing.T) {
 	require.NoError(t, err)
 
 	var i int32
+	err = dec.Decode(&i)
+
+	assert.Error(t, err)
+}
+
+func TestDecoder_Uint32(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x36}
+	schema := "long"
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	var i uint32
+	err = dec.Decode(&i)
+
+	require.NoError(t, err)
+	assert.Equal(t, uint32(27), i)
+}
+
+func TestDecoder_Uint32InvalidSchema(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x36}
+	schema := "int"
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	var i uint32
 	err = dec.Decode(&i)
 
 	assert.Error(t, err)

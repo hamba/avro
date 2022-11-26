@@ -68,29 +68,34 @@ More examples in the [godoc](https://godoc.org/github.com/hamba/avro).
 
 #### Types Conversions
 
-| Avro                    | Go Struct                          | Go Interface              |
-| ----------------------- | ---------------------------------- | ------------------------- |
-| `null`                  | `nil`                              | `nil`                     |
-| `boolean`               | `bool`                             | `bool`                    |
-| `bytes`                 | `[]byte`                           | `[]byte`                  |
-| `float`                 | `float32`                          | `float32`                 |
-| `double`                | `float64`                          | `float64`                 |
-| `long`                  | `int64`                            | `int64`                   |
-| `int`                   | `int`, `int32`, `int16`, `int8`    | `int`                     |
-| `string`                | `string`                           | `string`                  |
-| `array`                 | `[]T`                              | `[]interface{}`           |
-| `enum`                  | `string`                           | `string`                  |
-| `fixed`                 | `[n]byte`                          | `[]byte`                  |
-| `map`                   | `map[string]T{}`                   | `map[string]interface{}`  |
-| `record`                | `struct`                           | `map[string]interface{}`  |
-| `union`                 | *see below*                        | *see below*               |
-| `int.date`              | `time.Time`                        | `time.Time`               |
-| `int.time-millis`       | `time.Duration`                    | `time.Duration`           |
-| `long.time-micros`      | `time.Duration`                    | `time.Duration`           |
-| `long.timestamp-millis` | `time.Time`                        | `time.Time`               |
-| `long.timestamp-micros` | `time.Time`                        | `time.Time`               |
-| `bytes.decimal`         | `*big.Rat`                         | `*big.Rat`                |
-| `fixed.decimal`         | `*big.Rat`                         | `*big.Rat`                |
+| Avro                    | Go Struct                                              | Go Interface             |
+|-------------------------|--------------------------------------------------------|--------------------------|
+| `null`                  | `nil`                                                  | `nil`                    |
+| `boolean`               | `bool`                                                 | `bool`                   |
+| `bytes`                 | `[]byte`                                               | `[]byte`                 |
+| `float`                 | `float32`                                              | `float32`                |
+| `double`                | `float64`                                              | `float64`                |
+| `long`                  | `int64`, `uint32`\*                                    | `int64`, `uint32`        |
+| `int`                   | `int`, `int32`, `int16`, `int8`, `uint8`\*, `uint16`\* | `int`, `uint8`, `uint16` |
+| `string`                | `string`                                               | `string`                 |
+| `array`                 | `[]T`                                                  | `[]interface{}`          |
+| `enum`                  | `string`                                               | `string`                 |
+| `fixed`                 | `[n]byte`                                              | `[]byte`                 |
+| `map`                   | `map[string]T{}`                                       | `map[string]interface{}` |
+| `record`                | `struct`                                               | `map[string]interface{}` |
+| `union`                 | *see below*                                            | *see below*              |
+| `int.date`              | `time.Time`                                            | `time.Time`              |
+| `int.time-millis`       | `time.Duration`                                        | `time.Duration`          |
+| `long.time-micros`      | `time.Duration`                                        | `time.Duration`          |
+| `long.timestamp-millis` | `time.Time`                                            | `time.Time`              |
+| `long.timestamp-micros` | `time.Time`                                            | `time.Time`              |
+| `bytes.decimal`         | `*big.Rat`                                             | `*big.Rat`               |
+| `fixed.decimal`         | `*big.Rat`                                             | `*big.Rat`               |
+
+\* Please note that when the Go type is an unsigned integer care must be taken to ensure that information is not lost 
+when converting between the Avro type and Go type. For example, storing a *negative* number in Avro of `int = -100`
+would be interpreted as `uint16 = 65,436` in Go. Another example would be storing numbers in Avro `int = 256` that 
+are larger than the Go type `uint8 = 0`. 
 
 ##### Unions
 
