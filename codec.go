@@ -33,15 +33,13 @@ type ValEncoder interface {
 
 // ReadVal parses Avro value and stores the result in the value pointed to by obj.
 func (r *Reader) ReadVal(schema Schema, obj interface{}) {
-	rtype := reflect2.RTypeOf(obj)
-	decoder := r.cfg.getDecoderFromCache(schema.Fingerprint(), rtype)
+	decoder := r.cfg.getDecoderFromCache(schema.Fingerprint(), reflect2.RTypeOf(obj))
 	if decoder == nil {
 		typ := reflect2.TypeOf(obj)
 		if typ.Kind() != reflect.Ptr {
 			r.ReportError("ReadVal", "can only unmarshal into pointer")
 			return
 		}
-
 		decoder = r.cfg.DecoderOf(schema, typ)
 	}
 
@@ -56,14 +54,11 @@ func (r *Reader) ReadVal(schema Schema, obj interface{}) {
 
 // WriteVal writes the Avro encoding of obj.
 func (w *Writer) WriteVal(schema Schema, val interface{}) {
-	rtype := reflect2.RTypeOf(val)
-	encoder := w.cfg.getEncoderFromCache(schema.Fingerprint(), rtype)
+	encoder := w.cfg.getEncoderFromCache(schema.Fingerprint(), reflect2.RTypeOf(val))
 	if encoder == nil {
 		typ := reflect2.TypeOf(val)
-
 		encoder = w.cfg.EncoderOf(schema, typ)
 	}
-
 	encoder.Encode(reflect2.PtrOf(val), w)
 }
 

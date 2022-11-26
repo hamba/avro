@@ -16,7 +16,6 @@ func (r *Reader) ReadNext(schema Schema) interface{} {
 	switch schema.Type() {
 	case Boolean:
 		return r.ReadBool()
-
 	case Int:
 		if ls != nil {
 			switch ls.Type() {
@@ -30,7 +29,6 @@ func (r *Reader) ReadNext(schema Schema) interface{} {
 			}
 		}
 		return int(r.ReadInt())
-
 	case Long:
 		if ls != nil {
 			switch ls.Type() {
@@ -51,23 +49,18 @@ func (r *Reader) ReadNext(schema Schema) interface{} {
 			}
 		}
 		return r.ReadLong()
-
 	case Float:
 		return r.ReadFloat()
-
 	case Double:
 		return r.ReadDouble()
-
 	case String:
 		return r.ReadString()
-
 	case Bytes:
 		if ls != nil && ls.Type() == Decimal {
 			dec := ls.(*DecimalLogicalSchema)
 			return ratFromBytes(r.ReadBytes(), dec.Scale())
 		}
 		return r.ReadBytes()
-
 	case Record:
 		fields := schema.(*RecordSchema).Fields()
 		obj := make(map[string]interface{}, len(fields))
@@ -75,10 +68,8 @@ func (r *Reader) ReadNext(schema Schema) interface{} {
 			obj[field.Name()] = r.ReadNext(field.Type())
 		}
 		return obj
-
 	case Ref:
 		return r.ReadNext(schema.(*RefSchema).Schema())
-
 	case Enum:
 		symbols := schema.(*EnumSchema).Symbols()
 		idx := int(r.ReadInt())
@@ -87,7 +78,6 @@ func (r *Reader) ReadNext(schema Schema) interface{} {
 			return nil
 		}
 		return symbols[idx]
-
 	case Array:
 		arr := []interface{}{}
 		r.ReadArrayCB(func(r *Reader) bool {
@@ -96,7 +86,6 @@ func (r *Reader) ReadNext(schema Schema) interface{} {
 			return true
 		})
 		return arr
-
 	case Map:
 		obj := map[string]interface{}{}
 		r.ReadMapCB(func(r *Reader, field string) bool {
@@ -105,7 +94,6 @@ func (r *Reader) ReadNext(schema Schema) interface{} {
 			return true
 		})
 		return obj
-
 	case Union:
 		types := schema.(*UnionSchema).Types()
 		idx := int(r.ReadLong())
@@ -113,7 +101,7 @@ func (r *Reader) ReadNext(schema Schema) interface{} {
 			r.ReportError("Read", "unknown union type")
 			return nil
 		}
-		schema := types[idx]
+		schema = types[idx]
 		if schema.Type() == Null {
 			return nil
 		}
@@ -121,9 +109,7 @@ func (r *Reader) ReadNext(schema Schema) interface{} {
 		key := schemaTypeName(schema)
 		obj := map[string]interface{}{}
 		obj[key] = r.ReadNext(types[idx])
-
 		return obj
-
 	case Fixed:
 		size := schema.(*FixedSchema).Size()
 		obj := make([]byte, size)
@@ -133,7 +119,6 @@ func (r *Reader) ReadNext(schema Schema) interface{} {
 			return ratFromBytes(obj, dec.Scale())
 		}
 		return obj
-
 	default:
 		r.ReportError("Read", fmt.Sprintf("unexpected schema type: %v", schema.Type()))
 		return nil
@@ -141,21 +126,20 @@ func (r *Reader) ReadNext(schema Schema) interface{} {
 }
 
 // ReadArrayCB reads an array with a callback per item.
-func (r *Reader) ReadArrayCB(callback func(*Reader) bool) {
+func (r *Reader) ReadArrayCB(fn func(*Reader) bool) {
 	for {
 		l, _ := r.ReadBlockHeader()
 		if l == 0 {
 			break
 		}
-
 		for i := 0; i < int(l); i++ {
-			callback(r)
+			fn(r)
 		}
 	}
 }
 
 // ReadMapCB reads an array with a callback per item.
-func (r *Reader) ReadMapCB(callback func(*Reader, string) bool) {
+func (r *Reader) ReadMapCB(fn func(*Reader, string) bool) {
 	for {
 		l, _ := r.ReadBlockHeader()
 		if l == 0 {
@@ -164,7 +148,7 @@ func (r *Reader) ReadMapCB(callback func(*Reader, string) bool) {
 
 		for i := 0; i < int(l); i++ {
 			field := r.ReadString()
-			callback(r, field)
+			fn(r, field)
 		}
 	}
 }

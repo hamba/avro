@@ -55,7 +55,6 @@ func (r *Reader) Reset(b []byte) *Reader {
 	r.buf = b
 	r.head = 0
 	r.tail = len(b)
-
 	return r
 }
 
@@ -74,7 +73,6 @@ func (r *Reader) loadMore() bool {
 			r.head = r.tail
 			r.Error = io.EOF
 		}
-
 		return false
 	}
 
@@ -85,10 +83,8 @@ func (r *Reader) loadMore() bool {
 				if r.Error == nil {
 					r.Error = err
 				}
-
 				return false
 			}
-
 			continue
 		}
 
@@ -136,7 +132,6 @@ func (r *Reader) ReadBool() bool {
 	if b != 0 && b != 1 {
 		r.ReportError("ReadBool", "invalid bool")
 	}
-
 	return b == 1
 }
 
@@ -156,7 +151,6 @@ func (r *Reader) ReadInt() int32 {
 		if b&0x80 == 0 {
 			break
 		}
-
 		offset++
 	}
 
@@ -191,7 +185,6 @@ func (r *Reader) ReadFloat() float32 {
 	r.Read(buf[:])
 
 	float := *(*float32)(unsafe.Pointer(&buf[0]))
-
 	return float
 }
 
@@ -201,7 +194,6 @@ func (r *Reader) ReadDouble() float64 {
 	r.Read(buf[:])
 
 	float := *(*float64)(unsafe.Pointer(&buf[0]))
-
 	return float
 }
 
@@ -215,7 +207,6 @@ func (r *Reader) ReadBytes() []byte {
 
 	buf := make([]byte, size)
 	r.Read(buf)
-
 	return buf
 }
 
@@ -236,7 +227,6 @@ func (r *Reader) ReadString() string {
 
 	buf := make([]byte, size)
 	r.Read(buf)
-
 	return *(*string)(unsafe.Pointer(&buf))
 }
 
