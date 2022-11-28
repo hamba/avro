@@ -27,7 +27,11 @@ func createDecoderOfUnion(cfg *frozenConfig, schema Schema, typ reflect2.Type) V
 
 	case reflect.Interface:
 		if _, ok := typ.(*reflect2.UnsafeIFaceType); !ok {
-			return decoderOfResolvedUnion(cfg, schema)
+			if dec, err := decoderOfResolvedUnion(cfg, schema); err != nil {
+				return &errorDecoder{err: fmt.Errorf("avro: problem resolving decoder for Avro %s: %w", schema.Type(), err)}
+			} else {
+				return dec
+			}
 		}
 	}
 
@@ -222,18 +226,24 @@ func (e *unionPtrEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 	e.encoder.Encode(*((*unsafe.Pointer)(ptr)), w)
 }
 
-func decoderOfResolvedUnion(cfg *frozenConfig, schema Schema) ValDecoder {
+func decoderOfResolvedUnion(cfg *frozenConfig, schema Schema) (ValDecoder, error) {
 	union := schema.(*UnionSchema)
 
 	types := make([]reflect2.Type, len(union.Types()))
 	decoders := make([]ValDecoder, len(union.Types()))
 	for i, schema := range union.Types() {
 		name := unionResolutionName(schema)
-		if typ, err := cfg.resolver.Type(name); err == nil {
+
+		typ, err := cfg.resolver.Type(name)
+		if err == nil {
 			decoder := decoderOfType(cfg, schema, typ)
 			decoders[i] = decoder
 			types[i] = typ
 			continue
+		}
+
+		if cfg.config.UnionResolutionError {
+			return nil, err
 		}
 
 		if cfg.config.PartialUnionTypeResolution {
@@ -252,7 +262,7 @@ func decoderOfResolvedUnion(cfg *frozenConfig, schema Schema) ValDecoder {
 		schema:   union,
 		types:    types,
 		decoders: decoders,
-	}
+	}, nil
 }
 
 type unionResolvedDecoder struct {

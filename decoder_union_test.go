@@ -633,7 +633,7 @@ func TestDecoder_UnionInterfaceUnresolvableTypeWithError(t *testing.T) {
 	var got interface{}
 	err := dec.Decode(&got)
 
-	assert.Error(t, err)
+	assert.EqualError(t, err, "avro: problem resolving decoder for Avro union: avro: unable to resolve type with name test")
 }
 
 func TestDecoder_UnionInterfaceInvalidSchema(t *testing.T) {
