@@ -27,11 +27,12 @@ func createDecoderOfUnion(cfg *frozenConfig, schema Schema, typ reflect2.Type) V
 
 	case reflect.Interface:
 		if _, ok := typ.(*reflect2.UnsafeIFaceType); !ok {
-			if dec, err := decoderOfResolvedUnion(cfg, schema); err != nil {
+			dec, err := decoderOfResolvedUnion(cfg, schema)
+			if err != nil {
 				return &errorDecoder{err: fmt.Errorf("avro: problem resolving decoder for Avro %s: %w", schema.Type(), err)}
-			} else {
-				return dec
 			}
+
+			return dec
 		}
 	}
 
@@ -235,26 +236,25 @@ func decoderOfResolvedUnion(cfg *frozenConfig, schema Schema) (ValDecoder, error
 		name := unionResolutionName(schema)
 
 		typ, err := cfg.resolver.Type(name)
-		if err == nil {
-			decoder := decoderOfType(cfg, schema, typ)
-			decoders[i] = decoder
-			types[i] = typ
-			continue
+		if err != nil {
+			if cfg.config.UnionResolutionError {
+				return nil, err
+			}
+
+			if cfg.config.PartialUnionTypeResolution {
+				decoders[i] = nil
+				types[i] = nil
+				continue
+			}
+
+			decoders = []ValDecoder{}
+			types = []reflect2.Type{}
+			break
 		}
 
-		if cfg.config.UnionResolutionError {
-			return nil, err
-		}
-
-		if cfg.config.PartialUnionTypeResolution {
-			decoders[i] = nil
-			types[i] = nil
-			continue
-		}
-
-		decoders = []ValDecoder{}
-		types = []reflect2.Type{}
-		break
+		decoder := decoderOfType(cfg, schema, typ)
+		decoders[i] = decoder
+		types[i] = typ
 	}
 
 	return &unionResolvedDecoder{
