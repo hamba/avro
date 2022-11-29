@@ -19,35 +19,53 @@ func TestConfig_Freeze(t *testing.T) {
 }
 
 func TestConfig_ReusesDecoders(t *testing.T) {
+	type testObj struct {
+		A int64 `avro:"a"`
+	}
+
 	api := Config{
 		TagKey:      "test",
 		BlockLength: 2,
 	}.Freeze()
 	cfg := api.(*frozenConfig)
 
-	schema := MustParse(`"long"`)
-	var long int64
-	typ := reflect2.TypeOfPtr(&long)
+	schema := MustParse(`{
+	"type": "record",
+	"name": "test",
+	"fields" : [
+		{"name": "a", "type": "long"}
+	]
+}`)
+	typ := reflect2.TypeOfPtr(&testObj{})
 
 	dec1 := cfg.DecoderOf(schema, typ)
 	dec2 := cfg.DecoderOf(schema, typ)
 
-	assert.Equal(t, dec1, dec2)
+	assert.Same(t, dec1, dec2)
 }
 
 func TestConfig_ReusesEncoders(t *testing.T) {
+	type testObj struct {
+		A int64 `avro:"a"`
+	}
+
 	api := Config{
 		TagKey:      "test",
 		BlockLength: 2,
 	}.Freeze()
 	cfg := api.(*frozenConfig)
 
-	schema := MustParse(`"long"`)
-	var long int64
-	typ := reflect2.TypeOfPtr(long)
+	schema := MustParse(`{
+	"type": "record",
+	"name": "test",
+	"fields" : [
+		{"name": "a", "type": "long"}
+	]
+}`)
+	typ := reflect2.TypeOfPtr(testObj{})
 
 	enc1 := cfg.EncoderOf(schema, typ)
 	enc2 := cfg.EncoderOf(schema, typ)
 
-	assert.Equal(t, enc1, enc2)
+	assert.Same(t, enc1, enc2)
 }
