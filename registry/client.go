@@ -55,7 +55,7 @@ type Registry interface {
 	CreateSchema(ctx context.Context, subject, schema string, references ...SchemaReference) (int, avro.Schema, error)
 
 	// IsRegistered determines of the schema is registered.
-	IsRegistered(ctx context.Context, subject, schema string) (int, avro.Schema, error)
+	IsRegistered(ctx context.Context, subject, schema string, references ...SchemaReference) (int, avro.Schema, error)
 }
 
 type schemaPayload struct {
@@ -277,10 +277,15 @@ func (c *Client) CreateSchema(
 }
 
 // IsRegistered determines of the schema is registered.
-func (c *Client) IsRegistered(ctx context.Context, subject, schema string) (int, avro.Schema, error) {
+func (c *Client) IsRegistered(
+	ctx context.Context,
+	subject, schema string,
+	references ...SchemaReference,
+) (int, avro.Schema, error) {
 	var payload idPayload
 	p := path.Join("subjects", subject)
-	err := c.request(ctx, http.MethodPost, p, schemaPayload{Schema: schema}, &payload)
+	inPayload := schemaPayload{Schema: schema, References: references}
+	err := c.request(ctx, http.MethodPost, p, inPayload, &payload)
 	if err != nil {
 		return 0, nil, err
 	}
