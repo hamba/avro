@@ -2,6 +2,8 @@ package registry_test
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -487,6 +489,43 @@ func TestClient_IsRegistered(t *testing.T) {
 	client, _ := registry.NewClient(s.URL)
 
 	id, schema, err := client.IsRegistered(context.Background(), "test", "[\"null\",\"string\",\"int\"]")
+
+	require.NoError(t, err)
+	assert.Equal(t, 10, id)
+	assert.Equal(t, `["null","string","int"]`, schema.String())
+}
+
+func TestClient_IsRegisteredWithRefs(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, "/subjects/test", r.URL.Path)
+		body, _ := io.ReadAll(r.Body)
+		var decoded map[string]interface{}
+		_ = json.Unmarshal(body, &decoded)
+		assert.Contains(t, decoded, "references")
+		refs, ok := decoded["references"].([]interface{})
+		assert.Equal(t, ok, true)
+		assert.Len(t, refs, 1)
+		ref, ok := refs[0].(map[string]interface{})
+		assert.Equal(t, true, ok)
+		assert.Equal(t, "some_schema", ref["name"].(string))
+		assert.Equal(t, "some_subject", ref["subject"].(string))
+		assert.Equal(t, float64(3), ref["version"].(float64))
+		_, _ = w.Write([]byte(`{"id":10}`))
+	}))
+	defer s.Close()
+	client, _ := registry.NewClient(s.URL)
+
+	id, schema, err := client.IsRegisteredWithRefs(
+		context.Background(),
+		"test",
+		"[\"null\",\"string\",\"int\"]",
+		registry.SchemaReference{
+			Name:    "some_schema",
+			Subject: "some_subject",
+			Version: 3,
+		},
+	)
 
 	require.NoError(t, err)
 	assert.Equal(t, 10, id)

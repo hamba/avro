@@ -54,8 +54,11 @@ type Registry interface {
 	// CreateSchema creates a schema in the registry, returning the schema id.
 	CreateSchema(ctx context.Context, subject, schema string, references ...SchemaReference) (int, avro.Schema, error)
 
-	// IsRegistered determines of the schema is registered.
-	IsRegistered(ctx context.Context, subject, schema string, references ...SchemaReference) (int, avro.Schema, error)
+	// IsRegistered determines if the schema is registered.
+	IsRegistered(ctx context.Context, subject, schema string) (int, avro.Schema, error)
+
+	// IsRegisteredWithRefs determines if the schema is registered, with optional referenced schemas.
+	IsRegisteredWithRefs(ctx context.Context, subject, schema string, references ...SchemaReference) (int, avro.Schema, error)
 }
 
 type schemaPayload struct {
@@ -276,8 +279,13 @@ func (c *Client) CreateSchema(
 	return payload.ID, sch, err
 }
 
-// IsRegistered determines of the schema is registered.
-func (c *Client) IsRegistered(
+// IsRegistered determines if the schema is registered.
+func (c *Client) IsRegistered(ctx context.Context, subject, schema string) (int, avro.Schema, error) {
+	return c.IsRegisteredWithRefs(ctx, subject, schema)
+}
+
+// IsRegisteredWithRefs determines if the schema is registered, with optional referenced schemas.
+func (c *Client) IsRegisteredWithRefs(
 	ctx context.Context,
 	subject, schema string,
 	references ...SchemaReference,
