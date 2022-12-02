@@ -58,7 +58,7 @@ type Registry interface {
 	IsRegistered(ctx context.Context, subject, schema string) (int, avro.Schema, error)
 
 	// IsRegisteredWithRefs determines if the schema is registered, with optional referenced schemas.
-	IsRegisteredWithRefs(ctx context.Context, subject, schema string, references ...SchemaReference) (int, avro.Schema, error)
+	IsRegisteredWithRefs(ctx context.Context, subject, schema string, refs ...SchemaReference) (int, avro.Schema, error)
 }
 
 type schemaPayload struct {
