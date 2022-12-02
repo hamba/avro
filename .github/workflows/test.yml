@@ -1,8 +1,7 @@
 on:
   push:
     branches:
-      - master
-      - vnext
+      - main
   pull_request:
 
 name: run tests
