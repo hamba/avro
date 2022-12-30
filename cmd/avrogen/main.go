@@ -4,15 +4,17 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"go/format"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/hamba/avro/v2"
 	"github.com/hamba/avro/v2/gen"
 )
 
-type rawOpts struct {
+type config struct {
 	Pkg  string
 	Out  string
 	Tags string
@@ -23,62 +25,68 @@ func main() {
 }
 
 func realMain(args []string, out io.Writer) int {
-	var ro rawOpts
+	var cfg config
 	flgs := flag.NewFlagSet("avrogen", flag.ExitOnError)
 	flgs.SetOutput(out)
-	flgs.StringVar(&ro.Pkg, "pkg", "", "The package name of the output file.")
-	flgs.StringVar(&ro.Out, "o", "", "The output file path.")
-	flgs.StringVar(&ro.Tags, "tags", "", "The additional field tags <tag-name>:{snake|camel|upper-camel|kebab}>[,...]")
+	flgs.StringVar(&cfg.Pkg, "pkg", "", "The package name of the output file.")
+	flgs.StringVar(&cfg.Out, "o", "", "The output file path.")
+	flgs.StringVar(&cfg.Tags, "tags", "", "The additional field tags <tag-name>:{snake|camel|upper-camel|kebab}>[,...]")
 	flgs.Usage = func() {
-		_, _ = fmt.Fprintln(out, "Usage: avrogen [options] schema")
+		_, _ = fmt.Fprintln(out, "Usage: avrogen [options] schemas")
 		_, _ = fmt.Fprintln(out, "Options:")
 		flgs.PrintDefaults()
 	}
-
 	if err := flgs.Parse(args[1:]); err != nil {
 		return 1
 	}
-	if err := validateOpts(flgs.Args(), ro); err != nil {
-		_, _ = fmt.Fprintln(out, "Error: "+err.Error())
 
+	if err := validateOpts(flgs.NArg(), cfg); err != nil {
+		_, _ = fmt.Fprintln(out, "Error: "+err.Error())
 		return 1
 	}
-	tags, err := parseTags(ro.Tags)
+	tags, err := parseTags(cfg.Tags)
 	if err != nil {
 		_, _ = fmt.Fprintln(out, "Error: "+err.Error())
 		return 1
 	}
 
-	schema, err := readSchema(flgs.Args()[0])
-	if err != nil {
-		_, _ = fmt.Fprintf(out, "Error: %v\n", err)
-		return 2
+	g := gen.NewGenerator(cfg.Pkg, tags)
+	for _, file := range flgs.Args() {
+		schema, err := avro.ParseFiles(filepath.Clean(file))
+		if err != nil {
+			_, _ = fmt.Fprintf(out, "Error: %v\n", err)
+			return 2
+		}
+		g.Parse(schema)
 	}
 
 	var buf bytes.Buffer
-	cfg := gen.Config{PackageName: ro.Pkg, Tags: tags}
-	if err = gen.Struct(schema, &buf, cfg); err != nil {
-		_, _ = fmt.Fprintln(out, err.Error())
+	if err = g.Write(&buf); err != nil {
+		_, _ = fmt.Fprintf(out, "Error: could not generate code: %v\n", err)
 		return 3
 	}
-
-	if err = os.WriteFile(ro.Out, buf.Bytes(), 0o600); err != nil {
+	formatted, err := format.Source(buf.Bytes())
+	if err != nil {
+		_, _ = fmt.Fprintf(out, "Error: could format code: %v\n", err)
+		return 3
+	}
+	if err = os.WriteFile(cfg.Out, formatted, 0o600); err != nil {
 		_, _ = fmt.Fprintf(out, "Error: could write file: %v\n", err)
 		return 4
 	}
 	return 0
 }
 
-func validateOpts(args []string, ro rawOpts) error {
-	if len(args) != 1 {
-		return fmt.Errorf("schema is required")
+func validateOpts(nargs int, cfg config) error {
+	if nargs < 1 {
+		return fmt.Errorf("at least one schema is required")
 	}
 
-	if ro.Pkg == "" {
+	if cfg.Pkg == "" {
 		return fmt.Errorf("a package is required")
 	}
 
-	if ro.Out == "" {
+	if cfg.Out == "" {
 		return fmt.Errorf("an output file is reqired")
 	}
 
@@ -113,16 +121,7 @@ func parseTags(raw string) (map[string]gen.TagStyle, error) {
 		default:
 			return nil, fmt.Errorf("style %q is invalid in %q", parts[1], tag)
 		}
-
 		result[parts[0]] = style
 	}
 	return result, nil
-}
-
-func readSchema(path string) (string, error) {
-	b, err := os.ReadFile(filepath.Clean(path))
-	if err != nil {
-		return "", fmt.Errorf("could not open schema file: %w", err)
-	}
-	return string(b), nil
 }

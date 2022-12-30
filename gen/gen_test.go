@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hamba/avro/v2"
 	"github.com/hamba/avro/v2/gen"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -132,6 +133,31 @@ func TestStruct_GenFromRecordSchema(t *testing.T) {
 	want, err := os.ReadFile("testdata/golden.go")
 	require.NoError(t, err)
 	assert.Equal(t, want, file)
+}
+
+func TestGenerator(t *testing.T) {
+	unionSchema, err := avro.ParseFiles("testdata/uniontype.avsc")
+	require.NoError(t, err)
+
+	mainSchema, err := avro.ParseFiles("testdata/main.avsc")
+	require.NoError(t, err)
+
+	g := gen.NewGenerator("something", map[string]gen.TagStyle{})
+	g.Parse(unionSchema)
+	g.Parse(mainSchema)
+
+	var buf bytes.Buffer
+	err = g.Write(&buf)
+	require.NoError(t, err)
+
+	if *update {
+		err = os.WriteFile("testdata/golden_multiple.go", buf.Bytes(), 0600)
+		require.NoError(t, err)
+	}
+
+	want, err := os.ReadFile("testdata/golden_multiple.go")
+	require.NoError(t, err)
+	assert.Equal(t, want, buf.Bytes())
 }
 
 // generate is a utility to run the generation and return the result as a tuple
