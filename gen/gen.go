@@ -14,7 +14,7 @@ import (
 	"github.com/hamba/avro/v2"
 )
 
-// Config exposes the options available for the code generation.
+// Config configures the code generation.
 type Config struct {
 	PackageName string
 	Tags        map[string]TagStyle
@@ -53,23 +53,6 @@ type {{ .Name }} struct {
 }
 {{ end }}`
 
-type data struct {
-	PackageName string
-	Imports     []string
-	Typedefs    []typedef
-}
-
-type typedef struct {
-	Name   string
-	Fields []field
-}
-
-type field struct {
-	Name string
-	Type string
-	Tag  string
-}
-
 var primitiveMappings = map[avro.Type]string{
 	"string":  "string",
 	"bytes":   "[]byte",
@@ -81,44 +64,60 @@ var primitiveMappings = map[avro.Type]string{
 }
 
 // Struct generates Go structs based on the schema and writes them to w.
-func Struct(s string, w io.Writer, gc Config) error {
+func Struct(s string, w io.Writer, cfg Config) error {
 	schema, err := avro.Parse(s)
 	if err != nil {
 		return err
 	}
-
-	return StructFromSchema(schema, w, gc)
+	return StructFromSchema(schema, w, cfg)
 }
 
 // StructFromSchema generates Go structs based on the schema and writes them to w.
-func StructFromSchema(schema avro.Schema, w io.Writer, gc Config) error {
-	rSchema, ok := schema.(*avro.RecordSchema)
+func StructFromSchema(schema avro.Schema, w io.Writer, cfg Config) error {
+	rec, ok := schema.(*avro.RecordSchema)
 	if !ok {
 		return errors.New("can only generate Go code from Record Schemas")
 	}
 
-	td := data{PackageName: strcase.ToSnake(gc.PackageName)}
-	_ = generator{Config: gc}.generateFrom(rSchema, &td)
+	g := NewGenerator(strcase.ToSnake(cfg.PackageName), cfg.Tags)
+	g.Parse(rec)
 
 	buf := &bytes.Buffer{}
-	if err := writeCode(buf, &td); err != nil {
+	if err := g.Write(buf); err != nil {
 		return err
 	}
 
 	formatted, err := format.Source(buf.Bytes())
 	if err != nil {
-		return fmt.Errorf("failed formatting. %w", err)
+		return fmt.Errorf("could not format code: %w", err)
 	}
 
 	_, err = w.Write(formatted)
 	return err
 }
 
-type generator struct {
-	Config
+// Generator generates Go structs from schemas.
+type Generator struct {
+	pkg      string
+	tags     map[string]TagStyle
+	imports  []string
+	typedefs []typedef
 }
 
-func (g generator) generateFrom(schema avro.Schema, acc *data) string {
+// NewGenerator returns a generator.
+func NewGenerator(pkg string, tags map[string]TagStyle) *Generator {
+	return &Generator{
+		pkg:  pkg,
+		tags: tags,
+	}
+}
+
+// Parse parses an avro schema into Go types.
+func (g *Generator) Parse(schema avro.Schema) {
+	_ = g.generate(schema)
+}
+
+func (g *Generator) generate(schema avro.Schema) string {
 	switch t := schema.(type) {
 	case *avro.RecordSchema:
 		typeName := strcase.ToGoPascal(t.Name())
@@ -126,77 +125,72 @@ func (g generator) generateFrom(schema avro.Schema, acc *data) string {
 		for i, f := range t.Fields() {
 			fSchema := f.Type()
 			fieldName := strcase.ToGoPascal(f.Name())
-			typ := g.resolveType(fSchema, acc)
+			typ := g.resolveType(fSchema)
 			tag := f.Name()
 			fields[i] = g.newField(fieldName, typ, tag)
 		}
-		acc.Typedefs = append(acc.Typedefs, newType(typeName, fields))
+		g.typedefs = append(g.typedefs, newType(typeName, fields))
 		return typeName
 	default:
-		return g.resolveType(schema, acc)
+		return g.resolveType(schema)
 	}
 }
 
-func (g generator) resolveType(fieldSchema avro.Schema, acc *data) string {
-	var typ string
-	switch s := fieldSchema.(type) {
+func (g *Generator) resolveType(schema avro.Schema) string {
+	switch s := schema.(type) {
 	case *avro.RefSchema:
-		typ = resolveRefSchema(s)
+		return resolveRefSchema(s)
 	case *avro.RecordSchema:
-		typ = g.generateFrom(s, acc)
+		return g.generate(s)
 	case *avro.PrimitiveSchema:
-		logicalSchema := s.Logical()
-		if logicalSchema != nil {
-			typ = resolveLogicalSchema(logicalSchema.Type(), acc)
-		} else {
-			typ = primitiveMappings[s.Type()]
+		typ := primitiveMappings[s.Type()]
+		if ls := s.Logical(); ls != nil {
+			typ = g.resolveLogicalSchema(ls.Type())
 		}
+		return typ
 	case *avro.ArraySchema:
-		typ = fmt.Sprintf("[]%s", g.generateFrom(s.Items(), acc))
+		return fmt.Sprintf("[]%s", g.generate(s.Items()))
 	case *avro.EnumSchema:
-		typ = "string"
+		return "string"
 	case *avro.FixedSchema:
-		logicalSchema := s.Logical()
-		if logicalSchema != nil {
-			typ = resolveLogicalSchema(logicalSchema.Type(), acc)
-		} else {
-			typ = fmt.Sprintf("[%d]byte", +s.Size())
+		typ := fmt.Sprintf("[%d]byte", s.Size())
+		if ls := s.Logical(); ls != nil {
+			typ = g.resolveLogicalSchema(ls.Type())
 		}
+		return typ
 	case *avro.MapSchema:
-		typ = "map[string]" + g.resolveType(s.Values(), acc)
+		return "map[string]" + g.resolveType(s.Values())
 	case *avro.UnionSchema:
-		typ = g.resolveUnionTypes(s, acc)
+		return g.resolveUnionTypes(s)
+	default:
+		return ""
 	}
-	return typ
 }
 
 func resolveRefSchema(s *avro.RefSchema) string {
 	typ := ""
 	if sx, ok := s.Schema().(*avro.RecordSchema); ok {
-		typ = sx.Name()
+		typ = strcase.ToGoPascal(sx.Name())
 	}
-	return strcase.ToGoPascal(typ)
+	return typ
 }
 
-func (g generator) resolveUnionTypes(unionSchema *avro.UnionSchema, acc *data) string {
-	nullIsAllowed := false
-	typesInUnion := make([]string, 0)
-	for _, elem := range unionSchema.Types() {
+func (g *Generator) resolveUnionTypes(s *avro.UnionSchema) string {
+	types := make([]string, 0)
+	for _, elem := range s.Types() {
 		if _, ok := elem.(*avro.NullSchema); ok {
-			nullIsAllowed = true
 			continue
 		}
-
-		typesInUnion = append(typesInUnion, g.generateFrom(elem, acc))
+		types = append(types, g.generate(elem))
 	}
-	if nullIsAllowed && len(typesInUnion) == 1 {
-		return "*" + typesInUnion[0]
+	if s.Nullable() {
+		return "*" + types[0]
 	}
 	return "interface{}"
 }
 
-func resolveLogicalSchema(logicalType avro.LogicalType, acc *data) string {
-	typ := ""
+func (g *Generator) resolveLogicalSchema(logicalType avro.LogicalType) string {
+	var typ string
 	switch logicalType {
 	case "date", "timestamp-millis", "timestamp-micros":
 		typ = "time.Time"
@@ -208,12 +202,75 @@ func resolveLogicalSchema(logicalType avro.LogicalType, acc *data) string {
 		typ = "time.Duration"
 	}
 	if strings.Contains(typ, "time") {
-		addImport(acc, "time")
+		g.addImport("time")
 	}
 	if strings.Contains(typ, "big") {
-		addImport(acc, "math/big")
+		g.addImport("math/big")
 	}
 	return typ
+}
+
+func (g *Generator) newField(name, typ, tag string) field {
+	tagLine := fmt.Sprintf(`avro:"%s"`, tag)
+	for tagName, style := range g.tags {
+		if tagName == "avro" {
+			continue
+		}
+		tagLine += fmt.Sprintf(` %s:"%s"`, tagName, formatTag(tag, style))
+	}
+	return field{
+		Name: name,
+		Type: typ,
+		Tag:  fmt.Sprintf("`%s`", tagLine),
+	}
+}
+
+func formatTag(tag string, style TagStyle) string {
+	switch style {
+	case Kebab:
+		return strcase.ToKebab(tag)
+	case UpperCamel:
+		return strcase.ToPascal(tag)
+	case Camel:
+		return strcase.ToCamel(tag)
+	case Snake:
+		return strcase.ToSnake(tag)
+	default:
+		return tag
+	}
+}
+
+func (g *Generator) addImport(pkg string) {
+	for _, p := range g.imports {
+		if p == pkg {
+			return
+		}
+	}
+	g.imports = append(g.imports, pkg)
+}
+
+// Write writes Go code from the parsed schemas.
+func (g *Generator) Write(w io.Writer) error {
+	parsed, err := template.New("out").Parse(outputTemplate)
+	if err != nil {
+		return err
+	}
+
+	data := struct {
+		PackageName string
+		Imports     []string
+		Typedefs    []typedef
+	}{
+		PackageName: g.pkg,
+		Imports:     g.imports,
+		Typedefs:    g.typedefs,
+	}
+	return parsed.Execute(w, data)
+}
+
+type typedef struct {
+	Name   string
+	Fields []field
 }
 
 func newType(name string, fields []field) typedef {
@@ -223,51 +280,8 @@ func newType(name string, fields []field) typedef {
 	}
 }
 
-func (g generator) newField(name, typ, tag string) field {
-	tagLine := fmt.Sprintf(`avro:"%s"`, tag)
-	for tagName, style := range g.Tags {
-		if tagName == "avro" {
-			continue
-		}
-		tagLine += fmt.Sprintf(` %s:"%s"`, tagName, g.tagStyleFn(style)(tag))
-	}
-	return field{
-		Name: name,
-		Type: typ,
-		Tag:  fmt.Sprintf("`%s`", tagLine),
-	}
-}
-
-func (g generator) tagStyleFn(style TagStyle) func(string) string {
-	switch style {
-	case Kebab:
-		return strcase.ToKebab
-	case UpperCamel:
-		return strcase.ToPascal
-	case Camel:
-		return strcase.ToCamel
-	case Snake:
-		return strcase.ToSnake
-	}
-	return func(s string) string {
-		return s
-	}
-}
-
-func addImport(acc *data, statement string) {
-	for _, k := range acc.Imports {
-		if k == statement {
-			return
-		}
-	}
-	acc.Imports = append(acc.Imports, statement)
-}
-
-func writeCode(w io.Writer, data *data) error {
-	parsed, err := template.New("out").Parse(outputTemplate)
-	if err != nil {
-		return err
-	}
-
-	return parsed.Execute(w, data)
+type field struct {
+	Name string
+	Type string
+	Tag  string
 }

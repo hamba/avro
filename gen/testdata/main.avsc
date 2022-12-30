@@ -1,0 +1,8 @@
+{
+  "namespace": "test",
+  "type": "record",
+  "name": "TestMain",
+  "fields": [
+    {"name": "TestUnion", "type": ["null", "TestUnionType"], "default": null}
+  ]
+}
