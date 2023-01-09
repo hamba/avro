@@ -352,3 +352,33 @@ func (e Error) Error() string {
 
 	return "registry error: " + strconv.Itoa(e.StatusCode)
 }
+
+// code for compatibility levels
+
+const (
+	BackwardCL           string = "BACKWARD"
+	BackwardTransitiveCL string = "BACKWARD_TRANSITIVE"
+	ForwardCL            string = "FORWARD"
+	ForwardTransitiveCL  string = "FORWARD_TRANSITIVE"
+	FullCL               string = "FULL"
+	FullTransitiveCL     string = "FULL_TRANSITIVE"
+	NoneCL               string = "NONE"
+)
+
+type compatibilityPayload struct {
+	Compatibility string `json:"compatibility"`
+}
+
+func (c *Client) PutCompatibilityLevel(
+	ctx context.Context,
+	subject, compatibility_level string,
+) (string, error) {
+	var payload compatibilityPayload
+	inPayload := compatibilityPayload{Compatibility: compatibility_level}
+	err := c.request(ctx, http.MethodPut, "config/"+subject, inPayload, &payload)
+	if err != nil {
+		return "", err
+	}
+
+	return payload.Compatibility, nil
+}
