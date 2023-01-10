@@ -353,8 +353,7 @@ func (e Error) Error() string {
 	return "registry error: " + strconv.Itoa(e.StatusCode)
 }
 
-// code for compatibility levels
-
+//compatibility levels
 const (
 	BackwardCL           string = "BACKWARD"
 	BackwardTransitiveCL string = "BACKWARD_TRANSITIVE"
@@ -365,17 +364,112 @@ const (
 	NoneCL               string = "NONE"
 )
 
+/*
+this function returns whether or not a compatibility level
+is valid according to the ones described in:
+https://docs.confluent.io/platform/current/schema-registry/develop/api.html#compatibility
+*/
+func validCompatibilityLevel(compatibility_level string) bool {
+	switch compatibility_level {
+	case BackwardCL:
+		return true
+	case BackwardTransitiveCL:
+		return true
+	case ForwardCL:
+		return true
+	case ForwardTransitiveCL:
+		return true
+	case FullCL:
+		return true
+	case FullTransitiveCL:
+		return true
+	case NoneCL:
+		return true
+	default:
+		return false
+	}
+}
+
+/*
+response obtained from the schema registry when updating a compatibility level
+*/
 type compatibilityPayload struct {
 	Compatibility string `json:"compatibility"`
 }
 
+/*
+function returning error for invalid compatibility level, i.e. a compatibility
+level not present in:
+https://docs.confluent.io/platform/current/schema-registry/develop/api.html#compatibility
+*/
+func errByInvalidCL(compatibility_level string) error {
+	return fmt.Errorf("invalid compatibility level %s", compatibility_level)
+}
+
+/*
+method used to set the global compatibility level of the registry
+*/
+func (c *Client) PutCompatibilityLevelGlobal(
+	ctx context.Context,
+	compatibility_level string,
+) (string, error) {
+	if !validCompatibilityLevel(compatibility_level) {
+		return "", errByInvalidCL(compatibility_level)
+	}
+	var payload compatibilityPayload
+	inPayload := compatibilityPayload{Compatibility: compatibility_level}
+	err := c.request(ctx, http.MethodPut, "config/", inPayload, &payload)
+	if err != nil {
+		return "", err
+	}
+
+	return payload.Compatibility, nil
+}
+
+/*
+method used to set the compatibility level of a subject
+*/
 func (c *Client) PutCompatibilityLevel(
 	ctx context.Context,
 	subject, compatibility_level string,
 ) (string, error) {
+	if !validCompatibilityLevel(compatibility_level) {
+		return "", errByInvalidCL(compatibility_level)
+	}
 	var payload compatibilityPayload
 	inPayload := compatibilityPayload{Compatibility: compatibility_level}
 	err := c.request(ctx, http.MethodPut, "config/"+subject, inPayload, &payload)
+	if err != nil {
+		return "", err
+	}
+
+	return payload.Compatibility, nil
+}
+
+/*
+method used to get the global compatibility level
+*/
+func (c *Client) GetCompatibilityLevelGlobal(
+	ctx context.Context,
+) (string, error) {
+	var payload compatibilityPayload
+	err := c.request(ctx, http.MethodGet, "config/", nil, &payload)
+	if err != nil {
+		return "", err
+	}
+
+	return payload.Compatibility, nil
+}
+
+/*
+method used to get the global compatibility level of a subject
+*/
+func (c *Client) GetCompatibilityLevel(
+	ctx context.Context,
+	subject string,
+) (string, error) {
+	var payload compatibilityPayload
+	err := c.request(ctx, http.MethodGet, "config/"+subject, nil, &payload)
 	if err != nil {
 		return "", err
 	}
