@@ -353,7 +353,7 @@ func (e Error) Error() string {
 	return "registry error: " + strconv.Itoa(e.StatusCode)
 }
 
-//compatibility levels.
+// Compatibility levels.
 const (
 	BackwardCL           string = "BACKWARD"
 	BackwardTransitiveCL string = "BACKWARD_TRANSITIVE"
@@ -370,8 +370,8 @@ is valid according to the ones described in:
 https://docs.confluent.io/platform/current/schema-registry/develop/api.html#compatibility
 .
 */
-func validCompatibilityLevel(compatibility_level string) bool {
-	switch compatibility_level {
+func validCompatibilityLevel(compatibilityLevel string) bool {
+	switch compatibilityLevel {
 	case BackwardCL:
 		return true
 	case BackwardTransitiveCL:
@@ -391,35 +391,30 @@ func validCompatibilityLevel(compatibility_level string) bool {
 	}
 }
 
-/*
-response obtained from the schema registry when updating a compatibility level.
-*/
+// compatibilityPayload is the response body obtained from the schema registry when updating a compatibility level.
 type compatibilityPayload struct {
 	Compatibility string `json:"compatibility"`
 }
 
 /*
-function returning error for invalid compatibility level, i.e. a compatibility
+errByInvalidCL returns error for and invalid compatibility level, i.e. a compatibility
 level not present in:
-https://docs.confluent.io/platform/current/schema-registry/develop/api.html#compatibility
-.
+https://docs.confluent.io/platform/current/schema-registry/develop/api.html#compatibility .
 */
-func errByInvalidCL(compatibility_level string) error {
-	return fmt.Errorf("invalid compatibility level %s", compatibility_level)
+func errByInvalidCL(compatibilityLevel string) error {
+	return fmt.Errorf("invalid compatibility level %s", compatibilityLevel)
 }
 
-/*
-method used to set the global compatibility level of the registry.
-*/
+// PutCompatibilityLevelGlobal sets the global compatibility level of the registry.
 func (c *Client) PutCompatibilityLevelGlobal(
 	ctx context.Context,
-	compatibility_level string,
+	compatibilityLevel string,
 ) (string, error) {
-	if !validCompatibilityLevel(compatibility_level) {
-		return "", errByInvalidCL(compatibility_level)
+	if !validCompatibilityLevel(compatibilityLevel) {
+		return "", errByInvalidCL(compatibilityLevel)
 	}
 	var payload compatibilityPayload
-	inPayload := compatibilityPayload{Compatibility: compatibility_level}
+	inPayload := compatibilityPayload{Compatibility: compatibilityLevel}
 	err := c.request(ctx, http.MethodPut, "config/", inPayload, &payload)
 	if err != nil {
 		return "", err
@@ -428,18 +423,16 @@ func (c *Client) PutCompatibilityLevelGlobal(
 	return payload.Compatibility, nil
 }
 
-/*
-method used to set the compatibility level of a subject.
-*/
+// PutCompatibilityLevel sets the compatibility level of a subject.
 func (c *Client) PutCompatibilityLevel(
 	ctx context.Context,
-	subject, compatibility_level string,
+	subject, compatibilityLevel string,
 ) (string, error) {
-	if !validCompatibilityLevel(compatibility_level) {
-		return "", errByInvalidCL(compatibility_level)
+	if !validCompatibilityLevel(compatibilityLevel) {
+		return "", errByInvalidCL(compatibilityLevel)
 	}
 	var payload compatibilityPayload
-	inPayload := compatibilityPayload{Compatibility: compatibility_level}
+	inPayload := compatibilityPayload{Compatibility: compatibilityLevel}
 	err := c.request(ctx, http.MethodPut, "config/"+subject, inPayload, &payload)
 	if err != nil {
 		return "", err
@@ -448,9 +441,7 @@ func (c *Client) PutCompatibilityLevel(
 	return payload.Compatibility, nil
 }
 
-/*
-method used to get the global compatibility level.
-*/
+// GetCompatibilityLevelGlobal gets the global compatibility level.
 func (c *Client) GetCompatibilityLevelGlobal(
 	ctx context.Context,
 ) (string, error) {
@@ -463,9 +454,7 @@ func (c *Client) GetCompatibilityLevelGlobal(
 	return payload.Compatibility, nil
 }
 
-/*
-method used to get the global compatibility level of a subject.
-*/
+// GetCompatibilityLevel gets the global compatibility level of a subject.
 func (c *Client) GetCompatibilityLevel(
 	ctx context.Context,
 	subject string,
