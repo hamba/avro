@@ -599,3 +599,40 @@ func TestError_ErrorEmptyMEssage(t *testing.T) {
 
 	assert.Equal(t, "registry error: 404", str)
 }
+
+func TestClient_GetCompatibilityLevelGlobal(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "/config", r.URL.Path)
+
+		_, _ = w.Write([]byte(`{
+			"compatibility": "FULL"
+		  }`))
+	}))
+	defer s.Close()
+	client, _ := registry.NewClient(s.URL)
+
+	compatibilityLevel, err := client.GetCompatibilityLevelGlobal(context.Background())
+
+	require.NoError(t, err)
+	assert.Equal(t, registry.FullCL, compatibilityLevel)
+}
+
+func TestClient_GetCompatibilityLevel(t *testing.T) {
+	subject := "boh_subj"
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "/config/"+subject, r.URL.Path)
+
+		_, _ = w.Write([]byte(`{
+			"compatibility": "FULL"
+		  }`))
+	}))
+	defer s.Close()
+	client, _ := registry.NewClient(s.URL)
+
+	compatibilityLevel, err := client.GetCompatibilityLevel(context.Background(), subject)
+
+	require.NoError(t, err)
+	assert.Equal(t, registry.FullCL, compatibilityLevel)
+}

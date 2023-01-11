@@ -415,7 +415,7 @@ func (c *Client) PutCompatibilityLevelGlobal(
 	}
 	var payload compatibilityPayload
 	inPayload := compatibilityPayload{Compatibility: compatibilityLevel}
-	err := c.request(ctx, http.MethodPut, "config/", inPayload, &payload)
+	err := c.request(ctx, http.MethodPut, "config", inPayload, &payload)
 	if err != nil {
 		return "", err
 	}
@@ -446,7 +446,7 @@ func (c *Client) GetCompatibilityLevelGlobal(
 	ctx context.Context,
 ) (string, error) {
 	var payload compatibilityPayload
-	err := c.request(ctx, http.MethodGet, "config/", nil, &payload)
+	err := c.request(ctx, http.MethodGet, "config", nil, &payload)
 	if err != nil {
 		return "", err
 	}
