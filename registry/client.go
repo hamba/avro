@@ -387,38 +387,38 @@ type compatibilityPayload struct {
 func (c *Client) SetGlobalCompatibilityLevel(
 	ctx context.Context,
 	lvl string,
-) (string, error) {
+) error {
 	err := validateCompatibilityLevel(lvl)
 	if err != nil {
-		return "", err
+		return err
 	}
 	var payload compatibilityPayload
 	inPayload := compatibilityPayload{Compatibility: lvl}
 	err = c.request(ctx, http.MethodPut, "config", inPayload, &payload)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	return payload.Compatibility, nil
+	return nil
 }
 
 // SetCompatibilityLevel sets the compatibility level of a subject.
 func (c *Client) SetCompatibilityLevel(
 	ctx context.Context,
 	subject, lvl string,
-) (string, error) {
+) error {
 	err := validateCompatibilityLevel(lvl)
 	if err != nil {
-		return "", err
+		return err
 	}
 	var payload compatibilityPayload
 	inPayload := compatibilityPayload{Compatibility: lvl}
 	err = c.request(ctx, http.MethodPut, "config/"+subject, inPayload, &payload)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	return payload.Compatibility, nil
+	return nil
 }
 
 // GetGlobalCompatibilityLevel gets the global compatibility level.

@@ -673,10 +673,9 @@ func TestClient_SetGlobalCompatibilityLevel(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	compatibilityLevel, err := client.SetGlobalCompatibilityLevel(context.Background(), cl)
+	err := client.SetGlobalCompatibilityLevel(context.Background(), cl)
 
 	require.NoError(t, err)
-	assert.Equal(t, cl, compatibilityLevel)
 }
 
 func TestClient_SetGlobalCompatibilityLevelError(t *testing.T) {
@@ -686,7 +685,7 @@ func TestClient_SetGlobalCompatibilityLevelError(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, err := client.SetGlobalCompatibilityLevel(context.Background(), registry.BackwardCL)
+	err := client.SetGlobalCompatibilityLevel(context.Background(), registry.BackwardCL)
 
 	assert.Error(t, err)
 }
@@ -703,10 +702,9 @@ func TestClient_SetCompatibilityLevel(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	compatibilityLevel, err := client.SetCompatibilityLevel(context.Background(), subject, cl)
+	err := client.SetCompatibilityLevel(context.Background(), subject, cl)
 
 	require.NoError(t, err)
-	assert.Equal(t, cl, compatibilityLevel)
 }
 
 func TestClient_SetCompatibilityLevelError(t *testing.T) {
@@ -716,7 +714,7 @@ func TestClient_SetCompatibilityLevelError(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, err := client.SetCompatibilityLevel(context.Background(), "boh", registry.BackwardCL)
+	err := client.SetCompatibilityLevel(context.Background(), "boh", registry.BackwardCL)
 
 	assert.Error(t, err)
 }
