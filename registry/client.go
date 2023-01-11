@@ -365,29 +365,17 @@ const (
 )
 
 /*
-ValidCompatibilityLevel returns whether or not a compatibility level
+ValidateCompatibilityLevel returns whether or not a compatibility level
 is valid according to the ones described in:
 https://docs.confluent.io/platform/current/schema-registry/develop/api.html#compatibility
 .
 */
-func ValidCompatibilityLevel(compatibilityLevel string) bool {
-	switch compatibilityLevel {
-	case BackwardCL:
-		return true
-	case BackwardTransitiveCL:
-		return true
-	case ForwardCL:
-		return true
-	case ForwardTransitiveCL:
-		return true
-	case FullCL:
-		return true
-	case FullTransitiveCL:
-		return true
-	case NoneCL:
-		return true
+func ValidateCompatibilityLevel(lvl string) error {
+	switch lvl {
+	case BackwardCL, BackwardTransitiveCL, ForwardCL, ForwardTransitiveCL, FullCL, FullTransitiveCL, NoneCL:
+		return nil
 	default:
-		return false
+		return errByInvalidCL(lvl)
 	}
 }
 
@@ -401,21 +389,22 @@ errByInvalidCL returns error for and invalid compatibility level, i.e. a compati
 level not present in:
 https://docs.confluent.io/platform/current/schema-registry/develop/api.html#compatibility .
 */
-func errByInvalidCL(compatibilityLevel string) error {
-	return fmt.Errorf("invalid compatibility level %s", compatibilityLevel)
+func errByInvalidCL(lvl string) error {
+	return fmt.Errorf("invalid compatibility level %s", lvl)
 }
 
 // PutCompatibilityLevelGlobal sets the global compatibility level of the registry.
 func (c *Client) PutCompatibilityLevelGlobal(
 	ctx context.Context,
-	compatibilityLevel string,
+	lvl string,
 ) (string, error) {
-	if !ValidCompatibilityLevel(compatibilityLevel) {
-		return "", errByInvalidCL(compatibilityLevel)
+	err := ValidateCompatibilityLevel(lvl)
+	if err != nil {
+		return "", errByInvalidCL(lvl)
 	}
 	var payload compatibilityPayload
-	inPayload := compatibilityPayload{Compatibility: compatibilityLevel}
-	err := c.request(ctx, http.MethodPut, "config", inPayload, &payload)
+	inPayload := compatibilityPayload{Compatibility: lvl}
+	err = c.request(ctx, http.MethodPut, "config", inPayload, &payload)
 	if err != nil {
 		return "", err
 	}
@@ -426,14 +415,15 @@ func (c *Client) PutCompatibilityLevelGlobal(
 // PutCompatibilityLevel sets the compatibility level of a subject.
 func (c *Client) PutCompatibilityLevel(
 	ctx context.Context,
-	subject, compatibilityLevel string,
+	subject, lvl string,
 ) (string, error) {
-	if !ValidCompatibilityLevel(compatibilityLevel) {
-		return "", errByInvalidCL(compatibilityLevel)
+	err := ValidateCompatibilityLevel(lvl)
+	if err != nil {
+		return "", errByInvalidCL(lvl)
 	}
 	var payload compatibilityPayload
-	inPayload := compatibilityPayload{Compatibility: compatibilityLevel}
-	err := c.request(ctx, http.MethodPut, "config/"+subject, inPayload, &payload)
+	inPayload := compatibilityPayload{Compatibility: lvl}
+	err = c.request(ctx, http.MethodPut, "config/"+subject, inPayload, &payload)
 	if err != nil {
 		return "", err
 	}

@@ -601,7 +601,7 @@ func TestError_ErrorEmptyMEssage(t *testing.T) {
 	assert.Equal(t, "registry error: 404", str)
 }
 
-func TestFunc_ValidCompatibilityLevel(t *testing.T) {
+func TestFunc_ValidateCompatibilityLevel(t *testing.T) {
 	cls := []string{
 		registry.BackwardCL,
 		registry.BackwardTransitiveCL,
@@ -612,9 +612,9 @@ func TestFunc_ValidCompatibilityLevel(t *testing.T) {
 		registry.NoneCL,
 	}
 	for _, cl := range cls {
-		assert.True(t, registry.ValidCompatibilityLevel(cl))
+		require.NoError(t, registry.ValidateCompatibilityLevel(cl))
 	}
-	assert.False(t, registry.ValidCompatibilityLevel("BOH"))
+	assert.Equal(t, "invalid compatibility level BOH", registry.ValidateCompatibilityLevel("BOH").Error())
 }
 
 func TestClient_GetCompatibilityLevelGlobal(t *testing.T) {
