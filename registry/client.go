@@ -352,3 +352,98 @@ func (e Error) Error() string {
 
 	return "registry error: " + strconv.Itoa(e.StatusCode)
 }
+
+// Compatibility levels.
+const (
+	BackwardCL           string = "BACKWARD"
+	BackwardTransitiveCL string = "BACKWARD_TRANSITIVE"
+	ForwardCL            string = "FORWARD"
+	ForwardTransitiveCL  string = "FORWARD_TRANSITIVE"
+	FullCL               string = "FULL"
+	FullTransitiveCL     string = "FULL_TRANSITIVE"
+	NoneCL               string = "NONE"
+)
+
+// ValidateCompatibilityLevel returns whether or not a compatibility level
+// is valid according to the ones described in:
+// https://docs.confluent.io/platform/current/schema-registry/develop/api.html#compatibility
+// .
+
+func validateCompatibilityLevel(lvl string) error {
+	switch lvl {
+	case BackwardCL, BackwardTransitiveCL, ForwardCL, ForwardTransitiveCL, FullCL, FullTransitiveCL, NoneCL:
+		return nil
+	default:
+		return fmt.Errorf("invalid compatibility level %s", lvl)
+	}
+}
+
+// compatibilityPayload is the response body obtained from the schema registry when updating a compatibility level.
+type compatibilityPayload struct {
+	Compatibility string `json:"compatibility"`
+}
+
+// SetGlobalCompatibilityLevel sets the global compatibility level of the registry.
+func (c *Client) SetGlobalCompatibilityLevel(
+	ctx context.Context,
+	lvl string,
+) error {
+	err := validateCompatibilityLevel(lvl)
+	if err != nil {
+		return err
+	}
+	var payload compatibilityPayload
+	inPayload := compatibilityPayload{Compatibility: lvl}
+	err = c.request(ctx, http.MethodPut, "config", inPayload, &payload)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// SetCompatibilityLevel sets the compatibility level of a subject.
+func (c *Client) SetCompatibilityLevel(
+	ctx context.Context,
+	subject, lvl string,
+) error {
+	err := validateCompatibilityLevel(lvl)
+	if err != nil {
+		return err
+	}
+	var payload compatibilityPayload
+	inPayload := compatibilityPayload{Compatibility: lvl}
+	err = c.request(ctx, http.MethodPut, "config/"+subject, inPayload, &payload)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// GetGlobalCompatibilityLevel gets the global compatibility level.
+func (c *Client) GetGlobalCompatibilityLevel(
+	ctx context.Context,
+) (string, error) {
+	var payload compatibilityPayload
+	err := c.request(ctx, http.MethodGet, "config", nil, &payload)
+	if err != nil {
+		return "", err
+	}
+
+	return payload.Compatibility, nil
+}
+
+// GetCompatibilityLevel gets the global compatibility level of a subject.
+func (c *Client) GetCompatibilityLevel(
+	ctx context.Context,
+	subject string,
+) (string, error) {
+	var payload compatibilityPayload
+	err := c.request(ctx, http.MethodGet, "config/"+subject, nil, &payload)
+	if err != nil {
+		return "", err
+	}
+
+	return payload.Compatibility, nil
+}
