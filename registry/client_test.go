@@ -678,7 +678,7 @@ func TestClient_GetCompatibilityLevelError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestClient_PutCompatibilityLevelGlobal(t *testing.T) {
+func TestClient_SetGlobalCompatibilityLevel(t *testing.T) {
 	cl := registry.BackwardCL
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "PUT", r.Method)
@@ -689,25 +689,25 @@ func TestClient_PutCompatibilityLevelGlobal(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	compatibilityLevel, err := client.PutCompatibilityLevelGlobal(context.Background(), cl)
+	compatibilityLevel, err := client.SetGlobalCompatibilityLevel(context.Background(), cl)
 
 	require.NoError(t, err)
 	assert.Equal(t, cl, compatibilityLevel)
 }
 
-func TestClient_PutCompatibilityLevelGlobalError(t *testing.T) {
+func TestClient_SetGlobalCompatibilityLevelError(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
 	}))
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, err := client.PutCompatibilityLevelGlobal(context.Background(), registry.BackwardCL)
+	_, err := client.SetGlobalCompatibilityLevel(context.Background(), registry.BackwardCL)
 
 	assert.Error(t, err)
 }
 
-func TestClient_PutCompatibilityLevel(t *testing.T) {
+func TestClient_SetCompatibilityLevel(t *testing.T) {
 	cl := registry.BackwardCL
 	subject := "boh_subj"
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -719,20 +719,20 @@ func TestClient_PutCompatibilityLevel(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	compatibilityLevel, err := client.PutCompatibilityLevel(context.Background(), subject, cl)
+	compatibilityLevel, err := client.SetCompatibilityLevel(context.Background(), subject, cl)
 
 	require.NoError(t, err)
 	assert.Equal(t, cl, compatibilityLevel)
 }
 
-func TestClient_PutCompatibilityLevelError(t *testing.T) {
+func TestClient_SetCompatibilityLevelError(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
 	}))
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, err := client.PutCompatibilityLevel(context.Background(), "boh", registry.BackwardCL)
+	_, err := client.SetCompatibilityLevel(context.Background(), "boh", registry.BackwardCL)
 
 	assert.Error(t, err)
 }

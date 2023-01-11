@@ -364,18 +364,17 @@ const (
 	NoneCL               string = "NONE"
 )
 
-/*
-ValidateCompatibilityLevel returns whether or not a compatibility level
-is valid according to the ones described in:
-https://docs.confluent.io/platform/current/schema-registry/develop/api.html#compatibility
-.
-*/
+// ValidateCompatibilityLevel returns whether or not a compatibility level
+// is valid according to the ones described in:
+// https://docs.confluent.io/platform/current/schema-registry/develop/api.html#compatibility
+// .
+
 func ValidateCompatibilityLevel(lvl string) error {
 	switch lvl {
 	case BackwardCL, BackwardTransitiveCL, ForwardCL, ForwardTransitiveCL, FullCL, FullTransitiveCL, NoneCL:
 		return nil
 	default:
-		return errByInvalidCL(lvl)
+		return fmt.Errorf("invalid compatibility level %s", lvl)
 	}
 }
 
@@ -384,23 +383,14 @@ type compatibilityPayload struct {
 	Compatibility string `json:"compatibility"`
 }
 
-/*
-errByInvalidCL returns error for and invalid compatibility level, i.e. a compatibility
-level not present in:
-https://docs.confluent.io/platform/current/schema-registry/develop/api.html#compatibility .
-*/
-func errByInvalidCL(lvl string) error {
-	return fmt.Errorf("invalid compatibility level %s", lvl)
-}
-
-// PutCompatibilityLevelGlobal sets the global compatibility level of the registry.
-func (c *Client) PutCompatibilityLevelGlobal(
+// SetGlobalCompatibilityLevel sets the global compatibility level of the registry.
+func (c *Client) SetGlobalCompatibilityLevel(
 	ctx context.Context,
 	lvl string,
 ) (string, error) {
 	err := ValidateCompatibilityLevel(lvl)
 	if err != nil {
-		return "", errByInvalidCL(lvl)
+		return "", err
 	}
 	var payload compatibilityPayload
 	inPayload := compatibilityPayload{Compatibility: lvl}
@@ -412,14 +402,14 @@ func (c *Client) PutCompatibilityLevelGlobal(
 	return payload.Compatibility, nil
 }
 
-// PutCompatibilityLevel sets the compatibility level of a subject.
-func (c *Client) PutCompatibilityLevel(
+// SetCompatibilityLevel sets the compatibility level of a subject.
+func (c *Client) SetCompatibilityLevel(
 	ctx context.Context,
 	subject, lvl string,
 ) (string, error) {
 	err := ValidateCompatibilityLevel(lvl)
 	if err != nil {
-		return "", errByInvalidCL(lvl)
+		return "", err
 	}
 	var payload compatibilityPayload
 	inPayload := compatibilityPayload{Compatibility: lvl}
