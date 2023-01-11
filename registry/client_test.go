@@ -690,6 +690,22 @@ func TestClient_SetGlobalCompatibilityLevelError(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestClient_SetGlobalCompatibilityLevelHandlesInvalidLevel(t *testing.T) {
+	invalid_cl := "INVALID_STUFF"
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "PUT", r.Method)
+		assert.Equal(t, "/config", r.URL.Path)
+
+		_, _ = w.Write([]byte((fmt.Sprintf("{\"compatibility\":\"%s\"}", invalid_cl))))
+	}))
+	defer s.Close()
+	client, _ := registry.NewClient(s.URL)
+
+	err := client.SetGlobalCompatibilityLevel(context.Background(), invalid_cl)
+
+	assert.Error(t, err)
+}
+
 func TestClient_SetCompatibilityLevel(t *testing.T) {
 	cl := registry.BackwardCL
 	subject := "boh_subj"
@@ -715,6 +731,23 @@ func TestClient_SetCompatibilityLevelError(t *testing.T) {
 	client, _ := registry.NewClient(s.URL)
 
 	err := client.SetCompatibilityLevel(context.Background(), "boh", registry.BackwardCL)
+
+	assert.Error(t, err)
+}
+
+func TestClient_SetCompatibilityLevelHandlesInvalidLevel(t *testing.T) {
+	invalid_cl := "INVALID_STUFF"
+	subject := "boh"
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "PUT", r.Method)
+		assert.Equal(t, "/config/"+subject, r.URL.Path)
+
+		_, _ = w.Write([]byte((fmt.Sprintf("{\"compatibility\":\"%s\"}", invalid_cl))))
+	}))
+	defer s.Close()
+	client, _ := registry.NewClient(s.URL)
+
+	err := client.SetCompatibilityLevel(context.Background(), subject, invalid_cl)
 
 	assert.Error(t, err)
 }
