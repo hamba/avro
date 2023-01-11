@@ -365,7 +365,7 @@ const (
 )
 
 /*
-this function returns whether or not a compatibility level
+ValidCompatibilityLevel returns whether or not a compatibility level
 is valid according to the ones described in:
 https://docs.confluent.io/platform/current/schema-registry/develop/api.html#compatibility
 .
