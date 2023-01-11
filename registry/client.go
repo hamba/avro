@@ -421,8 +421,8 @@ func (c *Client) SetCompatibilityLevel(
 	return payload.Compatibility, nil
 }
 
-// GetCompatibilityLevelGlobal gets the global compatibility level.
-func (c *Client) GetCompatibilityLevelGlobal(
+// GetGlobalCompatibilityLevel gets the global compatibility level.
+func (c *Client) GetGlobalCompatibilityLevel(
 	ctx context.Context,
 ) (string, error) {
 	var payload compatibilityPayload

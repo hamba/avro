@@ -617,7 +617,7 @@ func TestFunc_ValidateCompatibilityLevel(t *testing.T) {
 	assert.Equal(t, "invalid compatibility level BOH", registry.ValidateCompatibilityLevel("BOH").Error())
 }
 
-func TestClient_GetCompatibilityLevelGlobal(t *testing.T) {
+func TestClient_GetGlobalCompatibilityLevel(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
 		assert.Equal(t, "/config", r.URL.Path)
@@ -629,20 +629,20 @@ func TestClient_GetCompatibilityLevelGlobal(t *testing.T) {
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	compatibilityLevel, err := client.GetCompatibilityLevelGlobal(context.Background())
+	compatibilityLevel, err := client.GetGlobalCompatibilityLevel(context.Background())
 
 	require.NoError(t, err)
 	assert.Equal(t, registry.FullCL, compatibilityLevel)
 }
 
-func TestClient_GetCompatibilityLevelGlobalError(t *testing.T) {
+func TestClient_GetGlobalCompatibilityLevelError(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
 	}))
 	defer s.Close()
 	client, _ := registry.NewClient(s.URL)
 
-	_, err := client.GetCompatibilityLevelGlobal(context.Background())
+	_, err := client.GetGlobalCompatibilityLevel(context.Background())
 
 	assert.Error(t, err)
 }
