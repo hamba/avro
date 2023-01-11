@@ -369,7 +369,7 @@ const (
 // https://docs.confluent.io/platform/current/schema-registry/develop/api.html#compatibility
 // .
 
-func ValidateCompatibilityLevel(lvl string) error {
+func validateCompatibilityLevel(lvl string) error {
 	switch lvl {
 	case BackwardCL, BackwardTransitiveCL, ForwardCL, ForwardTransitiveCL, FullCL, FullTransitiveCL, NoneCL:
 		return nil
@@ -388,7 +388,7 @@ func (c *Client) SetGlobalCompatibilityLevel(
 	ctx context.Context,
 	lvl string,
 ) (string, error) {
-	err := ValidateCompatibilityLevel(lvl)
+	err := validateCompatibilityLevel(lvl)
 	if err != nil {
 		return "", err
 	}
@@ -407,7 +407,7 @@ func (c *Client) SetCompatibilityLevel(
 	ctx context.Context,
 	subject, lvl string,
 ) (string, error) {
-	err := ValidateCompatibilityLevel(lvl)
+	err := validateCompatibilityLevel(lvl)
 	if err != nil {
 		return "", err
 	}
