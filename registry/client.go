@@ -353,7 +353,7 @@ func (e Error) Error() string {
 	return "registry error: " + strconv.Itoa(e.StatusCode)
 }
 
-//compatibility levels
+//compatibility levels.
 const (
 	BackwardCL           string = "BACKWARD"
 	BackwardTransitiveCL string = "BACKWARD_TRANSITIVE"
@@ -368,6 +368,7 @@ const (
 this function returns whether or not a compatibility level
 is valid according to the ones described in:
 https://docs.confluent.io/platform/current/schema-registry/develop/api.html#compatibility
+.
 */
 func validCompatibilityLevel(compatibility_level string) bool {
 	switch compatibility_level {
@@ -391,7 +392,7 @@ func validCompatibilityLevel(compatibility_level string) bool {
 }
 
 /*
-response obtained from the schema registry when updating a compatibility level
+response obtained from the schema registry when updating a compatibility level.
 */
 type compatibilityPayload struct {
 	Compatibility string `json:"compatibility"`
@@ -401,13 +402,14 @@ type compatibilityPayload struct {
 function returning error for invalid compatibility level, i.e. a compatibility
 level not present in:
 https://docs.confluent.io/platform/current/schema-registry/develop/api.html#compatibility
+.
 */
 func errByInvalidCL(compatibility_level string) error {
 	return fmt.Errorf("invalid compatibility level %s", compatibility_level)
 }
 
 /*
-method used to set the global compatibility level of the registry
+method used to set the global compatibility level of the registry.
 */
 func (c *Client) PutCompatibilityLevelGlobal(
 	ctx context.Context,
@@ -427,7 +429,7 @@ func (c *Client) PutCompatibilityLevelGlobal(
 }
 
 /*
-method used to set the compatibility level of a subject
+method used to set the compatibility level of a subject.
 */
 func (c *Client) PutCompatibilityLevel(
 	ctx context.Context,
@@ -447,7 +449,7 @@ func (c *Client) PutCompatibilityLevel(
 }
 
 /*
-method used to get the global compatibility level
+method used to get the global compatibility level.
 */
 func (c *Client) GetCompatibilityLevelGlobal(
 	ctx context.Context,
@@ -462,7 +464,7 @@ func (c *Client) GetCompatibilityLevelGlobal(
 }
 
 /*
-method used to get the global compatibility level of a subject
+method used to get the global compatibility level of a subject.
 */
 func (c *Client) GetCompatibilityLevel(
 	ctx context.Context,
