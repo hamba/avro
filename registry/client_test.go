@@ -601,6 +601,22 @@ func TestError_ErrorEmptyMEssage(t *testing.T) {
 	assert.Equal(t, "registry error: 404", str)
 }
 
+func TestFunc_ValidCompatibilityLevel(t *testing.T) {
+	cls := []string{
+		registry.BackwardCL,
+		registry.BackwardTransitiveCL,
+		registry.ForwardCL,
+		registry.ForwardTransitiveCL,
+		registry.FullCL,
+		registry.FullTransitiveCL,
+		registry.NoneCL,
+	}
+	for _, cl := range cls {
+		assert.True(t, registry.ValidCompatibilityLevel(cl))
+	}
+	assert.False(t, registry.ValidCompatibilityLevel("BOH"))
+}
+
 func TestClient_GetCompatibilityLevelGlobal(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)

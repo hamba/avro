@@ -370,7 +370,7 @@ is valid according to the ones described in:
 https://docs.confluent.io/platform/current/schema-registry/develop/api.html#compatibility
 .
 */
-func validCompatibilityLevel(compatibilityLevel string) bool {
+func ValidCompatibilityLevel(compatibilityLevel string) bool {
 	switch compatibilityLevel {
 	case BackwardCL:
 		return true
@@ -410,7 +410,7 @@ func (c *Client) PutCompatibilityLevelGlobal(
 	ctx context.Context,
 	compatibilityLevel string,
 ) (string, error) {
-	if !validCompatibilityLevel(compatibilityLevel) {
+	if !ValidCompatibilityLevel(compatibilityLevel) {
 		return "", errByInvalidCL(compatibilityLevel)
 	}
 	var payload compatibilityPayload
@@ -428,7 +428,7 @@ func (c *Client) PutCompatibilityLevel(
 	ctx context.Context,
 	subject, compatibilityLevel string,
 ) (string, error) {
-	if !validCompatibilityLevel(compatibilityLevel) {
+	if !ValidCompatibilityLevel(compatibilityLevel) {
 		return "", errByInvalidCL(compatibilityLevel)
 	}
 	var payload compatibilityPayload
