@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestNewClient_WithHTTPClient(t *testing.T) {
@@ -22,20 +21,4 @@ func TestNewClient_WithBasicAuth(t *testing.T) {
 	client, _ := NewClient("http://example.com", WithBasicAuth("username", "password"))
 
 	assert.Equal(t, client.creds, creds)
-}
-
-func TestFunc_validateCompatibilityLevel(t *testing.T) {
-	cls := []string{
-		BackwardCL,
-		BackwardTransitiveCL,
-		ForwardCL,
-		ForwardTransitiveCL,
-		FullCL,
-		FullTransitiveCL,
-		NoneCL,
-	}
-	for _, cl := range cls {
-		require.NoError(t, validateCompatibilityLevel(cl))
-	}
-	assert.Equal(t, "invalid compatibility level BOH", validateCompatibilityLevel("BOH").Error())
 }

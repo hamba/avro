@@ -24,9 +24,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
-const (
-	contentType = "application/vnd.schemaregistry.v1+json"
-)
+const contentType = "application/vnd.schemaregistry.v1+json"
 
 // Registry represents a schema registry.
 type Registry interface {
@@ -175,13 +173,13 @@ func (c *Client) GetSchema(ctx context.Context, id int) (avro.Schema, error) {
 		return schema.(avro.Schema), nil
 	}
 
-	var payload schemaPayload
+	var resp schemaPayload
 	p := path.Join("schemas", "ids", strconv.Itoa(id))
-	if err := c.request(ctx, http.MethodGet, p, nil, &payload); err != nil {
+	if err := c.request(ctx, http.MethodGet, p, nil, &resp); err != nil {
 		return nil, err
 	}
 
-	schema, err := avro.Parse(payload.Schema)
+	schema, err := avro.Parse(resp.Schema)
 	if err != nil {
 		return nil, err
 	}
@@ -194,72 +192,60 @@ func (c *Client) GetSchema(ctx context.Context, id int) (avro.Schema, error) {
 // GetSubjects gets the registry subjects.
 func (c *Client) GetSubjects(ctx context.Context) ([]string, error) {
 	var subjects []string
-	err := c.request(ctx, http.MethodGet, "subjects", nil, &subjects)
-	if err != nil {
+	if err := c.request(ctx, http.MethodGet, "subjects", nil, &subjects); err != nil {
 		return nil, err
 	}
-
-	return subjects, err
+	return subjects, nil
 }
 
 // GetVersions gets the schema versions for a subject.
 func (c *Client) GetVersions(ctx context.Context, subject string) ([]int, error) {
 	var versions []int
 	p := path.Join("subjects", subject, "versions")
-	err := c.request(ctx, http.MethodGet, p, nil, &versions)
-	if err != nil {
+	if err := c.request(ctx, http.MethodGet, p, nil, &versions); err != nil {
 		return nil, err
 	}
-
-	return versions, err
+	return versions, nil
 }
 
 // GetSchemaByVersion gets the schema by version.
 func (c *Client) GetSchemaByVersion(ctx context.Context, subject string, version int) (avro.Schema, error) {
-	var payload schemaPayload
+	var resp schemaPayload
 	p := path.Join("subjects", subject, "versions", strconv.Itoa(version))
-	err := c.request(ctx, http.MethodGet, p, nil, &payload)
-	if err != nil {
+	if err := c.request(ctx, http.MethodGet, p, nil, &resp); err != nil {
 		return nil, err
 	}
-
-	return avro.Parse(payload.Schema)
+	return avro.Parse(resp.Schema)
 }
 
 // GetLatestSchema gets the latest schema for a subject.
 func (c *Client) GetLatestSchema(ctx context.Context, subject string) (avro.Schema, error) {
-	var payload schemaPayload
+	var resp schemaPayload
 	p := path.Join("subjects", subject, "versions", "latest")
-	err := c.request(ctx, http.MethodGet, p, nil, &payload)
-	if err != nil {
+	if err := c.request(ctx, http.MethodGet, p, nil, &resp); err != nil {
 		return nil, err
 	}
-
-	return avro.Parse(payload.Schema)
+	return avro.Parse(resp.Schema)
 }
 
 // GetSchemaInfo gets the schema and schema metadata for a subject and version.
 func (c *Client) GetSchemaInfo(ctx context.Context, subject string, version int) (SchemaInfo, error) {
-	var payload schemaInfoPayload
+	var resp schemaInfoPayload
 	p := path.Join("subjects", subject, "versions", strconv.Itoa(version))
-	err := c.request(ctx, http.MethodGet, p, nil, &payload)
-	if err != nil {
+	if err := c.request(ctx, http.MethodGet, p, nil, &resp); err != nil {
 		return SchemaInfo{}, err
 	}
-
-	return payload.Parse()
+	return resp.Parse()
 }
 
 // GetLatestSchemaInfo gets the latest schema and schema metadata for a subject.
 func (c *Client) GetLatestSchemaInfo(ctx context.Context, subject string) (SchemaInfo, error) {
-	var payload schemaInfoPayload
+	var resp schemaInfoPayload
 	p := path.Join("subjects", subject, "versions", "latest")
-	err := c.request(ctx, http.MethodGet, p, nil, &payload)
-	if err != nil {
+	if err := c.request(ctx, http.MethodGet, p, nil, &resp); err != nil {
 		return SchemaInfo{}, err
 	}
-
-	return payload.Parse()
+	return resp.Parse()
 }
 
 // CreateSchema creates a schema in the registry, returning the schema id.
@@ -268,15 +254,15 @@ func (c *Client) CreateSchema(
 	subject, schema string,
 	references ...SchemaReference,
 ) (int, avro.Schema, error) {
-	var payload idPayload
-	inPayload := schemaPayload{Schema: schema, References: references}
-	err := c.request(ctx, http.MethodPost, "/subjects/"+subject+"/versions", inPayload, &payload)
-	if err != nil {
+	var resp idPayload
+	req := schemaPayload{Schema: schema, References: references}
+	p := path.Join("subjects", subject, "versions")
+	if err := c.request(ctx, http.MethodPost, p, req, &resp); err != nil {
 		return 0, nil, err
 	}
 
 	sch, err := avro.Parse(schema)
-	return payload.ID, sch, err
+	return resp.ID, sch, err
 }
 
 // IsRegistered determines if the schema is registered.
@@ -290,16 +276,82 @@ func (c *Client) IsRegisteredWithRefs(
 	subject, schema string,
 	references ...SchemaReference,
 ) (int, avro.Schema, error) {
-	var payload idPayload
-	p := path.Join("subjects", subject)
-	inPayload := schemaPayload{Schema: schema, References: references}
-	err := c.request(ctx, http.MethodPost, p, inPayload, &payload)
-	if err != nil {
+	var resp idPayload
+	req := schemaPayload{Schema: schema, References: references}
+	if err := c.request(ctx, http.MethodPost, path.Join("subjects", subject), req, &resp); err != nil {
 		return 0, nil, err
 	}
 
 	sch, err := avro.Parse(schema)
-	return payload.ID, sch, err
+	return resp.ID, sch, err
+}
+
+// Compatibility levels.
+const (
+	BackwardCL           string = "BACKWARD"
+	BackwardTransitiveCL string = "BACKWARD_TRANSITIVE"
+	ForwardCL            string = "FORWARD"
+	ForwardTransitiveCL  string = "FORWARD_TRANSITIVE"
+	FullCL               string = "FULL"
+	FullTransitiveCL     string = "FULL_TRANSITIVE"
+	NoneCL               string = "NONE"
+)
+
+func validateCompatibilityLevel(lvl string) error {
+	switch lvl {
+	case BackwardCL, BackwardTransitiveCL, ForwardCL, ForwardTransitiveCL, FullCL, FullTransitiveCL, NoneCL:
+		return nil
+	default:
+		return fmt.Errorf("invalid compatibility level %s", lvl)
+	}
+}
+
+type compatPayload struct {
+	Compatibility string `json:"compatibility"`
+}
+
+// SetGlobalCompatibilityLevel sets the global compatibility level of the registry.
+func (c *Client) SetGlobalCompatibilityLevel(ctx context.Context, lvl string) error {
+	if err := validateCompatibilityLevel(lvl); err != nil {
+		return err
+	}
+
+	req := compatPayload{Compatibility: lvl}
+	if err := c.request(ctx, http.MethodPut, "config", req, nil); err != nil {
+		return err
+	}
+	return nil
+}
+
+// SetCompatibilityLevel sets the compatibility level of a subject.
+func (c *Client) SetCompatibilityLevel(ctx context.Context, subject, lvl string) error {
+	if err := validateCompatibilityLevel(lvl); err != nil {
+		return err
+	}
+
+	req := compatPayload{Compatibility: lvl}
+	if err := c.request(ctx, http.MethodPut, path.Join("config", subject), req, nil); err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetGlobalCompatibilityLevel gets the global compatibility level.
+func (c *Client) GetGlobalCompatibilityLevel(ctx context.Context) (string, error) {
+	var resp compatPayload
+	if err := c.request(ctx, http.MethodGet, "config", nil, &resp); err != nil {
+		return "", err
+	}
+	return resp.Compatibility, nil
+}
+
+// GetCompatibilityLevel gets the compatibility level of a subject.
+func (c *Client) GetCompatibilityLevel(ctx context.Context, subject string) (string, error) {
+	var resp compatPayload
+	if err := c.request(ctx, http.MethodGet, path.Join("config", subject), nil, &resp); err != nil {
+		return "", err
+	}
+	return resp.Compatibility, nil
 }
 
 func (c *Client) request(ctx context.Context, method, path string, in, out interface{}) error {
@@ -333,15 +385,17 @@ func (c *Client) request(ctx context.Context, method, path string, in, out inter
 		return err
 	}
 
-	return jsoniter.NewDecoder(resp.Body).Decode(out)
+	if out != nil {
+		return jsoniter.NewDecoder(resp.Body).Decode(out)
+	}
+	return nil
 }
 
 // Error is returned by the registry when there is an error.
 type Error struct {
-	StatusCode int `json:"-"`
-
-	Code    int    `json:"error_code"`
-	Message string `json:"message"`
+	StatusCode int    `json:"-"`
+	Code       int    `json:"error_code"`
+	Message    string `json:"message"`
 }
 
 // Error returns the error message.
@@ -349,101 +403,5 @@ func (e Error) Error() string {
 	if e.Message != "" {
 		return e.Message
 	}
-
 	return "registry error: " + strconv.Itoa(e.StatusCode)
-}
-
-// Compatibility levels.
-const (
-	BackwardCL           string = "BACKWARD"
-	BackwardTransitiveCL string = "BACKWARD_TRANSITIVE"
-	ForwardCL            string = "FORWARD"
-	ForwardTransitiveCL  string = "FORWARD_TRANSITIVE"
-	FullCL               string = "FULL"
-	FullTransitiveCL     string = "FULL_TRANSITIVE"
-	NoneCL               string = "NONE"
-)
-
-// ValidateCompatibilityLevel returns whether or not a compatibility level
-// is valid according to the ones described in:
-// https://docs.confluent.io/platform/current/schema-registry/develop/api.html#compatibility
-// .
-
-func validateCompatibilityLevel(lvl string) error {
-	switch lvl {
-	case BackwardCL, BackwardTransitiveCL, ForwardCL, ForwardTransitiveCL, FullCL, FullTransitiveCL, NoneCL:
-		return nil
-	default:
-		return fmt.Errorf("invalid compatibility level %s", lvl)
-	}
-}
-
-// compatibilityPayload is the response body obtained from the schema registry when updating a compatibility level.
-type compatibilityPayload struct {
-	Compatibility string `json:"compatibility"`
-}
-
-// SetGlobalCompatibilityLevel sets the global compatibility level of the registry.
-func (c *Client) SetGlobalCompatibilityLevel(
-	ctx context.Context,
-	lvl string,
-) error {
-	err := validateCompatibilityLevel(lvl)
-	if err != nil {
-		return err
-	}
-	var payload compatibilityPayload
-	inPayload := compatibilityPayload{Compatibility: lvl}
-	err = c.request(ctx, http.MethodPut, "config", inPayload, &payload)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// SetCompatibilityLevel sets the compatibility level of a subject.
-func (c *Client) SetCompatibilityLevel(
-	ctx context.Context,
-	subject, lvl string,
-) error {
-	err := validateCompatibilityLevel(lvl)
-	if err != nil {
-		return err
-	}
-	var payload compatibilityPayload
-	inPayload := compatibilityPayload{Compatibility: lvl}
-	err = c.request(ctx, http.MethodPut, "config/"+subject, inPayload, &payload)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// GetGlobalCompatibilityLevel gets the global compatibility level.
-func (c *Client) GetGlobalCompatibilityLevel(
-	ctx context.Context,
-) (string, error) {
-	var payload compatibilityPayload
-	err := c.request(ctx, http.MethodGet, "config", nil, &payload)
-	if err != nil {
-		return "", err
-	}
-
-	return payload.Compatibility, nil
-}
-
-// GetCompatibilityLevel gets the global compatibility level of a subject.
-func (c *Client) GetCompatibilityLevel(
-	ctx context.Context,
-	subject string,
-) (string, error) {
-	var payload compatibilityPayload
-	err := c.request(ctx, http.MethodGet, "config/"+subject, nil, &payload)
-	if err != nil {
-		return "", err
-	}
-
-	return payload.Compatibility, nil
 }
