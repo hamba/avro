@@ -2,6 +2,7 @@ package avro_test
 
 import (
 	"bytes"
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -90,4 +91,33 @@ func TestEncoder_FixedRatInvalidLogicalSchema(t *testing.T) {
 	err = enc.Encode(big.NewRat(1734, 5))
 
 	assert.Error(t, err)
+}
+
+func TestEncoder_FixedLogicalDuration(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"name":"foo","type":"fixed","logicalType":"duration","size":12}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	duration := avro.LogicalDuration{Months: 12, Days: 34, Milliseconds: 567890}
+	err = enc.Encode(duration)
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0xc, 0x0, 0x0, 0x0, 0x22, 0x0, 0x0, 0x0, 0x52, 0xaa, 0x8, 0x0}, buf.Bytes())
+}
+
+func TestEncoder_FixedLogicalDurationSizeNot12(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"name":"foo","type":"fixed","logicalType":"duration","size":11}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	duration := avro.LogicalDuration{}
+	err = enc.Encode(duration)
+	assert.Error(t, err)
+	assert.Equal(t, fmt.Errorf("avro: avro.LogicalDuration is unsupported for Avro fixed, size=11"), err)
 }

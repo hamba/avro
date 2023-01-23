@@ -2,6 +2,7 @@ package avro_test
 
 import (
 	"bytes"
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -95,4 +96,36 @@ func TestDecoder_FixedRatInvalidLogicalSchema(t *testing.T) {
 	err = dec.Decode(got)
 
 	assert.Error(t, err)
+}
+
+func TestDecoder_FixedLogicalDuration(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0xc, 0x0, 0x0, 0x0, 0x22, 0x0, 0x0, 0x0, 0x52, 0xaa, 0x8, 0x0}
+	schema := `{"name":"foo","type":"fixed","logicalType":"duration","size":12}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	got := avro.LogicalDuration{}
+	err = dec.Decode(&got)
+	require.NoError(t, err)
+
+	assert.Equal(t, uint32(12), got.Months)
+	assert.Equal(t, uint32(34), got.Days)
+	assert.Equal(t, uint32(567890), got.Milliseconds)
+}
+
+func TestDecoder_FixedLogicalDurationSizeNot12(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0xc, 0x0, 0x0, 0x0, 0x22, 0x0, 0x0, 0x0, 0x52, 0xaa, 0x8}
+	schema := `{"name":"foo","type":"fixed","logicalType":"duration","size":11}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	fmt.Printf("decoder: starting test\n")
+	got := avro.LogicalDuration{}
+	err = dec.Decode(&got)
+	assert.Error(t, err)
+	assert.Equal(t, fmt.Errorf("avro: avro.LogicalDuration is unsupported for Avro fixed, size=11"), err)
 }
