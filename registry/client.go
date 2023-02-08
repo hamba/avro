@@ -21,7 +21,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hamba/avro"
+	"github.com/hamba/avro/v2"
 	jsoniter "github.com/json-iterator/go"
 )
 
