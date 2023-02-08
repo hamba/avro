@@ -422,7 +422,7 @@ func extractSchemaIDFromPayload(payload []byte) (int, error) {
 
 // DeserializePayload takes in input a payload to be deserialized, extrapolates
 // its schema id, gets the related schema and uses it to unmarshal the payload.
-// The payload shall be formatted accoring to:
+// The payload shall be formatted according to:
 // https://docs.confluent.io/3.2.0/schema-registry/docs/serializer-formatter.html#wire-format .
 func (c *Client) DeserializePayload(
 	ctx context.Context,
