@@ -407,7 +407,7 @@ func (e Error) Error() string {
 }
 
 // ExtractSchemaIDFromPayload extrapolates the schema id from a payload composed
-// of raw bytes containg a magic bytes, 4 bytes representing the schema encoding,
+// of raw bytes containing a magic bytes, 4 bytes representing the schema encoding,
 // and the remaining payload being encoded with avro, as described in https://docs.confluent.io/3.2.0/schema-registry/docs/serializer-formatter.html#wire-format .
 func extractSchemaIDFromPayload(payload []byte) (int, error) {
 	if len(payload) < 5 {
