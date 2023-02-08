@@ -408,7 +408,8 @@ func (e Error) Error() string {
 
 // ExtractSchemaIDFromPayload extrapolates the schema id from a payload composed
 // of raw bytes containing a magic bytes, 4 bytes representing the schema encoding,
-// and the remaining payload being encoded with avro, as described in https://docs.confluent.io/3.2.0/schema-registry/docs/serializer-formatter.html#wire-format .
+// and the remaining payload being encoded with avro, as described in
+// https://docs.confluent.io/3.2.0/schema-registry/docs/serializer-formatter.html#wire-format .
 func extractSchemaIDFromPayload(payload []byte) (int, error) {
 	if len(payload) < 5 {
 		return 0, fmt.Errorf("payload too short to contain avro header")
@@ -421,7 +422,8 @@ func extractSchemaIDFromPayload(payload []byte) (int, error) {
 
 // DeserializePayload takes in input a payload to be deserialized, extrapolates
 // its schema id, gets the related schema and uses it to unmarshal the payload.
-// The payload shall be formatted accoring to: https://docs.confluent.io/3.2.0/schema-registry/docs/serializer-formatter.html#wire-format .
+// The payload shall be formatted accoring to:
+// https://docs.confluent.io/3.2.0/schema-registry/docs/serializer-formatter.html#wire-format .
 func (c *Client) DeserializePayload(
 	ctx context.Context,
 	payload []byte,
@@ -433,12 +435,12 @@ func (c *Client) DeserializePayload(
 
 	id, err := extractSchemaIDFromPayload(payload)
 	if err != nil {
-		return fmt.Errorf("unable to extract schema id from payload, error: %s", err.Error())
+		return fmt.Errorf("unable to extract schema id from payload, error: %w", err)
 	}
 
 	schema, err := c.GetSchema(ctx, id)
 	if err != nil {
-		return fmt.Errorf("unable to obtain schema, error: %s", err.Error())
+		return fmt.Errorf("unable to obtain schema, error: %w", err)
 	}
 
 	return avro.Unmarshal(schema, payload[5:], target)
