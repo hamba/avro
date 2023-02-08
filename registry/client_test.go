@@ -758,8 +758,10 @@ func TestClient_DeserializePayload(t *testing.T) {
 		Name: "john",
 		Age:  28,
 	}
+
 	//i declare the string schema tu be returned by the httptest server
 	var person_schema_string string = `{\"type\":\"record\",\"name\":\"person\",\"fields\":[{\"name\":\"name\",\"type\":\"string\"},{\"name\":\"age\",\"type\":\"int\"}]}`
+
 	//i build the schema in order to then marshal the payload
 	name_field, err := avro.NewField("name", avro.MustParse("string"), nil)
 	require.NoError(t, err)
@@ -767,9 +769,11 @@ func TestClient_DeserializePayload(t *testing.T) {
 	require.NoError(t, err)
 	schema, err := avro.NewRecordSchema("person", "", []*avro.Field{name_field, age_field})
 	require.NoError(t, err)
+
 	//i marshal the payload
 	john_payload, err := avro.Marshal(schema, john)
 	require.NoError(t, err)
+
 	//i then add the magic byte to the payload, together with the encoded id
 	payload := make([]byte, 0, len(john_payload)+5)
 	payload = append(payload, 0)
@@ -801,6 +805,7 @@ func TestClient_DeserializePayload(t *testing.T) {
 
 func TestError_DeserializePayload(t *testing.T) {
 	schema_id := 42
+
 	//instantiating the test server
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
@@ -816,7 +821,7 @@ func TestError_DeserializePayload(t *testing.T) {
 
 	err := client.DeserializePayload(context.Background(), []byte{0}, nil)
 
-	assert.Equal(t, "payload not containg data", err.Error())
+	assert.Equal(t, "payload not containing data", err.Error())
 
 	err = client.DeserializePayload(context.Background(), []byte{1, 1, 1, 1, 1, 1, 1, 1, 1}, nil)
 

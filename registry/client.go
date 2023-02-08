@@ -428,14 +428,15 @@ func (c *Client) DeserializePayload(
 	target interface{},
 ) error {
 	if len(payload) < 6 {
-		return fmt.Errorf("payload not containg data")
+		return fmt.Errorf("payload not containing data")
 	}
+
 	id, err := extractSchemaIDFromPayload(payload)
 	if err != nil {
 		return fmt.Errorf("unable to extract schema id from payload, error: %s", err.Error())
 	}
+
 	schema, err := c.GetSchema(ctx, id)
-	//log.Println(schema.String())
 	if err != nil {
 		return fmt.Errorf("unable to obtain schema, error: %s", err.Error())
 	}
