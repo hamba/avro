@@ -9,6 +9,7 @@ package registry
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"net"
@@ -178,7 +179,6 @@ func (c *Client) GetSchema(ctx context.Context, id int) (avro.Schema, error) {
 	if err := c.request(ctx, http.MethodGet, p, nil, &resp); err != nil {
 		return nil, err
 	}
-
 	schema, err := avro.Parse(resp.Schema)
 	if err != nil {
 		return nil, err
@@ -404,4 +404,41 @@ func (e Error) Error() string {
 		return e.Message
 	}
 	return "registry error: " + strconv.Itoa(e.StatusCode)
+}
+
+// ExtractSchemaIDFromPayload extrapolates the schema id from a payload composed
+// of raw bytes containg a magic bytes, 4 bytes representing the schema encoding,
+// and the remaining payload being encoded with avro, as described in https://docs.confluent.io/3.2.0/schema-registry/docs/serializer-formatter.html#wire-format .
+func extractSchemaIDFromPayload(payload []byte) (int, error) {
+	if len(payload) < 5 {
+		return 0, fmt.Errorf("payload too short to contain avro header")
+	}
+	if payload[0] != 0 {
+		return 0, fmt.Errorf("magic byte value is %d, different from 0", payload[0])
+	}
+	return int(binary.BigEndian.Uint32(payload[1:5])), nil
+}
+
+// DeserializePayload takes in input a payload to be deserialized, extrapolates
+// its schema id, gets the related schema and uses it to unmarshal the payload.
+// The payload shall be formatted accoring to: https://docs.confluent.io/3.2.0/schema-registry/docs/serializer-formatter.html#wire-format .
+func (c *Client) DeserializePayload(
+	ctx context.Context,
+	payload []byte,
+	target interface{},
+) error {
+	if len(payload) < 6 {
+		return fmt.Errorf("payload not containg data")
+	}
+	id, err := extractSchemaIDFromPayload(payload)
+	if err != nil {
+		return fmt.Errorf("unable to extract schema id from payload, error: %s", err.Error())
+	}
+	schema, err := c.GetSchema(ctx, id)
+	//log.Println(schema.String())
+	if err != nil {
+		return fmt.Errorf("unable to obtain schema, error: %s", err.Error())
+	}
+
+	return avro.Unmarshal(schema, payload[5:], target)
 }
