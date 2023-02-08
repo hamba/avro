@@ -10,7 +10,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/hamba/avro"
+	"github.com/hamba/avro/v2"
 	"github.com/hamba/avro/v2/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -759,16 +759,13 @@ func TestClient_DeserializePayload(t *testing.T) {
 		Age:  28,
 	}
 
-	//i declare the string schema tu be returned by the httptest server
+	//i declare the string schema to be returned by the httptest server
 	var person_schema_string string = `{\"type\":\"record\",\"name\":\"person\",\"fields\":[{\"name\":\"name\",\"type\":\"string\"},{\"name\":\"age\",\"type\":\"int\"}]}`
 
-	//i build the schema in order to then marshal the payload
-	name_field, err := avro.NewField("name", avro.MustParse("string"), nil)
-	require.NoError(t, err)
-	age_field, err := avro.NewField("age", avro.MustParse("int"), nil)
-	require.NoError(t, err)
-	schema, err := avro.NewRecordSchema("person", "", []*avro.Field{name_field, age_field})
-	require.NoError(t, err)
+	//i declare the string schema to be parsed
+	var person_schema_string_to_parse string = `{"type":"record","name":"person","fields":[{"name":"name","type":"string"},{"name":"age","type":"int"}]}`
+
+	schema, err := avro.Parse(person_schema_string_to_parse)
 
 	//i marshal the payload
 	john_payload, err := avro.Marshal(schema, john)
