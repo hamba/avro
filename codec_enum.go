@@ -79,7 +79,7 @@ func (c *enumTextMarshalerCodec) Decode(ptr unsafe.Pointer, r *Reader) {
 		return
 	}
 
-	var obj interface{}
+	var obj any
 	if c.ptr {
 		obj = c.typ.PackEFace(ptr)
 	} else {
@@ -98,7 +98,7 @@ func (c *enumTextMarshalerCodec) Decode(ptr unsafe.Pointer, r *Reader) {
 }
 
 func (c *enumTextMarshalerCodec) Encode(ptr unsafe.Pointer, w *Writer) {
-	var obj interface{}
+	var obj any
 	if c.ptr {
 		obj = c.typ.PackEFace(ptr)
 	} else {

@@ -291,7 +291,7 @@ func encoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEnc
 			switch {
 			case field.Type().Type() == Union:
 				union := field.Type().(*UnionSchema)
-				fields[i].def = map[string]interface{}{
+				fields[i].def = map[string]any{
 					string(union.Types()[0].Type()): field.Default(),
 				}
 			case field.Default() == nil:
@@ -315,7 +315,7 @@ func encoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEnc
 type mapEncoderField struct {
 	name       string
 	hasDef     bool
-	def        interface{}
+	def        any
 	defEncoder ValEncoder
 	encoder    ValEncoder
 }

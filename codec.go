@@ -33,7 +33,7 @@ type ValEncoder interface {
 }
 
 // ReadVal parses Avro value and stores the result in the value pointed to by obj.
-func (r *Reader) ReadVal(schema Schema, obj interface{}) {
+func (r *Reader) ReadVal(schema Schema, obj any) {
 	decoder := r.cfg.getDecoderFromCache(schema.Fingerprint(), reflect2.RTypeOf(obj))
 	if decoder == nil {
 		typ := reflect2.TypeOf(obj)
@@ -54,7 +54,7 @@ func (r *Reader) ReadVal(schema Schema, obj interface{}) {
 }
 
 // WriteVal writes the Avro encoding of obj.
-func (w *Writer) WriteVal(schema Schema, val interface{}) {
+func (w *Writer) WriteVal(schema Schema, val any) {
 	encoder := w.cfg.getEncoderFromCache(schema.Fingerprint(), reflect2.RTypeOf(val))
 	if encoder == nil {
 		typ := reflect2.TypeOf(val)

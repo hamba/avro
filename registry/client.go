@@ -354,7 +354,7 @@ func (c *Client) GetCompatibilityLevel(ctx context.Context, subject string) (str
 	return resp.Compatibility, nil
 }
 
-func (c *Client) request(ctx context.Context, method, path string, in, out interface{}) error {
+func (c *Client) request(ctx context.Context, method, path string, in, out any) error {
 	var body io.Reader
 	if in != nil {
 		b, _ := jsoniter.Marshal(in)

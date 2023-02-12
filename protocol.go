@@ -18,7 +18,7 @@ var (
 
 type protocolConfig struct {
 	doc   string
-	props map[string]interface{}
+	props map[string]any
 }
 
 // ProtocolOption is a function that sets a protocol option.
@@ -32,7 +32,7 @@ func WithProtoDoc(doc string) ProtocolOption {
 }
 
 // WithProtoProps sets the properties on a protocol.
-func WithProtoProps(props map[string]interface{}) ProtocolOption {
+func WithProtoProps(props map[string]any) ProtocolOption {
 	return func(opts *protocolConfig) {
 		opts.props = props
 	}
@@ -220,7 +220,7 @@ func MustParseProtocol(protocol string) *Protocol {
 func ParseProtocol(protocol string) (*Protocol, error) {
 	cache := &SchemaCache{}
 
-	var m map[string]interface{}
+	var m map[string]any
 	if err := jsoniter.Unmarshal([]byte(protocol), &m); err != nil {
 		return nil, err
 	}
@@ -228,15 +228,15 @@ func ParseProtocol(protocol string) (*Protocol, error) {
 }
 
 type protocol struct {
-	Protocol  string                            `mapstructure:"protocol"`
-	Namespace string                            `mapstructure:"namespace"`
-	Doc       string                            `mapstructure:"doc"`
-	Types     []interface{}                     `mapstructure:"types"`
-	Messages  map[string]map[string]interface{} `mapstructure:"messages"`
-	Props     map[string]interface{}            `mapstructure:",remain"`
+	Protocol  string                    `mapstructure:"protocol"`
+	Namespace string                    `mapstructure:"namespace"`
+	Doc       string                    `mapstructure:"doc"`
+	Types     []any                     `mapstructure:"types"`
+	Messages  map[string]map[string]any `mapstructure:"messages"`
+	Props     map[string]any            `mapstructure:",remain"`
 }
 
-func parseProtocol(m map[string]interface{}, cache *SchemaCache) (*Protocol, error) {
+func parseProtocol(m map[string]any, cache *SchemaCache) (*Protocol, error) {
 	var (
 		p    protocol
 		meta mapstructure.Metadata
@@ -275,7 +275,7 @@ func parseProtocol(m map[string]interface{}, cache *SchemaCache) (*Protocol, err
 	return NewProtocol(p.Protocol, p.Namespace, types, messages, WithProtoDoc(p.Doc), WithProtoProps(p.Props))
 }
 
-func parseProtocolTypes(namespace string, types []interface{}, cache *SchemaCache) ([]NamedSchema, error) {
+func parseProtocolTypes(namespace string, types []any, cache *SchemaCache) ([]NamedSchema, error) {
 	ts := make([]NamedSchema, len(types))
 	for i, typ := range types {
 		schema, err := parseType(namespace, typ, cache)
@@ -295,15 +295,15 @@ func parseProtocolTypes(namespace string, types []interface{}, cache *SchemaCach
 }
 
 type message struct {
-	Doc      string                   `mapstructure:"doc"`
-	Request  []map[string]interface{} `mapstructure:"request"`
-	Response interface{}              `mapstructure:"response"`
-	Errors   []interface{}            `mapstructure:"errors"`
-	OneWay   bool                     `mapstructure:"one-way"`
-	Props    map[string]interface{}   `mapstructure:",remain"`
+	Doc      string           `mapstructure:"doc"`
+	Request  []map[string]any `mapstructure:"request"`
+	Response any              `mapstructure:"response"`
+	Errors   []any            `mapstructure:"errors"`
+	OneWay   bool             `mapstructure:"one-way"`
+	Props    map[string]any   `mapstructure:",remain"`
 }
 
-func parseMessage(namespace string, m map[string]interface{}, cache *SchemaCache) (*Message, error) {
+func parseMessage(namespace string, m map[string]any, cache *SchemaCache) (*Message, error) {
 	var (
 		msg  message
 		meta mapstructure.Metadata

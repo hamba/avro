@@ -13,7 +13,7 @@ func ExampleRegister() {
 
 	avro.Register("test", "") // Register the name test as a string type
 
-	var result interface{}
+	var result any
 	err := avro.Unmarshal(schema, data, &result)
 	if err != nil {
 		log.Fatal(err)

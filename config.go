@@ -46,7 +46,7 @@ func (c Config) Freeze() API {
 	}
 
 	api.readerPool = &sync.Pool{
-		New: func() interface{} {
+		New: func() any {
 			return &Reader{
 				cfg:    api,
 				reader: nil,
@@ -57,7 +57,7 @@ func (c Config) Freeze() API {
 		},
 	}
 	api.writerPool = &sync.Pool{
-		New: func() interface{} {
+		New: func() any {
 			return &Writer{
 				cfg:   api,
 				out:   nil,
@@ -73,11 +73,11 @@ func (c Config) Freeze() API {
 // API represents a frozen Config.
 type API interface {
 	// Marshal returns the Avro encoding of v.
-	Marshal(schema Schema, v interface{}) ([]byte, error)
+	Marshal(schema Schema, v any) ([]byte, error)
 
 	// Unmarshal parses the Avro encoded data and stores the result in the value pointed to by v.
 	// If v is nil or not a pointer, Unmarshal returns an error.
-	Unmarshal(schema Schema, data []byte, v interface{}) error
+	Unmarshal(schema Schema, data []byte, v any) error
 
 	// NewEncoder returns a new encoder that writes to w using schema.
 	NewEncoder(schema Schema, w io.Writer) *Encoder
@@ -92,7 +92,7 @@ type API interface {
 	EncoderOf(schema Schema, tpy reflect2.Type) ValEncoder
 
 	// Register registers names to their types for resolution. All primitive types are pre-registered.
-	Register(name string, obj interface{})
+	Register(name string, obj any)
 }
 
 type frozenConfig struct {
@@ -107,7 +107,7 @@ type frozenConfig struct {
 	resolver *TypeResolver
 }
 
-func (c *frozenConfig) Marshal(schema Schema, v interface{}) ([]byte, error) {
+func (c *frozenConfig) Marshal(schema Schema, v any) ([]byte, error) {
 	writer := c.borrowWriter()
 
 	writer.WriteVal(schema, v)
@@ -137,7 +137,7 @@ func (c *frozenConfig) returnWriter(writer *Writer) {
 	c.writerPool.Put(writer)
 }
 
-func (c *frozenConfig) Unmarshal(schema Schema, data []byte, v interface{}) error {
+func (c *frozenConfig) Unmarshal(schema Schema, data []byte, v any) error {
 	reader := c.borrowReader(data)
 
 	reader.ReadVal(schema, v)
@@ -181,7 +181,7 @@ func (c *frozenConfig) NewDecoder(schema Schema, r io.Reader) *Decoder {
 	}
 }
 
-func (c *frozenConfig) Register(name string, obj interface{}) {
+func (c *frozenConfig) Register(name string, obj any) {
 	c.resolver.Register(name, obj)
 }
 
