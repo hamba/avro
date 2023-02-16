@@ -14,22 +14,22 @@ func TestDecoder_Interface(t *testing.T) {
 		name   string
 		data   []byte
 		schema string
-		got    interface{}
-		want   interface{}
+		got    any
+		want   any
 	}{
 		{
 			name:   "Empty Interface",
 			data:   []byte{0x36, 0x06, 0x66, 0x6f, 0x6f},
 			schema: `{"type": "record", "name": "test", "fields" : [{"name": "a", "type": "long"}, {"name": "b", "type": "string"}]}`,
 			got:    nil,
-			want:   map[string]interface{}{"a": int64(27), "b": "foo"},
+			want:   map[string]any{"a": int64(27), "b": "foo"},
 		},
 		{
 			name:   "Interface Non-Ptr",
 			data:   []byte{0x36, 0x06, 0x66, 0x6f, 0x6f},
 			schema: `{"type": "record", "name": "test", "fields": [{"name": "a", "type": "long"}, {"name": "b", "type": "string"}]}`,
 			got:    TestRecord{},
-			want:   map[string]interface{}{"a": int64(27), "b": "foo"},
+			want:   map[string]any{"a": int64(27), "b": "foo"},
 		},
 		{
 			name:   "Interface Nil Ptr",

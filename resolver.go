@@ -45,7 +45,7 @@ func NewTypeResolver() *TypeResolver {
 }
 
 // Register registers names to their types for resolution.
-func (r *TypeResolver) Register(name string, obj interface{}) {
+func (r *TypeResolver) Register(name string, obj any) {
 	typ := reflect2.TypeOf(obj)
 	rtype := typ.RType()
 
@@ -83,6 +83,6 @@ func (r *TypeResolver) Type(name string) (reflect2.Type, error) {
 }
 
 // Register registers names to their types for resolution. All primitive types are pre-registered.
-func Register(name string, obj interface{}) {
+func Register(name string, obj any) {
 	DefaultConfig.Register(name, obj)
 }

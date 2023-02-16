@@ -27,7 +27,7 @@ func NewDecoderForSchema(schema Schema, reader io.Reader) *Decoder {
 }
 
 // Decode reads the next Avro encoded value from its input and stores it in the value pointed to by v.
-func (d *Decoder) Decode(obj interface{}) error {
+func (d *Decoder) Decode(obj any) error {
 	if d.r.head == d.r.tail && d.r.reader != nil {
 		if !d.r.loadMore() {
 			return io.EOF
@@ -45,6 +45,6 @@ func (d *Decoder) Decode(obj interface{}) error {
 
 // Unmarshal parses the Avro encoded data and stores the result in the value pointed to by v.
 // If v is nil or not a pointer, Unmarshal returns an error.
-func Unmarshal(schema Schema, data []byte, v interface{}) error {
+func Unmarshal(schema Schema, data []byte, v any) error {
 	return DefaultConfig.Unmarshal(schema, data, v)
 }

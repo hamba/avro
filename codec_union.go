@@ -116,7 +116,7 @@ type mapUnionEncoder struct {
 }
 
 func (e *mapUnionEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
-	m := *((*map[string]interface{})(ptr))
+	m := *((*map[string]any)(ptr))
 
 	if len(m) > 1 {
 		w.Error = errors.New("avro: cannot encode union map with multiple entries")
@@ -124,7 +124,7 @@ func (e *mapUnionEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 	}
 
 	name := "null"
-	val := interface{}(nil)
+	val := any(nil)
 	for k, v := range m {
 		name = k
 		val = v
@@ -278,7 +278,7 @@ func (d *unionResolvedDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		return
 	}
 
-	pObj := (*interface{})(ptr)
+	pObj := (*any)(ptr)
 
 	if schema.Type() == Null {
 		*pObj = nil
@@ -293,7 +293,7 @@ func (d *unionResolvedDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 
 		// We cannot resolve this, set it to the map type
 		name := schemaTypeName(schema)
-		obj := map[string]interface{}{}
+		obj := map[string]any{}
 		obj[name] = r.ReadNext(schema)
 
 		*pObj = obj

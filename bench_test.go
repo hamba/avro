@@ -112,7 +112,7 @@ func BenchmarkSuperheroGenericDecode(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		var m interface{}
+		var m any
 		_ = avro.Unmarshal(schema, data, &m)
 	}
 }
@@ -123,13 +123,13 @@ func BenchmarkSuperheroGenericEncode(b *testing.B) {
 		panic(err)
 	}
 
-	super := map[string]interface{}{
+	super := map[string]any{
 		"id":             234765,
 		"affiliation_id": 9867,
 		"Name":           "Wolverine",
 		"life":           85.25,
 		"energy":         32.75,
-		"powers": []map[string]interface{}{
+		"powers": []map[string]any{
 			{"id": 2345, "name": "Bone Claws", "damage": 5, "energy": 1.15, "passive": false},
 			{"id": 2346, "name": "Regeneration", "damage": -2, "energy": 0.55, "passive": true},
 			{"id": 2347, "name": "Adamant skeleton", "damage": -10, "energy": 0, "passive": true},

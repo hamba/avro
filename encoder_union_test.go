@@ -19,7 +19,7 @@ func TestEncoder_UnionMap(t *testing.T) {
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
 
-	err = enc.Encode(map[string]interface{}{"string": "foo"})
+	err = enc.Encode(map[string]any{"string": "foo"})
 
 	require.NoError(t, err)
 	assert.Equal(t, []byte{0x02, 0x06, 0x66, 0x6F, 0x6F}, buf.Bytes())
@@ -40,7 +40,7 @@ func TestEncoder_UnionMapRecord(t *testing.T) {
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
 
-	err = enc.Encode(map[string]interface{}{"test": map[string]interface{}{"b": "foo"}})
+	err = enc.Encode(map[string]any{"test": map[string]any{"b": "foo"}})
 
 	require.NoError(t, err)
 	assert.Equal(t, []byte{0x02, 0x00, 0x08, 0x74, 0x65, 0x73, 0x74, 0x06, 0x66, 0x6F, 0x6F}, buf.Bytes())
@@ -54,7 +54,7 @@ func TestEncoder_UnionMapNamed(t *testing.T) {
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
 
-	err = enc.Encode(map[string]interface{}{"test": "bar"})
+	err = enc.Encode(map[string]any{"test": "bar"})
 
 	require.NoError(t, err)
 	assert.Equal(t, []byte{0x02, 0x02}, buf.Bytes())
@@ -68,7 +68,7 @@ func TestEncoder_UnionMapNull(t *testing.T) {
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
 
-	var m map[string]interface{}
+	var m map[string]any
 	err = enc.Encode(m)
 
 	require.NoError(t, err)
@@ -83,7 +83,7 @@ func TestEncoder_UnionMapMultipleEntries(t *testing.T) {
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
 
-	err = enc.Encode(map[string]interface{}{"string": "foo", "int": 27})
+	err = enc.Encode(map[string]any{"string": "foo", "int": 27})
 
 	assert.Error(t, err)
 }
@@ -96,7 +96,7 @@ func TestEncoder_UnionMapWithTime(t *testing.T) {
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
 
-	m := map[string]interface{}{
+	m := map[string]any{
 		"long.timestamp-micros": time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC),
 	}
 	err = enc.Encode(m)
@@ -113,7 +113,7 @@ func TestEncoder_UnionMapWithDuration(t *testing.T) {
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
 
-	m := map[string]interface{}{
+	m := map[string]any{
 		"int.time-millis": 123456789 * time.Millisecond,
 	}
 	err = enc.Encode(m)
@@ -131,7 +131,7 @@ func TestEncoder_UnionMapWithDecimal(t *testing.T) {
 		enc, err := avro.NewEncoder(schema, buf)
 		require.NoError(t, err)
 
-		m := map[string]interface{}{
+		m := map[string]any{
 			"bytes.decimal": big.NewRat(1734, 5),
 		}
 		err = enc.Encode(m)
@@ -146,7 +146,7 @@ func TestEncoder_UnionMapWithDecimal(t *testing.T) {
 		enc, err := avro.NewEncoder(schema, buf)
 		require.NoError(t, err)
 
-		m := map[string]interface{}{
+		m := map[string]any{
 			"bytes.decimal": big.NewRat(1734, 5),
 		}
 		err = enc.Encode(m)
@@ -164,7 +164,7 @@ func TestEncoder_UnionMapInvalidType(t *testing.T) {
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
 
-	err = enc.Encode(map[string]interface{}{"long": 27})
+	err = enc.Encode(map[string]any{"long": 27})
 
 	assert.Error(t, err)
 }
@@ -264,7 +264,7 @@ func TestEncoder_UnionInterface(t *testing.T) {
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
 
-	var val interface{} = "foo"
+	var val any = "foo"
 	err = enc.Encode(val)
 
 	require.NoError(t, err)
@@ -281,7 +281,7 @@ func TestEncoder_UnionInterfaceRecord(t *testing.T) {
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
 
-	var val interface{} = &TestRecord{A: 27, B: "foo"}
+	var val any = &TestRecord{A: 27, B: "foo"}
 	err = enc.Encode(val)
 
 	require.NoError(t, err)
@@ -298,7 +298,7 @@ func TestEncoder_UnionInterfaceRecordNonPtr(t *testing.T) {
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
 
-	var val interface{} = TestRecord{A: 27, B: "foo"}
+	var val any = TestRecord{A: 27, B: "foo"}
 	err = enc.Encode(val)
 
 	require.NoError(t, err)
@@ -315,7 +315,7 @@ func TestEncoder_UnionInterfaceMap(t *testing.T) {
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
 
-	var val interface{} = map[string]int{"foo": 27}
+	var val any = map[string]int{"foo": 27}
 	err = enc.Encode(val)
 
 	require.NoError(t, err)
@@ -330,7 +330,7 @@ func TestEncoder_UnionInterfaceInMapWithBool(t *testing.T) {
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
 
-	err = enc.Encode(map[string]interface{}{"foo": true})
+	err = enc.Encode(map[string]any{"foo": true})
 
 	require.NoError(t, err)
 	assert.Equal(t, []byte{0x01, 0x0c, 0x06, 0x66, 0x6F, 0x6F, 0x02, 0x01, 0x00}, buf.Bytes())
@@ -346,7 +346,7 @@ func TestEncoder_UnionInterfaceArray(t *testing.T) {
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
 
-	var val interface{} = []int{27}
+	var val any = []int{27}
 	err = enc.Encode(val)
 
 	require.NoError(t, err)
@@ -377,7 +377,7 @@ func TestEncoder_UnionInterfaceNamed(t *testing.T) {
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
 
-	var val interface{} = "B"
+	var val any = "B"
 	err = enc.Encode(val)
 
 	require.NoError(t, err)
@@ -392,7 +392,7 @@ func TestEncoder_UnionInterfaceWithTime(t *testing.T) {
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
 
-	var val interface{} = time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
+	var val any = time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
 	err = enc.Encode(val)
 
 	require.NoError(t, err)
@@ -407,7 +407,7 @@ func TestEncoder_UnionInterfaceWithDuration(t *testing.T) {
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
 
-	var val interface{} = 123456789 * time.Millisecond
+	var val any = 123456789 * time.Millisecond
 	err = enc.Encode(val)
 
 	require.NoError(t, err)
@@ -423,7 +423,7 @@ func TestEncoder_UnionInterfaceWithDecimal(t *testing.T) {
 		enc, err := avro.NewEncoder(schema, buf)
 		require.NoError(t, err)
 
-		var val interface{} = big.NewRat(1734, 5)
+		var val any = big.NewRat(1734, 5)
 		err = enc.Encode(val)
 
 		require.NoError(t, err)
@@ -436,7 +436,7 @@ func TestEncoder_UnionInterfaceWithDecimal(t *testing.T) {
 		enc, err := avro.NewEncoder(schema, buf)
 		require.NoError(t, err)
 
-		var val interface{} = big.NewRat(1734, 5)
+		var val any = big.NewRat(1734, 5)
 		err = enc.Encode(val)
 
 		require.NoError(t, err)
@@ -452,7 +452,7 @@ func TestEncoder_UnionInterfaceUnregisteredType(t *testing.T) {
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
 
-	var val interface{} = &TestRecord{}
+	var val any = &TestRecord{}
 	err = enc.Encode(val)
 
 	assert.Error(t, err)
@@ -468,7 +468,7 @@ func TestEncoder_UnionInterfaceNotInSchema(t *testing.T) {
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
 
-	var val interface{} = &TestRecord{}
+	var val any = &TestRecord{}
 	err = enc.Encode(val)
 
 	assert.Error(t, err)

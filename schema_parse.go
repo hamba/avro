@@ -22,7 +22,7 @@ func Parse(schema string) (Schema, error) {
 
 // ParseWithCache parses a schema string using the given namespace and  schema cache.
 func ParseWithCache(schema, namespace string, cache *SchemaCache) (Schema, error) {
-	var json interface{}
+	var json any
 	if err := jsoniter.Unmarshal([]byte(schema), &json); err != nil {
 		json = schema
 	}
@@ -60,7 +60,7 @@ func ParseFiles(paths ...string) (Schema, error) {
 	return schema, nil
 }
 
-func parseType(namespace string, v interface{}, cache *SchemaCache) (Schema, error) {
+func parseType(namespace string, v any, cache *SchemaCache) (Schema, error) {
 	switch val := v.(type) {
 	case nil:
 		return &NullSchema{}, nil
@@ -68,10 +68,10 @@ func parseType(namespace string, v interface{}, cache *SchemaCache) (Schema, err
 	case string:
 		return parsePrimitiveType(namespace, val, cache)
 
-	case map[string]interface{}:
+	case map[string]any:
 		return parseComplexType(namespace, val, cache)
 
-	case []interface{}:
+	case []any:
 		return parseUnion(namespace, val, cache)
 	}
 
@@ -97,8 +97,8 @@ func parsePrimitiveType(namespace, s string, cache *SchemaCache) (Schema, error)
 	}
 }
 
-func parseComplexType(namespace string, m map[string]interface{}, cache *SchemaCache) (Schema, error) {
-	if val, ok := m["type"].([]interface{}); ok {
+func parseComplexType(namespace string, m map[string]any, cache *SchemaCache) (Schema, error) {
+	if val, ok := m["type"].([]any); ok {
 		return parseUnion(namespace, val, cache)
 	}
 
@@ -136,13 +136,13 @@ func parseComplexType(namespace string, m map[string]interface{}, cache *SchemaC
 }
 
 type primitiveSchema struct {
-	LogicalType string                 `mapstructure:"logicalType"`
-	Precision   int                    `mapstructure:"precision"`
-	Scale       int                    `mapstructure:"scale"`
-	Props       map[string]interface{} `mapstructure:",remain"`
+	LogicalType string         `mapstructure:"logicalType"`
+	Precision   int            `mapstructure:"precision"`
+	Scale       int            `mapstructure:"scale"`
+	Props       map[string]any `mapstructure:",remain"`
 }
 
-func parsePrimitive(typ Type, m map[string]interface{}) (Schema, error) {
+func parsePrimitive(typ Type, m map[string]any) (Schema, error) {
 	if m == nil {
 		return NewPrimitiveSchema(typ, nil), nil
 	}
@@ -182,16 +182,16 @@ func parsePrimitiveLogicalType(typ Type, lt string, prec, scale int) LogicalSche
 }
 
 type recordSchema struct {
-	Type      string                   `mapstructure:"type"`
-	Name      string                   `mapstructure:"name"`
-	Namespace string                   `mapstructure:"namespace"`
-	Aliases   []string                 `mapstructure:"aliases"`
-	Doc       string                   `mapstructure:"doc"`
-	Fields    []map[string]interface{} `mapstructure:"fields"`
-	Props     map[string]interface{}   `mapstructure:",remain"`
+	Type      string           `mapstructure:"type"`
+	Name      string           `mapstructure:"name"`
+	Namespace string           `mapstructure:"namespace"`
+	Aliases   []string         `mapstructure:"aliases"`
+	Doc       string           `mapstructure:"doc"`
+	Fields    []map[string]any `mapstructure:"fields"`
+	Props     map[string]any   `mapstructure:",remain"`
 }
 
-func parseRecord(typ Type, namespace string, m map[string]interface{}, cache *SchemaCache) (Schema, error) {
+func parseRecord(typ Type, namespace string, m map[string]any, cache *SchemaCache) (Schema, error) {
 	var (
 		r    recordSchema
 		meta mapstructure.Metadata
@@ -248,16 +248,16 @@ func parseRecord(typ Type, namespace string, m map[string]interface{}, cache *Sc
 }
 
 type fieldSchema struct {
-	Name    string                 `mapstructure:"name"`
-	Aliases []string               `mapstructure:"aliases"`
-	Type    interface{}            `mapstructure:"type"`
-	Doc     string                 `mapstructure:"doc"`
-	Default interface{}            `mapstructure:"default"`
-	Order   Order                  `mapstructure:"order"`
-	Props   map[string]interface{} `mapstructure:",remain"`
+	Name    string         `mapstructure:"name"`
+	Aliases []string       `mapstructure:"aliases"`
+	Type    any            `mapstructure:"type"`
+	Doc     string         `mapstructure:"doc"`
+	Default any            `mapstructure:"default"`
+	Order   Order          `mapstructure:"order"`
+	Props   map[string]any `mapstructure:",remain"`
 }
 
-func parseField(namespace string, m map[string]interface{}, cache *SchemaCache) (*Field, error) {
+func parseField(namespace string, m map[string]any, cache *SchemaCache) (*Field, error) {
 	var (
 		f    fieldSchema
 		meta mapstructure.Metadata
@@ -293,17 +293,17 @@ func parseField(namespace string, m map[string]interface{}, cache *SchemaCache) 
 }
 
 type enumSchema struct {
-	Name      string                 `mapstructure:"name"`
-	Namespace string                 `mapstructure:"namespace"`
-	Aliases   []string               `mapstructure:"aliases"`
-	Type      string                 `mapstructure:"type"`
-	Doc       string                 `mapstructure:"doc"`
-	Symbols   []string               `mapstructure:"symbols"`
-	Default   string                 `mapstructure:"default"`
-	Props     map[string]interface{} `mapstructure:",remain"`
+	Name      string         `mapstructure:"name"`
+	Namespace string         `mapstructure:"namespace"`
+	Aliases   []string       `mapstructure:"aliases"`
+	Type      string         `mapstructure:"type"`
+	Doc       string         `mapstructure:"doc"`
+	Symbols   []string       `mapstructure:"symbols"`
+	Default   string         `mapstructure:"default"`
+	Props     map[string]any `mapstructure:",remain"`
 }
 
-func parseEnum(namespace string, m map[string]interface{}, cache *SchemaCache) (Schema, error) {
+func parseEnum(namespace string, m map[string]any, cache *SchemaCache) (Schema, error) {
 	var (
 		e    enumSchema
 		meta mapstructure.Metadata
@@ -335,11 +335,11 @@ func parseEnum(namespace string, m map[string]interface{}, cache *SchemaCache) (
 }
 
 type arraySchema struct {
-	Items interface{}            `mapstructure:"items"`
-	Props map[string]interface{} `mapstructure:",remain"`
+	Items any            `mapstructure:"items"`
+	Props map[string]any `mapstructure:",remain"`
 }
 
-func parseArray(namespace string, m map[string]interface{}, cache *SchemaCache) (Schema, error) {
+func parseArray(namespace string, m map[string]any, cache *SchemaCache) (Schema, error) {
 	var (
 		a    arraySchema
 		meta mapstructure.Metadata
@@ -360,11 +360,11 @@ func parseArray(namespace string, m map[string]interface{}, cache *SchemaCache) 
 }
 
 type mapSchema struct {
-	Values interface{}            `mapstructure:"values"`
-	Props  map[string]interface{} `mapstructure:",remain"`
+	Values any            `mapstructure:"values"`
+	Props  map[string]any `mapstructure:",remain"`
 }
 
-func parseMap(namespace string, m map[string]interface{}, cache *SchemaCache) (Schema, error) {
+func parseMap(namespace string, m map[string]any, cache *SchemaCache) (Schema, error) {
 	var (
 		ms   mapSchema
 		meta mapstructure.Metadata
@@ -384,7 +384,7 @@ func parseMap(namespace string, m map[string]interface{}, cache *SchemaCache) (S
 	return NewMapSchema(schema, WithProps(ms.Props)), nil
 }
 
-func parseUnion(namespace string, v []interface{}, cache *SchemaCache) (Schema, error) {
+func parseUnion(namespace string, v []any, cache *SchemaCache) (Schema, error) {
 	var err error
 	types := make([]Schema, len(v))
 	for i := range v {
@@ -398,18 +398,18 @@ func parseUnion(namespace string, v []interface{}, cache *SchemaCache) (Schema, 
 }
 
 type fixedSchema struct {
-	Name        string                 `mapstructure:"name"`
-	Namespace   string                 `mapstructure:"namespace"`
-	Aliases     []string               `mapstructure:"aliases"`
-	Type        string                 `mapstructure:"type"`
-	Size        int                    `mapstructure:"size"`
-	LogicalType string                 `mapstructure:"logicalType"`
-	Precision   int                    `mapstructure:"precision"`
-	Scale       int                    `mapstructure:"scale"`
-	Props       map[string]interface{} `mapstructure:",remain"`
+	Name        string         `mapstructure:"name"`
+	Namespace   string         `mapstructure:"namespace"`
+	Aliases     []string       `mapstructure:"aliases"`
+	Type        string         `mapstructure:"type"`
+	Size        int            `mapstructure:"size"`
+	LogicalType string         `mapstructure:"logicalType"`
+	Precision   int            `mapstructure:"precision"`
+	Scale       int            `mapstructure:"scale"`
+	Props       map[string]any `mapstructure:",remain"`
 }
 
-func parseFixed(namespace string, m map[string]interface{}, cache *SchemaCache) (Schema, error) {
+func parseFixed(namespace string, m map[string]any, cache *SchemaCache) (Schema, error) {
 	var (
 		f    fixedSchema
 		meta mapstructure.Metadata
@@ -510,7 +510,7 @@ func hasKey(keys []string, k string) bool {
 	return false
 }
 
-func decodeMap(in, v interface{}, meta *mapstructure.Metadata) error {
+func decodeMap(in, v any, meta *mapstructure.Metadata) error {
 	cfg := &mapstructure.DecoderConfig{
 		ZeroFields: true,
 		Metadata:   meta,

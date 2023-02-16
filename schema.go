@@ -149,7 +149,7 @@ type LogicalSchema interface {
 // PropertySchema represents a schema with properties.
 type PropertySchema interface {
 	// Prop gets a property from the schema.
-	Prop(string) interface{}
+	Prop(string) any
 }
 
 // NamedSchema represents a schema with a name.
@@ -282,11 +282,11 @@ func (f *fingerprinter) FingerprintUsing(typ FingerprintType, stringer fmt.Strin
 }
 
 type properties struct {
-	props map[string]interface{}
+	props map[string]any
 }
 
-func newProperties(props map[string]interface{}, res []string) properties {
-	p := properties{props: map[string]interface{}{}}
+func newProperties(props map[string]any, res []string) properties {
+	p := properties{props: map[string]any{}}
 	for k, v := range props {
 		if isReserved(res, k) {
 			continue
@@ -306,7 +306,7 @@ func isReserved(res []string, k string) bool {
 }
 
 // Prop gets a property from the schema.
-func (p properties) Prop(name string) interface{} {
+func (p properties) Prop(name string) any {
 	if p.props == nil {
 		return nil
 	}
@@ -317,9 +317,9 @@ func (p properties) Prop(name string) interface{} {
 type schemaConfig struct {
 	aliases []string
 	doc     string
-	def     interface{}
+	def     any
 	order   Order
-	props   map[string]interface{}
+	props   map[string]any
 }
 
 // SchemaOption is a function that sets a schema option.
@@ -340,7 +340,7 @@ func WithDoc(doc string) SchemaOption {
 }
 
 // WithDefault sets the default on a schema.
-func WithDefault(def interface{}) SchemaOption {
+func WithDefault(def any) SchemaOption {
 	return func(opts *schemaConfig) {
 		opts.def = def
 	}
@@ -354,7 +354,7 @@ func WithOrder(order Order) SchemaOption {
 }
 
 // WithProps sets the properties on a schema.
-func WithProps(props map[string]interface{}) SchemaOption {
+func WithProps(props map[string]any) SchemaOption {
 	return func(opts *schemaConfig) {
 		opts.props = props
 	}
@@ -541,7 +541,7 @@ type Field struct {
 	doc     string
 	typ     Schema
 	hasDef  bool
-	def     interface{}
+	def     any
 	order   Order
 }
 
@@ -618,7 +618,7 @@ func (f *Field) HasDefault() bool {
 // Default returns the default of a field or nil.
 //
 // The only time a nil default is valid is for a Null Type.
-func (f *Field) Default() interface{} {
+func (f *Field) Default() any {
 	if f.def == nullDefault {
 		return nil
 	}
@@ -652,7 +652,7 @@ func (f *Field) MarshalJSON() ([]byte, error) {
 	}
 	type ext struct {
 		base
-		Default interface{} `json:"default"`
+		Default any `json:"default"`
 	}
 
 	b := base{
@@ -665,7 +665,7 @@ func (f *Field) MarshalJSON() ([]byte, error) {
 		b.Order = string(f.order)
 	}
 
-	var s interface{} = b
+	var s any = b
 	if f.hasDef {
 		s = ext{
 			base:    s.(base),
@@ -1256,7 +1256,7 @@ func validateName(name string) error {
 	return nil
 }
 
-func validateDefault(name string, schema Schema, def interface{}) (interface{}, error) {
+func validateDefault(name string, schema Schema, def any) (any, error) {
 	def, ok := isValidDefault(schema, def)
 	if !ok {
 		return nil, fmt.Errorf("avro: invalid default for field %s. %+v not a %s", name, def, schema.Type())
@@ -1265,7 +1265,7 @@ func validateDefault(name string, schema Schema, def interface{}) (interface{}, 
 	return def, nil
 }
 
-func isValidDefault(schema Schema, def interface{}) (interface{}, bool) {
+func isValidDefault(schema Schema, def any) (any, bool) {
 	switch schema.Type() {
 	case Null:
 		return nullDefault, def == nil
@@ -1319,7 +1319,7 @@ func isValidDefault(schema Schema, def interface{}) (interface{}, bool) {
 		}
 
 	case Array:
-		arr, ok := def.([]interface{})
+		arr, ok := def.([]any)
 		if !ok {
 			return nil, false
 		}
@@ -1336,7 +1336,7 @@ func isValidDefault(schema Schema, def interface{}) (interface{}, bool) {
 		return arr, true
 
 	case Map:
-		m, ok := def.(map[string]interface{})
+		m, ok := def.(map[string]any)
 		if !ok {
 			return nil, false
 		}
@@ -1358,7 +1358,7 @@ func isValidDefault(schema Schema, def interface{}) (interface{}, bool) {
 		return isValidDefault(unionSchema.Types()[0], def)
 
 	case Record:
-		m, ok := def.(map[string]interface{})
+		m, ok := def.(map[string]any)
 		if !ok {
 			return nil, false
 		}

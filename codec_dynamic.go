@@ -12,7 +12,7 @@ type efaceDecoder struct {
 }
 
 func (d *efaceDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
-	pObj := (*interface{})(ptr)
+	pObj := (*any)(ptr)
 	obj := *pObj
 	if obj == nil {
 		*pObj = r.ReadNext(d.schema)

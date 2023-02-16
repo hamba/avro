@@ -6,7 +6,7 @@ import (
 )
 
 // ReadNext reads the next Avro element as a generic interface.
-func (r *Reader) ReadNext(schema Schema) interface{} {
+func (r *Reader) ReadNext(schema Schema) any {
 	var ls LogicalSchema
 	lts, ok := schema.(LogicalTypeSchema)
 	if ok {
@@ -63,7 +63,7 @@ func (r *Reader) ReadNext(schema Schema) interface{} {
 		return r.ReadBytes()
 	case Record:
 		fields := schema.(*RecordSchema).Fields()
-		obj := make(map[string]interface{}, len(fields))
+		obj := make(map[string]any, len(fields))
 		for _, field := range fields {
 			obj[field.Name()] = r.ReadNext(field.Type())
 		}
@@ -79,7 +79,7 @@ func (r *Reader) ReadNext(schema Schema) interface{} {
 		}
 		return symbols[idx]
 	case Array:
-		arr := []interface{}{}
+		arr := []any{}
 		r.ReadArrayCB(func(r *Reader) bool {
 			elem := r.ReadNext(schema.(*ArraySchema).Items())
 			arr = append(arr, elem)
@@ -87,7 +87,7 @@ func (r *Reader) ReadNext(schema Schema) interface{} {
 		})
 		return arr
 	case Map:
-		obj := map[string]interface{}{}
+		obj := map[string]any{}
 		r.ReadMapCB(func(r *Reader, field string) bool {
 			elem := r.ReadNext(schema.(*MapSchema).Values())
 			obj[field] = elem
@@ -107,7 +107,7 @@ func (r *Reader) ReadNext(schema Schema) interface{} {
 		}
 
 		key := schemaTypeName(schema)
-		obj := map[string]interface{}{}
+		obj := map[string]any{}
 		obj[key] = r.ReadNext(types[idx])
 		return obj
 	case Fixed:

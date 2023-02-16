@@ -16,7 +16,7 @@ func TestReader_ReadNext(t *testing.T) {
 		name    string
 		data    []byte
 		schema  string
-		want    interface{}
+		want    any
 		wantErr require.ErrorAssertionFunc
 	}{
 
@@ -115,28 +115,28 @@ func TestReader_ReadNext(t *testing.T) {
 			name:    "Record",
 			data:    []byte{0x36, 0x06, 0x66, 0x6f, 0x6f},
 			schema:  `{"type": "record", "name": "test", "fields" : [{"name": "a", "type": "long"}, {"name": "b", "type": "string"}]}`,
-			want:    map[string]interface{}{"a": int64(27), "b": "foo"},
+			want:    map[string]any{"a": int64(27), "b": "foo"},
 			wantErr: require.NoError,
 		},
 		{
 			name:    "Ref",
 			data:    []byte{0x36, 0x06, 0x66, 0x6f, 0x6f, 0x36, 0x06, 0x66, 0x6f, 0x6f},
 			schema:  `{"type":"record","name":"parent","fields":[{"name":"a","type":{"type":"record","name":"test","fields":[{"name":"a","type":"long"},{"name":"b","type":"string"}]}},{"name":"b","type":"test"}]}`,
-			want:    map[string]interface{}{"a": map[string]interface{}{"a": int64(27), "b": "foo"}, "b": map[string]interface{}{"a": int64(27), "b": "foo"}},
+			want:    map[string]any{"a": map[string]any{"a": int64(27), "b": "foo"}, "b": map[string]any{"a": int64(27), "b": "foo"}},
 			wantErr: require.NoError,
 		},
 		{
 			name:    "Array",
 			data:    []byte{0x04, 0x36, 0x38, 0x0},
 			schema:  `{"type":"array", "items": "int"}`,
-			want:    []interface{}{27, 28},
+			want:    []any{27, 28},
 			wantErr: require.NoError,
 		},
 		{
 			name:    "Map",
 			data:    []byte{0x02, 0x06, 0x66, 0x6F, 0x6F, 0x06, 0x66, 0x6F, 0x6F, 0x00},
 			schema:  `{"type":"map", "values": "string"}`,
-			want:    map[string]interface{}{"foo": "foo"},
+			want:    map[string]any{"foo": "foo"},
 			wantErr: require.NoError,
 		},
 		{
@@ -157,7 +157,7 @@ func TestReader_ReadNext(t *testing.T) {
 			name:    "Union",
 			data:    []byte{0x02, 0x06, 0x66, 0x6F, 0x6F},
 			schema:  `["null", "string"]`,
-			want:    map[string]interface{}{"string": "foo"},
+			want:    map[string]any{"string": "foo"},
 			wantErr: require.NoError,
 		},
 		{
@@ -171,7 +171,7 @@ func TestReader_ReadNext(t *testing.T) {
 			name:    "Union Named",
 			data:    []byte{0x02, 0x02},
 			schema:  `["null", {"type":"enum", "name": "test", "symbols": ["foo", "bar"]}]`,
-			want:    map[string]interface{}{"test": "bar"},
+			want:    map[string]any{"test": "bar"},
 			wantErr: require.NoError,
 		},
 		{

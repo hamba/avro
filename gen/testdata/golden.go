@@ -65,7 +65,7 @@ type Test struct {
 	ABytesDecimal                   *big.Rat               `avro:"aBytesDecimal"`
 	ARecordArray                    []RecordInArray        `avro:"aRecordArray"`
 	NullableRecordUnion             *RecordInNullableUnion `avro:"nullableRecordUnion"`
-	NonNullableRecordUnion          interface{}            `avro:"nonNullableRecordUnion"`
-	NullableRecordUnionWith3Options interface{}            `avro:"nullableRecordUnionWith3Options"`
+	NonNullableRecordUnion          any                    `avro:"nonNullableRecordUnion"`
+	NullableRecordUnionWith3Options any                    `avro:"nullableRecordUnionWith3Options"`
 	Ref                             Record2InNullableUnion `avro:"ref"`
 }

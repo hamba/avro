@@ -199,7 +199,7 @@ func (g *Generator) resolveUnionTypes(s *avro.UnionSchema) string {
 	if s.Nullable() {
 		return "*" + types[0]
 	}
-	return "interface{}"
+	return "any"
 }
 
 func (g *Generator) resolveLogicalSchema(logicalType avro.LogicalType) string {

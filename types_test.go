@@ -23,7 +23,7 @@ type TestNestedRecord struct {
 }
 
 type TestUnion struct {
-	A interface{} `avro:"a"`
+	A any `avro:"a"`
 }
 
 type TestEmbeddedRecord struct {

@@ -99,8 +99,8 @@ func TestIsValidDefault(t *testing.T) {
 	tests := []struct {
 		name     string
 		schemaFn func() Schema
-		def      interface{}
-		want     interface{}
+		def      any
+		want     any
 		wantOk   bool
 	}{
 
