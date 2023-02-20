@@ -83,7 +83,6 @@ func TestDecoder_DeserializePayloadHandlesError(t *testing.T) {
 		assert.Equal(t, "GET", r.Method)
 		assert.Equal(t, fmt.Sprintf("/schemas/ids/%d", schema_id), r.URL.Path)
 
-		//_, _ = w.Write([]byte(fmt.Sprintf(`{"schema":""}`)))
 		_, _ = w.Write([]byte(`{"schema":"boh"}`))
 	}))
 	t.Cleanup(s.Close)
