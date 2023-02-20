@@ -21,7 +21,7 @@ func TestDecoder_WithAPI(t *testing.T) {
 	registry.NewDecoder(client, registry.WithAPI(avro.DefaultConfig))
 }
 
-func TestDecoder_DeserializePayload(t *testing.T) {
+func TestDecoder_Decode(t *testing.T) {
 	//i declare a schema id and a struct to be deserialized
 	schema_id := 42
 	type Person struct {
@@ -68,14 +68,14 @@ func TestDecoder_DeserializePayload(t *testing.T) {
 	decoder := registry.NewDecoder(client)
 
 	target_john := &Person{}
-	err = decoder.DeserializePayload(context.Background(), payload, target_john)
+	err = decoder.Decode(context.Background(), payload, target_john)
 
 	require.NoError(t, err)
 	assert.Equal(t, john.Name, target_john.Name)
 	assert.Equal(t, john.Age, target_john.Age)
 }
 
-func TestDecoder_DeserializePayloadHandlesError(t *testing.T) {
+func TestDecoder_DecodeHandlesError(t *testing.T) {
 	schema_id := 42
 
 	//instantiating the test server
@@ -91,11 +91,11 @@ func TestDecoder_DeserializePayloadHandlesError(t *testing.T) {
 	client, _ := registry.NewClient(s.URL)
 	decoder := registry.NewDecoder(client)
 
-	err := decoder.DeserializePayload(context.Background(), []byte{0}, nil)
+	err := decoder.Decode(context.Background(), []byte{0}, nil)
 
 	assert.Equal(t, "payload not containing data", err.Error())
 
-	err = decoder.DeserializePayload(context.Background(), []byte{1, 1, 1, 1, 1, 1, 1, 1, 1}, nil)
+	err = decoder.Decode(context.Background(), []byte{1, 1, 1, 1, 1, 1, 1, 1, 1}, nil)
 
 	assert.Equal(t, "unable to extract schema id from payload, error: magic byte value is 1, different from 0", err.Error())
 
@@ -106,7 +106,7 @@ func TestDecoder_DeserializePayloadHandlesError(t *testing.T) {
 	payload = append(payload, binarySchemaId...)
 	payload = append(payload, []byte{0}...)
 
-	err = decoder.DeserializePayload(context.Background(), payload, nil)
+	err = decoder.Decode(context.Background(), payload, nil)
 
 	assert.Equal(t, "unable to obtain schema, error: avro: unknown type: boh", err.Error())
 }
