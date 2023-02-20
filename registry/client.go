@@ -178,6 +178,7 @@ func (c *Client) GetSchema(ctx context.Context, id int) (avro.Schema, error) {
 	if err := c.request(ctx, http.MethodGet, p, nil, &resp); err != nil {
 		return nil, err
 	}
+
 	schema, err := avro.Parse(resp.Schema)
 	if err != nil {
 		return nil, err
