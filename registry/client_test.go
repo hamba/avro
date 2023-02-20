@@ -734,7 +734,7 @@ func TestError_Error(t *testing.T) {
 	assert.Equal(t, "Schema not found", str)
 }
 
-func TestError_ErrorEmptyMEssage(t *testing.T) {
+func TestError_ErrorEmptyMessage(t *testing.T) {
 	err := registry.Error{
 		StatusCode: 404,
 	}

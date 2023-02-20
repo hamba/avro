@@ -3,7 +3,6 @@ package gen_test
 import (
 	"bytes"
 	"flag"
-	"fmt"
 	"os"
 	"regexp"
 	"strings"
@@ -97,7 +96,7 @@ func TestStruct_ConfigurableFieldTags(t *testing.T) {
 
 	for _, test := range tests {
 		test := test
-		t.Run(fmt.Sprintf("%s", test.tagStyle), func(t *testing.T) {
+		t.Run(string(test.tagStyle), func(t *testing.T) {
 			gc := gen.Config{
 				PackageName: "Something",
 				Tags: map[string]gen.TagStyle{
@@ -109,7 +108,7 @@ func TestStruct_ConfigurableFieldTags(t *testing.T) {
 			for _, expected := range []string{
 				"package something",
 				"type Test struct {",
-				fmt.Sprintf("SomeString string `avro:\"someString\" %s`", test.expectedTag),
+				"SomeString string `avro:\"someString\" " + test.expectedTag + "`",
 				"}",
 			} {
 				assert.Contains(t, lines, expected)

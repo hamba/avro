@@ -1,42 +1,58 @@
 package registry
 
 import (
-	"encoding/binary"
-	"fmt"
 	"testing"
 
+	"github.com/hamba/avro/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-//series of tests for decoding
-
-func TestExtractSchemaIDFromPayload(t *testing.T) {
-	id := 42
-	payload := make([]byte, 5)
-	payload[0] = 0
-
-	binary.BigEndian.PutUint32(payload[1:5], uint32(id))
-
-	extracted_id, err := extractSchemaIDFromPayload(payload)
-
+func TestDecoder_WithAPI(t *testing.T) {
+	client, err := NewClient("http://example.com")
 	require.NoError(t, err)
 
-	assert.Equal(t, extracted_id, id)
+	cfg := avro.Config{}.Freeze()
+
+	dec := NewDecoder(client, WithAPI(cfg))
+
+	assert.Equal(t, cfg, dec.api)
 }
 
-func TestExtractSchemaIDFromPayload_HandlesError(t *testing.T) {
-	payload := make([]byte, 4)
-	payload[0] = 0
+func TestExtractSchemaID(t *testing.T) {
+	tests := []struct {
+		name    string
+		data    []byte
+		wantID  int
+		wantErr require.ErrorAssertionFunc
+	}{
+		{
+			name:    "extracts id",
+			data:    []byte{0x0, 0x0, 0x0, 0x0, 0x2a},
+			wantID:  42,
+			wantErr: require.NoError,
+		},
+		{
+			name:    "handles short data",
+			data:    []byte{0x0, 0x0, 0x0, 0x2a},
+			wantID:  0,
+			wantErr: require.Error,
+		},
+		{
+			name:    "handles bad magic",
+			data:    []byte{0x1, 0x0, 0x0, 0x0, 0x2a},
+			wantID:  0,
+			wantErr: require.Error,
+		},
+	}
 
-	_, err := extractSchemaIDFromPayload(payload)
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			got, err := extractSchemaID(test.data)
 
-	assert.Equal(t, err.Error(), "payload too short to contain avro header")
-
-	payload = make([]byte, 5)
-	payload[0] = 1
-
-	_, err = extractSchemaIDFromPayload(payload)
-
-	assert.Equal(t, err.Error(), fmt.Sprintf("magic byte value is %d, different from 0", payload[0]))
+			test.wantErr(t, err)
+			assert.Equal(t, test.wantID, got)
+		})
+	}
 }

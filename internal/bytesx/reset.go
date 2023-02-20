@@ -10,7 +10,7 @@ type ResetReader struct {
 	tail int
 }
 
-// NewResetReader returns a new Reader reading from b.
+// NewResetReader returns a new ResetReader reading from b.
 func NewResetReader(b []byte) *ResetReader {
 	r := &ResetReader{}
 	r.Reset(b)
