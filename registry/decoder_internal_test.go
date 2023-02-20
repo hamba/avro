@@ -25,7 +25,7 @@ func TestExtractSchemaIDFromPayload(t *testing.T) {
 	assert.Equal(t, extracted_id, id)
 }
 
-func TestDeserializeError_extractSchemaIDFromPayload(t *testing.T) {
+func TestExtractSchemaIDFromPayload_HandlesError(t *testing.T) {
 	payload := make([]byte, 4)
 	payload[0] = 0
 
