@@ -29,6 +29,7 @@ func extractSchemaIDFromPayload(payload []byte) (int, error) {
 	return int(binary.BigEndian.Uint32(payload[1:5])), nil
 }
 
+// DecoderFunc is a function used to customize the Decoder.
 type DecoderFunc func(*Decoder)
 
 // NewDecoder shall return a new decoder given a client.
