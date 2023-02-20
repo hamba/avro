@@ -112,7 +112,9 @@ var defaultClient = &http.Client{
 			KeepAlive: 90 * time.Second,
 		}).DialContext,
 		TLSHandshakeTimeout: 3 * time.Second,
+		IdleConnTimeout:     90 * time.Second,
 	},
+	Timeout: 10 * time.Second,
 }
 
 // ClientFunc is a function used to customize the Client.
