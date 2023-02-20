@@ -4,6 +4,8 @@ package something
 import (
 	"math/big"
 	"time"
+
+	"github.com/hamba/avro/v2"
 )
 
 type InnerRecord struct {
@@ -51,7 +53,8 @@ type Test struct {
 	InnerRecord                     InnerRecord            `avro:"innerRecord"`
 	AnEnum                          string                 `avro:"anEnum"`
 	AFixed                          [7]byte                `avro:"aFixed"`
-	ALogicalFixed                   time.Duration          `avro:"aLogicalFixed"`
+	ALogicalFixed                   avro.LogicalDuration   `avro:"aLogicalFixed"`
+	AnotherLogicalFixed             avro.LogicalDuration   `avro:"anotherLogicalFixed"`
 	MapOfStrings                    map[string]string      `avro:"mapOfStrings"`
 	MapOfRecords                    map[string]RecordInMap `avro:"mapOfRecords"`
 	ADate                           time.Time              `avro:"aDate"`
@@ -62,7 +65,7 @@ type Test struct {
 	ABytesDecimal                   *big.Rat               `avro:"aBytesDecimal"`
 	ARecordArray                    []RecordInArray        `avro:"aRecordArray"`
 	NullableRecordUnion             *RecordInNullableUnion `avro:"nullableRecordUnion"`
-	NonNullableRecordUnion          interface{}            `avro:"nonNullableRecordUnion"`
-	NullableRecordUnionWith3Options interface{}            `avro:"nullableRecordUnionWith3Options"`
+	NonNullableRecordUnion          any                    `avro:"nonNullableRecordUnion"`
+	NullableRecordUnionWith3Options any                    `avro:"nullableRecordUnionWith3Options"`
 	Ref                             Record2InNullableUnion `avro:"ref"`
 }

@@ -300,7 +300,7 @@ func TestEncoder_RecordMap(t *testing.T) {
 	    {"name": "b", "type": "string"}
 	]
 }`
-	obj := map[string]interface{}{"a": int64(27), "b": "foo"}
+	obj := map[string]any{"a": int64(27), "b": "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
@@ -329,7 +329,7 @@ func TestEncoder_RecordMapNested(t *testing.T) {
 	    {"name": "b", "type": "string"}
 	]
 }`
-	obj := map[string]interface{}{"a": map[string]interface{}{
+	obj := map[string]any{"a": map[string]any{
 		"a": int64(27),
 		"b": "bar",
 	}, "b": "foo"}
@@ -354,7 +354,7 @@ func TestEncoder_RecordMapNilValue(t *testing.T) {
 	    {"name": "b", "type": "string"}
 	]
 }`
-	obj := map[string]interface{}{"a": int64(27), "b": nil}
+	obj := map[string]any{"a": int64(27), "b": nil}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
@@ -375,7 +375,7 @@ func TestEncoder_RecordMapMissingRequiredField(t *testing.T) {
 	    {"name": "b", "type": "string"}
 	]
 }`
-	obj := map[string]interface{}{"b": "foo"}
+	obj := map[string]any{"b": "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
@@ -396,7 +396,7 @@ func TestEncoder_RecordMapWithDefault(t *testing.T) {
 	    {"name": "b", "type": "string"}
 	]
 }`
-	obj := map[string]interface{}{"b": "foo"}
+	obj := map[string]any{"b": "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
@@ -418,7 +418,7 @@ func TestEncoder_RecordMapWithNullDefault(t *testing.T) {
 	    {"name": "b", "type": "string"}
 	]
 }`
-	obj := map[string]interface{}{"b": "foo"}
+	obj := map[string]any{"b": "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
@@ -440,7 +440,7 @@ func TestEncoder_RecordMapWithUnionNullDefault(t *testing.T) {
 	    {"name": "b", "type": "string"}
 	]
 }`
-	obj := map[string]interface{}{"b": "foo"}
+	obj := map[string]any{"b": "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
@@ -462,7 +462,7 @@ func TestEncoder_RecordMapWithUnionStringDefault(t *testing.T) {
 	    {"name": "b", "type": "string"}
 	]
 }`
-	obj := map[string]interface{}{"b": "foo"}
+	obj := map[string]any{"b": "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
@@ -484,7 +484,7 @@ func TestEncoder_RecordMapInvalidKeyType(t *testing.T) {
 	    {"name": "b", "type": "string"}
 	]
 }`
-	obj := map[int]interface{}{1: int64(27), 2: "foo"}
+	obj := map[int]any{1: int64(27), 2: "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)

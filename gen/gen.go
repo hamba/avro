@@ -39,7 +39,19 @@ package {{ .PackageName }}
 
 {{ if len .Imports }}
 import (
-    {{- range .Imports }}
+	{{- range .Imports }}
+		"{{ . }}"
+	{{- end }}
+    {{ if len .ThirdPartyImports }}
+
+	{{- range .ThirdPartyImports }}
+		"{{ . }}"
+	{{- end }}
+    {{ end }}
+)
+{{ else if len .ThirdPartyImports }}
+import (
+	{{- range .ThirdPartyImports }}
 		"{{ . }}"
 	{{- end }}
 )
@@ -98,10 +110,11 @@ func StructFromSchema(schema avro.Schema, w io.Writer, cfg Config) error {
 
 // Generator generates Go structs from schemas.
 type Generator struct {
-	pkg      string
-	tags     map[string]TagStyle
-	imports  []string
-	typedefs []typedef
+	pkg               string
+	tags              map[string]TagStyle
+	imports           []string
+	thirdPartyImports []string
+	typedefs          []typedef
 }
 
 // NewGenerator returns a generator.
@@ -186,7 +199,7 @@ func (g *Generator) resolveUnionTypes(s *avro.UnionSchema) string {
 	if s.Nullable() {
 		return "*" + types[0]
 	}
-	return "interface{}"
+	return "any"
 }
 
 func (g *Generator) resolveLogicalSchema(logicalType avro.LogicalType) string {
@@ -199,13 +212,16 @@ func (g *Generator) resolveLogicalSchema(logicalType avro.LogicalType) string {
 	case "decimal":
 		typ = "*big.Rat"
 	case "duration":
-		typ = "time.Duration"
+		typ = "avro.LogicalDuration"
 	}
 	if strings.Contains(typ, "time") {
 		g.addImport("time")
 	}
 	if strings.Contains(typ, "big") {
 		g.addImport("math/big")
+	}
+	if strings.Contains(typ, "avro") {
+		g.addThirdPartyImport("github.com/hamba/avro/v2")
 	}
 	return typ
 }
@@ -249,6 +265,15 @@ func (g *Generator) addImport(pkg string) {
 	g.imports = append(g.imports, pkg)
 }
 
+func (g *Generator) addThirdPartyImport(pkg string) {
+	for _, p := range g.thirdPartyImports {
+		if p == pkg {
+			return
+		}
+	}
+	g.thirdPartyImports = append(g.thirdPartyImports, pkg)
+}
+
 // Write writes Go code from the parsed schemas.
 func (g *Generator) Write(w io.Writer) error {
 	parsed, err := template.New("out").Parse(outputTemplate)
@@ -257,13 +282,15 @@ func (g *Generator) Write(w io.Writer) error {
 	}
 
 	data := struct {
-		PackageName string
-		Imports     []string
-		Typedefs    []typedef
+		PackageName       string
+		Imports           []string
+		ThirdPartyImports []string
+		Typedefs          []typedef
 	}{
-		PackageName: g.pkg,
-		Imports:     g.imports,
-		Typedefs:    g.typedefs,
+		PackageName:       g.pkg,
+		Imports:           g.imports,
+		ThirdPartyImports: g.thirdPartyImports,
+		Typedefs:          g.typedefs,
 	}
 	return parsed.Execute(w, data)
 }

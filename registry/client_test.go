@@ -502,15 +502,15 @@ func TestClient_IsRegisteredWithRefs(t *testing.T) {
 
 		body, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
-		var decoded map[string]interface{}
+		var decoded map[string]any
 		err = json.Unmarshal(body, &decoded)
 		require.NoError(t, err)
 
 		assert.Contains(t, decoded, "references")
-		refs, ok := decoded["references"].([]interface{})
+		refs, ok := decoded["references"].([]any)
 		require.True(t, true)
 		require.Len(t, refs, 1)
-		ref, ok := refs[0].(map[string]interface{})
+		ref, ok := refs[0].(map[string]any)
 		require.True(t, ok)
 
 		assert.Equal(t, "some_schema", ref["name"].(string))

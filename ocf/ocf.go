@@ -96,7 +96,7 @@ func (d *Decoder) HasNext() bool {
 }
 
 // Decode reads the next Avro encoded value from its input and stores it in the value pointed to by v.
-func (d *Decoder) Decode(v interface{}) error {
+func (d *Decoder) Decode(v any) error {
 	if d.count <= 0 {
 		return errors.New("decoder: no data found, call HasNext first")
 	}
@@ -309,7 +309,7 @@ func (e *Encoder) Write(p []byte) (n int, err error) {
 }
 
 // Encode writes the Avro encoding of v to the stream.
-func (e *Encoder) Encode(v interface{}) error {
+func (e *Encoder) Encode(v any) error {
 	if err := e.encoder.Encode(v); err != nil {
 		return err
 	}

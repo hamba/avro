@@ -25,13 +25,13 @@ func NewEncoderForSchema(schema Schema, w io.Writer) *Encoder {
 }
 
 // Encode writes the Avro encoding of v to the stream.
-func (e *Encoder) Encode(v interface{}) error {
+func (e *Encoder) Encode(v any) error {
 	e.w.WriteVal(e.s, v)
 	_ = e.w.Flush()
 	return e.w.Error
 }
 
 // Marshal returns the Avro encoding of v.
-func Marshal(schema Schema, v interface{}) ([]byte, error) {
+func Marshal(schema Schema, v any) ([]byte, error) {
 	return DefaultConfig.Marshal(schema, v)
 }

@@ -199,11 +199,11 @@ func TestDecoder_RecordMap(t *testing.T) {
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
 	require.NoError(t, err)
 
-	var got map[string]interface{}
+	var got map[string]any
 	err = dec.Decode(&got)
 
 	require.NoError(t, err)
-	assert.Equal(t, map[string]interface{}{"a": int64(27), "b": "foo"}, got)
+	assert.Equal(t, map[string]any{"a": int64(27), "b": "foo"}, got)
 }
 
 func TestDecoder_RecordMapInvalidKey(t *testing.T) {
@@ -221,7 +221,7 @@ func TestDecoder_RecordMapInvalidKey(t *testing.T) {
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
 	require.NoError(t, err)
 
-	var got map[int]interface{}
+	var got map[int]any
 	err = dec.Decode(&got)
 
 	assert.Error(t, err)
@@ -263,7 +263,7 @@ func TestDecoder_RecordMapInvalidData(t *testing.T) {
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
 	require.NoError(t, err)
 
-	var got map[string]interface{}
+	var got map[string]any
 	err = dec.Decode(&got)
 
 	assert.Error(t, err)

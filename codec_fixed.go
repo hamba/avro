@@ -1,6 +1,7 @@
 package avro
 
 import (
+	"encoding/binary"
 	"fmt"
 	"math/big"
 	"reflect"
@@ -21,14 +22,21 @@ func createDecoderOfFixed(schema Schema, typ reflect2.Type) ValDecoder {
 
 	case reflect.Struct:
 		ls := fixed.Logical()
-		if typ.RType() != ratRType || ls == nil || ls.Type() != Decimal {
+		if ls == nil {
 			break
 		}
-		dec := ls.(*DecimalLogicalSchema)
-		return &fixedDecimalCodec{prec: dec.Precision(), scale: dec.Scale(), size: fixed.Size()}
+		switch {
+		case typ.RType() == durRType && ls.Type() == Duration:
+			return &fixedDurationCodec{}
+		case typ.RType() == ratRType && ls.Type() == Decimal:
+			dec := ls.(*DecimalLogicalSchema)
+			return &fixedDecimalCodec{prec: dec.Precision(), scale: dec.Scale(), size: fixed.Size()}
+		}
 	}
 
-	return &errorDecoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s", typ.String(), schema.Type())}
+	return &errorDecoder{
+		err: fmt.Errorf("avro: %s is unsupported for Avro %s, size=%d", typ.String(), schema.Type(), fixed.Size()),
+	}
 }
 
 func createEncoderOfFixed(schema Schema, typ reflect2.Type) ValEncoder {
@@ -52,9 +60,20 @@ func createEncoderOfFixed(schema Schema, typ reflect2.Type) ValEncoder {
 		}
 		dec := ls.(*DecimalLogicalSchema)
 		return &fixedDecimalCodec{prec: dec.Precision(), scale: dec.Scale(), size: fixed.Size()}
+
+	case reflect.Struct:
+		ls := fixed.Logical()
+		if ls == nil {
+			break
+		}
+		if typ.RType() == durRType && ls.Type() == Duration {
+			return &fixedDurationCodec{}
+		}
 	}
 
-	return &errorEncoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s", typ.String(), schema.Type())}
+	return &errorEncoder{
+		err: fmt.Errorf("avro: %s is unsupported for Avro %s, size=%d", typ.String(), schema.Type(), fixed.Size()),
+	}
 }
 
 type fixedCodec struct {
@@ -112,5 +131,28 @@ func (c *fixedDecimalCodec) Encode(ptr unsafe.Pointer, w *Writer) {
 		b = i.Add(i, (&big.Int{}).Lsh(one, uint(c.size*8))).Bytes()
 	}
 
+	_, _ = w.Write(b)
+}
+
+type fixedDurationCodec struct{}
+
+func (*fixedDurationCodec) Decode(ptr unsafe.Pointer, r *Reader) {
+	b := make([]byte, 12)
+	r.Read(b)
+	var duration LogicalDuration
+	duration.Months = binary.LittleEndian.Uint32(b[0:4])
+	duration.Days = binary.LittleEndian.Uint32(b[4:8])
+	duration.Milliseconds = binary.LittleEndian.Uint32(b[8:12])
+	*((*LogicalDuration)(ptr)) = duration
+}
+
+func (*fixedDurationCodec) Encode(ptr unsafe.Pointer, w *Writer) {
+	duration := (*LogicalDuration)(ptr)
+	b := make([]byte, 4)
+	binary.LittleEndian.PutUint32(b, duration.Months)
+	_, _ = w.Write(b)
+	binary.LittleEndian.PutUint32(b, duration.Days)
+	_, _ = w.Write(b)
+	binary.LittleEndian.PutUint32(b, duration.Milliseconds)
 	_, _ = w.Write(b)
 }

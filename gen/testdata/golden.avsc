@@ -90,10 +90,14 @@
       "name": "aLogicalFixed",
       "type": {
         "type": "fixed",
-        "name": "test",
+        "name": "logicalDuration",
         "size": 12,
         "logicalType": "duration"
       }
+    },
+    {
+      "name": "anotherLogicalFixed",
+      "type": "logicalDuration"
     },
     {
       "name": "mapOfStrings",

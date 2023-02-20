@@ -78,11 +78,11 @@ More examples in the [godoc](https://godoc.org/github.com/hamba/avro).
 | `long`                  | `int64`, `uint32`\*                                    | `int64`, `uint32`        |
 | `int`                   | `int`, `int32`, `int16`, `int8`, `uint8`\*, `uint16`\* | `int`, `uint8`, `uint16` |
 | `string`                | `string`                                               | `string`                 |
-| `array`                 | `[]T`                                                  | `[]interface{}`          |
+| `array`                 | `[]T`                                                  | `[]any`          |
 | `enum`                  | `string`                                               | `string`                 |
 | `fixed`                 | `[n]byte`                                              | `[]byte`                 |
-| `map`                   | `map[string]T{}`                                       | `map[string]interface{}` |
-| `record`                | `struct`                                               | `map[string]interface{}` |
+| `map`                   | `map[string]T{}`                                       | `map[string]any` |
+| `record`                | `struct`                                               | `map[string]any` |
 | `union`                 | *see below*                                            | *see below*              |
 | `int.date`              | `time.Time`                                            | `time.Time`              |
 | `int.time-millis`       | `time.Duration`                                        | `time.Duration`          |
@@ -99,15 +99,15 @@ are larger than the Go type `uint8 = 0`.
 
 ##### Unions
 
-The following union types are accepted: `map[string]interface{}`, `*T` and `interface{}`.
+The following union types are accepted: `map[string]any`, `*T` and `any`.
 
-* **map[string]interface{}:** If the union value is `nil`, a `nil` map will be en/decoded. 
+* **map[string]any:** If the union value is `nil`, a `nil` map will be en/decoded. 
 When a non-`nil` union value is encountered, a single key is en/decoded. The key is the avro
 type name, or scheam full name in the case of a named schema (enum, fixed or record).
 * ***T:** This is allowed in a "nullable" union. A nullable union is defined as a two schema union, 
 with one of the types being `null` (ie. `["null", "string"]` or `["string", "null"]`), in this case 
 a `*T` is allowed, with `T` matching the conversion table above.
-* **interface{}:** An `interface` can be provided and the type or name resolved. Primitive types
+* **any:** An `interface` can be provided and the type or name resolved. Primitive types
 are pre-registered, but named types, maps and slices will need to be registered with the `Register` function. 
 In the case of arrays and maps the enclosed schema type or name is postfix to the type with a `:` separator, 
 e.g `"map:string"`. Behavior when a type cannot be resolved will depend on your chosen configuation options:
