@@ -8,6 +8,8 @@ import (
 	"github.com/hamba/avro/v2"
 )
 
+// Decoder is entitled to receive raw messages as bytes, obtain the
+// related schema and then use it to deserialize the remaining content
 type Decoder struct {
 	client *Client
 	api    avro.API
