@@ -18,7 +18,7 @@ func TestDecoder_WithAPI(t *testing.T) {
 	client, err := registry.NewClient("http://example.com")
 	require.NoError(t, err)
 
-	registry.NewDecoder(client).WithAPI(avro.DefaultConfig)
+	registry.NewDecoder(client, registry.WithAPI(avro.DefaultConfig))
 }
 
 func TestDecoder_DeserializePayload(t *testing.T) {

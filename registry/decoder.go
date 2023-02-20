@@ -29,20 +29,25 @@ func extractSchemaIDFromPayload(payload []byte) (int, error) {
 	return int(binary.BigEndian.Uint32(payload[1:5])), nil
 }
 
+type DecoderFunc func(*Decoder)
+
 // NewDecoder shall return a new decoder given a client.
-func NewDecoder(client *Client) *Decoder {
-	return &Decoder{
+func NewDecoder(client *Client, opts ...DecoderFunc) *Decoder {
+	d := &Decoder{
 		client: client,
 		api:    avro.DefaultConfig,
 	}
+	for _, opt := range opts {
+		opt(d)
+	}
+	return d
 }
 
 // WithAPI generates a new decoder with the same client as the one on
 // which the method is invoked and as api the one provided in input.
-func (d *Decoder) WithAPI(api avro.API) *Decoder {
-	return &Decoder{
-		client: d.client,
-		api:    api,
+func WithAPI(api avro.API) DecoderFunc {
+	return func(d *Decoder) {
+		d.api = api
 	}
 }
 
