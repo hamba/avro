@@ -29,7 +29,7 @@ func extractSchemaIDFromPayload(payload []byte) (int, error) {
 	return int(binary.BigEndian.Uint32(payload[1:5])), nil
 }
 
-// NewDecoder shall return a new decoder given a client
+// NewDecoder shall return a new decoder given a client.
 func NewDecoder(client *Client) *Decoder {
 	return &Decoder{
 		client: client,
