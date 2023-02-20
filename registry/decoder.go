@@ -39,9 +39,9 @@ func NewDecoder(client *Client) *Decoder {
 
 // WithAPI generates a new decoder with the same client as the one on
 // which the method is invoked and as api the one provided in input.
-func (decoder *Decoder) WithAPI(api avro.API) *Decoder {
+func (d *Decoder) WithAPI(api avro.API) *Decoder {
 	return &Decoder{
-		client: decoder.client,
+		client: d.client,
 		api:    api,
 	}
 }
