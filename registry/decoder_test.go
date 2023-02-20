@@ -14,7 +14,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestClient_DeserializePayload(t *testing.T) {
+func TestDecoder_WithAPI(t *testing.T) {
+	client, err := registry.NewClient("http://example.com")
+	require.NoError(t, err)
+
+	registry.NewDecoder(client).WithAPI(avro.DefaultConfig)
+}
+
+func TestDecoder_DeserializePayload(t *testing.T) {
 	//i declare a schema id and a struct to be deserialized
 	schema_id := 42
 	type Person struct {
