@@ -8,29 +8,23 @@ import (
 	"github.com/hamba/avro/v2"
 )
 
+// DecoderFunc is a function used to customize the Decoder.
+type DecoderFunc func(*Decoder)
+
+// WithAPI generates a new decoder with the same client as the one on
+// which the method is invoked and as api the one provided in input.
+func WithAPI(api avro.API) DecoderFunc {
+	return func(d *Decoder) {
+		d.api = api
+	}
+}
+
 // Decoder is entitled to receive raw messages as bytes, obtain the
 // related schema and then use it to deserialize the remaining content.
 type Decoder struct {
 	client *Client
 	api    avro.API
 }
-
-// ExtractSchemaIDFromPayload extrapolates the schema id from a payload composed
-// of raw bytes containing a magic bytes, 4 bytes representing the schema encoding,
-// and the remaining payload being encoded with avro, as described in
-// https://docs.confluent.io/3.2.0/schema-registry/docs/serializer-formatter.html#wire-format .
-func extractSchemaIDFromPayload(payload []byte) (int, error) {
-	if len(payload) < 5 {
-		return 0, fmt.Errorf("payload too short to contain avro header")
-	}
-	if payload[0] != 0 {
-		return 0, fmt.Errorf("magic byte value is %d, different from 0", payload[0])
-	}
-	return int(binary.BigEndian.Uint32(payload[1:5])), nil
-}
-
-// DecoderFunc is a function used to customize the Decoder.
-type DecoderFunc func(*Decoder)
 
 // NewDecoder shall return a new decoder given a client.
 func NewDecoder(client *Client, opts ...DecoderFunc) *Decoder {
@@ -42,14 +36,6 @@ func NewDecoder(client *Client, opts ...DecoderFunc) *Decoder {
 		opt(d)
 	}
 	return d
-}
-
-// WithAPI generates a new decoder with the same client as the one on
-// which the method is invoked and as api the one provided in input.
-func WithAPI(api avro.API) DecoderFunc {
-	return func(d *Decoder) {
-		d.api = api
-	}
 }
 
 // Decode takes in input a payload to be deserialized, extrapolates
@@ -76,4 +62,18 @@ func (d *Decoder) Decode(
 	}
 
 	return d.api.Unmarshal(schema, payload[5:], target)
+}
+
+// ExtractSchemaIDFromPayload extrapolates the schema id from a payload composed
+// of raw bytes containing a magic bytes, 4 bytes representing the schema encoding,
+// and the remaining payload being encoded with avro, as described in
+// https://docs.confluent.io/3.2.0/schema-registry/docs/serializer-formatter.html#wire-format .
+func extractSchemaIDFromPayload(payload []byte) (int, error) {
+	if len(payload) < 5 {
+		return 0, fmt.Errorf("payload too short to contain avro header")
+	}
+	if payload[0] != 0 {
+		return 0, fmt.Errorf("magic byte value is %d, different from 0", payload[0])
+	}
+	return int(binary.BigEndian.Uint32(payload[1:5])), nil
 }
