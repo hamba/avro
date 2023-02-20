@@ -9,7 +9,7 @@ import (
 )
 
 // Decoder is entitled to receive raw messages as bytes, obtain the
-// related schema and then use it to deserialize the remaining content
+// related schema and then use it to deserialize the remaining content.
 type Decoder struct {
 	client *Client
 	api    avro.API
