@@ -75,7 +75,7 @@ func TestDecoder_DeserializePayload(t *testing.T) {
 	assert.Equal(t, john.Age, target_john.Age)
 }
 
-func TestError_DeserializePayload(t *testing.T) {
+func TestDecoder_DeserializePayloadHandlesError(t *testing.T) {
 	schema_id := 42
 
 	//instantiating the test server
