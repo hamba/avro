@@ -11,7 +11,7 @@ import (
 
 //series of tests for decoding
 
-func TestDeserialize_extractSchemaIDFromPayload(t *testing.T) {
+func TestExtractSchemaIDFromPayload(t *testing.T) {
 	id := 42
 	payload := make([]byte, 5)
 	payload[0] = 0
