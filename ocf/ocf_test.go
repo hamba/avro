@@ -146,7 +146,7 @@ func TestDecoder(t *testing.T) {
 	assert.Equal(t, 1, count)
 }
 
-func TestDecoderDeflate(t *testing.T) {
+func TestDecoder_WithDeflate(t *testing.T) {
 	unionStr := "union value"
 	want := FullRecord{
 		Strings: []string{"string1", "string2", "string3", "string4", "string5"},
@@ -195,7 +195,7 @@ func TestDecoderDeflate(t *testing.T) {
 	assert.Equal(t, 1, count)
 }
 
-func TestDecoderDeflate_InvalidData(t *testing.T) {
+func TestDecoder_WithDeflateHandlesInvalidData(t *testing.T) {
 	f, err := os.Open("testdata/deflate-invalid-data.avro")
 	if err != nil {
 		t.Error(err)
@@ -211,7 +211,7 @@ func TestDecoderDeflate_InvalidData(t *testing.T) {
 	assert.Error(t, dec.Error())
 }
 
-func TestDecoderSnappy(t *testing.T) {
+func TestDecoder_WithSnappy(t *testing.T) {
 	unionStr := "union value"
 	want := FullRecord{
 		Strings: []string{"string1", "string2", "string3", "string4", "string5"},
@@ -260,7 +260,7 @@ func TestDecoderSnappy(t *testing.T) {
 	assert.Equal(t, 1, count)
 }
 
-func TestDecoderSnappy_InvalidData(t *testing.T) {
+func TestDecoder_WithSnappyHandlesInvalidData(t *testing.T) {
 	f, err := os.Open("testdata/snappy-invalid-data.avro")
 	if err != nil {
 		t.Error(err)
@@ -276,7 +276,7 @@ func TestDecoderSnappy_InvalidData(t *testing.T) {
 	assert.Error(t, dec.Error())
 }
 
-func TestDecoderSnappy_ShortCRC(t *testing.T) {
+func TestDecoder_WithSnappyHandlesShortCRC(t *testing.T) {
 	f, err := os.Open("testdata/snappy-short-crc.avro")
 	if err != nil {
 		t.Error(err)
@@ -292,7 +292,7 @@ func TestDecoderSnappy_ShortCRC(t *testing.T) {
 	assert.Error(t, dec.Error())
 }
 
-func TestDecoderSnappy_InvalidCRC(t *testing.T) {
+func TestDecoder_WithSnappyHandlesInvalidCRC(t *testing.T) {
 	f, err := os.Open("testdata/snappy-invalid-crc.avro")
 	if err != nil {
 		t.Error(err)

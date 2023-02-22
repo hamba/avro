@@ -2,111 +2,70 @@ package registry_test
 
 import (
 	"context"
-	"encoding/binary"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/hamba/avro/v2"
 	"github.com/hamba/avro/v2/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestDecoder_WithAPI(t *testing.T) {
-	client, err := registry.NewClient("http://example.com")
-	require.NoError(t, err)
-
-	registry.NewDecoder(client, registry.WithAPI(avro.DefaultConfig))
-}
-
 func TestDecoder_Decode(t *testing.T) {
-	//i declare a schema id and a struct to be deserialized
-	schema_id := 42
-	type Person struct {
-		Name string `avro:"name"`
-		Age  int    `avro:"age"`
+	tests := []struct {
+		name    string
+		data    []byte
+		schema  string
+		want    int
+		wantErr require.ErrorAssertionFunc
+	}{
+		{
+			name:    "decodes data",
+			data:    []byte{0x0, 0x0, 0x0, 0x0, 0x2a, 0x80, 0x2},
+			schema:  `{"schema":"int"}`,
+			want:    128,
+			wantErr: require.NoError,
+		},
+		{
+			name:    "handles short data",
+			data:    []byte{0x0, 0x0, 0x0, 0x0, 0x2a},
+			schema:  `{"schema":"int"}`,
+			wantErr: require.Error,
+		},
+		{
+			name:    "handles bad magic",
+			data:    []byte{0x1, 0x0, 0x0, 0x0, 0x2a, 0x80, 0x2},
+			schema:  `{"schema":"int"}`,
+			wantErr: require.Error,
+		},
+		{
+			name:    "handles bad schema",
+			data:    []byte{0x0, 0x0, 0x0, 0x0, 0x2a, 0x80, 0x2},
+			schema:  `{"schema":"nope"}`,
+			wantErr: require.Error,
+		},
 	}
-	john := &Person{
-		Name: "john",
-		Age:  28,
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			h := http.NewServeMux()
+			h.Handle("/schemas/ids/42", http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+				assert.Equal(t, "GET", req.Method)
+
+				_, _ = rw.Write([]byte(test.schema))
+			}))
+			srv := httptest.NewServer(h)
+			t.Cleanup(srv.Close)
+
+			client, _ := registry.NewClient(srv.URL)
+			decoder := registry.NewDecoder(client)
+
+			var got int
+			err := decoder.Decode(context.Background(), test.data, &got)
+
+			test.wantErr(t, err)
+			assert.Equal(t, test.want, got)
+		})
 	}
-
-	//i declare the string schema to be returned by the httptest server
-	var person_schema_string string = `{\"type\":\"record\",\"name\":\"person\",\"fields\":[{\"name\":\"name\",\"type\":\"string\"},{\"name\":\"age\",\"type\":\"int\"}]}`
-
-	//i declare the string schema to be parsed
-	var person_schema_string_to_parse string = `{"type":"record","name":"person","fields":[{"name":"name","type":"string"},{"name":"age","type":"int"}]}`
-
-	schema, err := avro.Parse(person_schema_string_to_parse)
-
-	//i marshal the payload
-	john_payload, err := avro.Marshal(schema, john)
-	require.NoError(t, err)
-
-	//i then add the magic byte to the payload, together with the encoded id
-	payload := make([]byte, 0, len(john_payload)+5)
-	payload = append(payload, 0)
-	binarySchemaId := make([]byte, 4)
-	binary.BigEndian.PutUint32(binarySchemaId, uint32(schema_id))
-	payload = append(payload, binarySchemaId...)
-	payload = append(payload, john_payload...)
-
-	//instantiating the test server
-	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "GET", r.Method)
-		assert.Equal(t, fmt.Sprintf("/schemas/ids/%d", schema_id), r.URL.Path)
-
-		//_, _ = w.Write([]byte(fmt.Sprintf(`{"schema":""}`)))
-		_, _ = w.Write([]byte(fmt.Sprintf(`{"schema":"%s"}`, person_schema_string)))
-	}))
-	t.Cleanup(s.Close)
-
-	//creating the test client
-	client, _ := registry.NewClient(s.URL)
-	decoder := registry.NewDecoder(client)
-
-	target_john := &Person{}
-	err = decoder.Decode(context.Background(), payload, target_john)
-
-	require.NoError(t, err)
-	assert.Equal(t, john.Name, target_john.Name)
-	assert.Equal(t, john.Age, target_john.Age)
-}
-
-func TestDecoder_DecodeHandlesError(t *testing.T) {
-	schema_id := 42
-
-	//instantiating the test server
-	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "GET", r.Method)
-		assert.Equal(t, fmt.Sprintf("/schemas/ids/%d", schema_id), r.URL.Path)
-
-		_, _ = w.Write([]byte(`{"schema":"boh"}`))
-	}))
-	t.Cleanup(s.Close)
-
-	//creating the test client
-	client, _ := registry.NewClient(s.URL)
-	decoder := registry.NewDecoder(client)
-
-	err := decoder.Decode(context.Background(), []byte{0}, nil)
-
-	assert.Equal(t, "payload not containing data", err.Error())
-
-	err = decoder.Decode(context.Background(), []byte{1, 1, 1, 1, 1, 1, 1, 1, 1}, nil)
-
-	assert.Equal(t, "unable to extract schema id from payload, error: magic byte value is 1, different from 0", err.Error())
-
-	payload := make([]byte, 0, 6)
-	payload = append(payload, 0)
-	binarySchemaId := make([]byte, 4)
-	binary.BigEndian.PutUint32(binarySchemaId, uint32(schema_id))
-	payload = append(payload, binarySchemaId...)
-	payload = append(payload, []byte{0}...)
-
-	err = decoder.Decode(context.Background(), payload, nil)
-
-	assert.Equal(t, "unable to obtain schema, error: avro: unknown type: boh", err.Error())
 }
