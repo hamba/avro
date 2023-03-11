@@ -9,6 +9,7 @@ linters-settings:
 linters:
   enable-all: true
   disable:
+    - interfacebloat
     - sqlclosecheck # not relevant (SQL)
     - rowserrcheck # not relevant (SQL)
     - execinquery # not relevant (SQL)
