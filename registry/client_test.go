@@ -148,6 +148,35 @@ func TestClient_GetSubjects(t *testing.T) {
 	assert.Equal(t, "foobar", subs[0])
 }
 
+func TestClient_DeleteSubject(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodDelete, r.Method)
+		assert.Equal(t, "/subjects/foobar", r.URL.Path)
+
+		_, _ = w.Write([]byte(`[1]`))
+	}))
+	t.Cleanup(s.Close)
+	client, _ := registry.NewClient(s.URL)
+
+	versions, err := client.DeleteSubject(context.Background(), "foobar")
+
+	require.NoError(t, err)
+	require.Len(t, versions, 1)
+	assert.Equal(t, 1, versions[0])
+}
+
+func TestClient_DeleteSubjectRequestError(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(500)
+	}))
+	t.Cleanup(s.Close)
+	client, _ := registry.NewClient(s.URL)
+
+	_, err := client.DeleteSubject(context.Background(), "foobar")
+
+	assert.Error(t, err)
+}
+
 func TestClient_GetSubjectsRequestError(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
