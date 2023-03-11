@@ -31,6 +31,9 @@ type Registry interface {
 	// GetSchema returns the schema with the given id.
 	GetSchema(ctx context.Context, id int) (avro.Schema, error)
 
+	// DeleteSubject delete subject.
+	DeleteSubject(ctx context.Context, subject string) ([]int, error)
+
 	// GetSubjects gets the registry subjects.
 	GetSubjects(ctx context.Context) ([]string, error)
 
@@ -198,6 +201,17 @@ func (c *Client) GetSubjects(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 	return subjects, nil
+}
+
+// DeleteSubject delete subject.
+func (c *Client) DeleteSubject(ctx context.Context, subject string) ([]int, error) {
+	var versions []int
+	p := path.Join("subjects", subject)
+	if err := c.request(ctx, http.MethodDelete, p, nil, &versions); err != nil {
+		return nil, err
+	}
+
+	return versions, nil
 }
 
 // GetVersions gets the schema versions for a subject.
