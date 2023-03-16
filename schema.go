@@ -1270,7 +1270,24 @@ func isValidDefault(schema Schema, def any) (any, bool) {
 	case Null:
 		return nullDefault, def == nil
 
-	case String, Bytes, Enum, Fixed:
+	case Enum:
+		v, ok := def.(string)
+		if !ok || len(v) == 0 {
+			return def, false
+		}
+
+		enumSchema := schema.(*EnumSchema)
+		found := false
+		for i := range enumSchema.symbols {
+			if def == enumSchema.symbols[i] {
+				found = true
+				break
+			}
+		}
+
+		return def, found
+
+	case String, Bytes, Fixed:
 		if _, ok := def.(string); ok {
 			return def, true
 		}
