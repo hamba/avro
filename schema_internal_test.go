@@ -161,9 +161,27 @@ func TestIsValidDefault(t *testing.T) {
 				s, _ := NewEnumSchema("foo", "", []string{"BAR"})
 				return s
 			},
-			def:    "test",
-			want:   "test",
+			def:    "BAR",
+			want:   "BAR",
 			wantOk: true,
+		},
+		{
+			name: "Enum Invalid Default",
+			schemaFn: func() Schema {
+				s, _ := NewEnumSchema("foo", "", []string{"BAR"})
+				return s
+			},
+			def:    "BUP",
+			wantOk: false,
+		},
+		{
+			name: "Enum Empty string",
+			schemaFn: func() Schema {
+				s, _ := NewEnumSchema("foo", "", []string{"BAR"})
+				return s
+			},
+			def:    "",
+			wantOk: false,
 		},
 		{
 			name: "Enum Invalid Type",
