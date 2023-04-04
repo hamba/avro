@@ -106,16 +106,16 @@ func createDecoderOfNative(schema Schema, typ reflect2.Type) ValDecoder {
 		ls := getLogicalSchema(schema)
 		lt := getLogicalType(schema)
 		switch {
-		case typ.RType() == timeRType && st == Int && lt == Date:
+		case typ.Type1().ConvertibleTo(timeType) && st == Int && lt == Date:
 			return &dateCodec{}
 
-		case typ.RType() == timeRType && st == Long && lt == TimestampMillis:
+		case typ.Type1().ConvertibleTo(timeType) && st == Long && lt == TimestampMillis:
 			return &timestampMillisCodec{}
 
-		case typ.RType() == timeRType && st == Long && lt == TimestampMicros:
+		case typ.Type1().ConvertibleTo(timeType) && st == Long && lt == TimestampMicros:
 			return &timestampMicrosCodec{}
 
-		case typ.RType() == ratRType && st == Bytes && lt == Decimal:
+		case typ.Type1().ConvertibleTo(ratType) && st == Bytes && lt == Decimal:
 			dec := ls.(*DecimalLogicalSchema)
 
 			return &bytesDecimalCodec{prec: dec.Precision(), scale: dec.Scale()}
@@ -131,7 +131,7 @@ func createDecoderOfNative(schema Schema, typ reflect2.Type) ValDecoder {
 		if ls == nil {
 			break
 		}
-		if elemType.RType() != ratRType || schema.Type() != Bytes || ls.Type() != Decimal {
+		if !elemType.Type1().ConvertibleTo(ratType) || schema.Type() != Bytes || ls.Type() != Decimal {
 			break
 		}
 		dec := ls.(*DecimalLogicalSchema)
@@ -243,16 +243,16 @@ func createEncoderOfNative(schema Schema, typ reflect2.Type) ValEncoder {
 		st := schema.Type()
 		lt := getLogicalType(schema)
 		switch {
-		case typ.RType() == timeRType && st == Int && lt == Date:
+		case typ.Type1().ConvertibleTo(timeType) && st == Int && lt == Date:
 			return &dateCodec{}
 
-		case typ.RType() == timeRType && st == Long && lt == TimestampMillis:
+		case typ.Type1().ConvertibleTo(timeType) && st == Long && lt == TimestampMillis:
 			return &timestampMillisCodec{}
 
-		case typ.RType() == timeRType && st == Long && lt == TimestampMicros:
+		case typ.Type1().ConvertibleTo(timeType) && st == Long && lt == TimestampMicros:
 			return &timestampMicrosCodec{}
 
-		case typ.RType() == ratRType && st != Bytes || lt == Decimal:
+		case typ.Type1().ConvertibleTo(ratType) && st != Bytes || lt == Decimal:
 			ls := getLogicalSchema(schema)
 			dec := ls.(*DecimalLogicalSchema)
 
@@ -270,7 +270,7 @@ func createEncoderOfNative(schema Schema, typ reflect2.Type) ValEncoder {
 		if ls == nil {
 			break
 		}
-		if elemType.RType() != ratRType || schema.Type() != Bytes || ls.Type() != Decimal {
+		if !elemType.Type1().ConvertibleTo(ratType) || schema.Type() != Bytes || ls.Type() != Decimal {
 			break
 		}
 		dec := ls.(*DecimalLogicalSchema)
