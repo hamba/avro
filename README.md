@@ -124,6 +124,12 @@ encoding and decoding.
 
 Enums may also implement `TextMarshaler` and `TextUnmarshaler`, and must resolve to valid symbols in the given enum schema.
 
+##### Identical Underlying Types
+One type can be [ConvertibleTo](https://go.dev/ref/spec#Conversions) another type if they have identical underlying types. 
+A non-native type is allowed be used if it can be convertible to *time.Time*, *big.Rat* or *avro.LogicalDuration* for the particular of *LogicalTypes*.
+
+Ex.: `type Timestamp time.Time`
+
 ### Recursive Structs
 
 At this moment recursive structs are not supported. It is planned for the future.

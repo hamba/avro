@@ -55,8 +55,8 @@ func createEncoderOfFixed(schema Schema, typ reflect2.Type) ValEncoder {
 		elemType := ptrType.Elem()
 
 		ls := fixed.Logical()
-		if elemType.Kind() != reflect.Struct || !elemType.Type1().ConvertibleTo(ratType) || ls == nil || 
-		ls.Type() != Decimal {
+		if elemType.Kind() != reflect.Struct || !elemType.Type1().ConvertibleTo(ratType) || ls == nil ||
+			ls.Type() != Decimal {
 			break
 		}
 		dec := ls.(*DecimalLogicalSchema)
