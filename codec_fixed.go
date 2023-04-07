@@ -25,10 +25,11 @@ func createDecoderOfFixed(schema Schema, typ reflect2.Type) ValDecoder {
 		if ls == nil {
 			break
 		}
+		typ1 := typ.Type1()
 		switch {
-		case typ.Type1().ConvertibleTo(durType) && ls.Type() == Duration:
+		case typ1.ConvertibleTo(durType) && ls.Type() == Duration:
 			return &fixedDurationCodec{}
-		case typ.Type1().ConvertibleTo(ratType) && ls.Type() == Decimal:
+		case typ1.ConvertibleTo(ratType) && ls.Type() == Decimal:
 			dec := ls.(*DecimalLogicalSchema)
 			return &fixedDecimalCodec{prec: dec.Precision(), scale: dec.Scale(), size: fixed.Size()}
 		}
@@ -55,7 +56,8 @@ func createEncoderOfFixed(schema Schema, typ reflect2.Type) ValEncoder {
 		elemType := ptrType.Elem()
 
 		ls := fixed.Logical()
-		if elemType.Kind() != reflect.Struct || !elemType.Type1().ConvertibleTo(ratType) || ls == nil ||
+		tpy1 := elemType.Type1()
+		if elemType.Kind() != reflect.Struct || !tpy1.ConvertibleTo(ratType) || ls == nil ||
 			ls.Type() != Decimal {
 			break
 		}
@@ -67,7 +69,8 @@ func createEncoderOfFixed(schema Schema, typ reflect2.Type) ValEncoder {
 		if ls == nil {
 			break
 		}
-		if typ.Type1().ConvertibleTo(durType) && ls.Type() == Duration {
+		typ1 := typ.Type1()
+		if typ1.ConvertibleTo(durType) && ls.Type() == Duration {
 			return &fixedDurationCodec{}
 		}
 	}
