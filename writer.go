@@ -66,13 +66,18 @@ func (w *Writer) Flush() error {
 	}
 
 	n, err := w.out.Write(w.buf)
+	if n < len(w.buf) && err == nil {
+		err = io.ErrShortWrite
+	}
 	if err != nil {
 		if w.Error == nil {
 			w.Error = err
 		}
 		return err
 	}
-	w.buf = w.buf[n:]
+
+	w.buf = w.buf[:0]
+
 	return nil
 }
 
