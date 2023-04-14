@@ -1,6 +1,7 @@
 package avro_test
 
 import (
+	"io"
 	"os"
 	"testing"
 
@@ -140,5 +141,34 @@ func BenchmarkSuperheroGenericEncode(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = avro.Marshal(schema, super)
+	}
+}
+
+func BenchmarkSuperheroWriteFlush(b *testing.B) {
+	schema, err := avro.ParseFiles("testdata/superhero.avsc")
+	if err != nil {
+		panic(err)
+	}
+
+	super := &Superhero{
+		ID:            234765,
+		AffiliationID: 9867,
+		Name:          "Wolverine",
+		Life:          85.25,
+		Energy:        32.75,
+		Powers: []*Superpower{
+			{ID: 2345, Name: "Bone Claws", Damage: 5, Energy: 1.15, Passive: false},
+			{ID: 2346, Name: "Regeneration", Damage: -2, Energy: 0.55, Passive: true},
+			{ID: 2347, Name: "Adamant skeleton", Damage: -10, Energy: 0, Passive: true},
+		},
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	w := avro.NewWriter(io.Discard, 128)
+	for i := 0; i < b.N; i++ {
+		w.WriteVal(schema, super)
+		_ = w.Flush()
 	}
 }

@@ -3,6 +3,7 @@ package avro_test
 import (
 	"bytes"
 	"errors"
+	"io"
 	"testing"
 
 	"github.com/hamba/avro/v2"
@@ -41,6 +42,19 @@ func TestWriter_Flush(t *testing.T) {
 	assert.Equal(t, []byte("test"), buf.Bytes())
 }
 
+type shortWrite struct{}
+
+func (shortWrite) Write(p []byte) (n int, err error) { return len(p) - 1, nil } // short write (breaks io.Writer contract; see io.ErrShortWrite)
+
+func TestWriter_FlushShortWrite(t *testing.T) {
+	w := avro.NewWriter(shortWrite{}, 10)
+	_, _ = w.Write([]byte("test"))
+
+	err := w.Flush()
+	
+	require.ErrorIs(t, err, io.ErrShortWrite)
+}
+
 func TestWriter_FlushNoWriter(t *testing.T) {
 	w := avro.NewWriter(nil, 10)
 	_, _ = w.Write([]byte("test"))
@@ -68,6 +82,20 @@ func TestWriter_FlushReturnsUnderlyingWriterError(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Error(t, w.Error)
+}
+
+func TestWriter_FlushReuseMemory(t *testing.T) {
+	var buf bytes.Buffer
+	w := avro.NewWriter(&buf, 10)
+	_, _ = w.Write(bytes.Repeat([]byte("test"), 10))
+
+	bufAddr := &w.Buffer()[:1][0] // buffer alloc address
+	err := w.Flush()
+	bufAddr2 := &w.Buffer()[:1][0]
+
+	require.NoError(t, err)
+
+	assert.Equal(t, bufAddr, bufAddr2)
 }
 
 func TestWriter_Write(t *testing.T) {
