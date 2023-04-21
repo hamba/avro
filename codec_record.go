@@ -115,7 +115,7 @@ func (d *structDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 
 			if f.Type().Kind() == reflect.Ptr {
 				if *((*unsafe.Pointer)(fieldPtr)) == nil {
-					newPtr := f.Type().UnsafeNew()
+					newPtr := f.Type().(*reflect2.UnsafePtrType).Elem().UnsafeNew()
 					*((*unsafe.Pointer)(fieldPtr)) = newPtr
 				}
 
