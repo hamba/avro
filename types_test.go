@@ -27,27 +27,28 @@ type TestUnion struct {
 }
 
 type TestEmbeddedRecord struct {
-	TestEmbed
+	C string `avro:"c"`
 
-	B string `avro:"b"`
+	TestEmbed // tests not-first position
 }
 
 type TestEmbeddedPtrRecord struct {
-	*TestEmbed
+	C string `avro:"c"`
 
-	B string `avro:"b"`
+	*TestEmbed // tests not-first position
 }
 
 type TestEmbed struct {
-	A int64 `avro:"a"`
+	A int64  `avro:"a"`
+	B string `avro:"b"`
 }
 
 type TestEmbedInt int
 
 type TestEmbeddedIntRecord struct {
-	TestEmbedInt
-
 	B string `avro:"b"`
+
+	TestEmbedInt // tests not-first position
 }
 
 type TestUnexportedRecord struct {

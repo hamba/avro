@@ -190,10 +190,11 @@ func TestEncoder_RecordEmbeddedStruct(t *testing.T) {
 	"name": "test",
 	"fields" : [
 		{"name": "a", "type": "long"},
-	    {"name": "b", "type": "string"}
+	    {"name": "b", "type": "string"},
+	    {"name": "c", "type": "string"}
 	]
 }`
-	obj := TestEmbeddedRecord{TestEmbed: TestEmbed{A: 27}, B: "foo"}
+	obj := TestEmbeddedRecord{TestEmbed: TestEmbed{A: 27, B: "foo"}, C: "bar"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
@@ -201,7 +202,7 @@ func TestEncoder_RecordEmbeddedStruct(t *testing.T) {
 	err = enc.Encode(obj)
 
 	require.NoError(t, err)
-	assert.Equal(t, []byte{0x36, 0x06, 0x66, 0x6f, 0x6f}, buf.Bytes())
+	assert.Equal(t, []byte{0x36, 0x06, 0x66, 0x6f, 0x6f, 0x06, 0x62, 0x61, 0x72}, buf.Bytes())
 }
 
 func TestEncoder_RecordEmbeddedPtrStruct(t *testing.T) {
@@ -212,10 +213,11 @@ func TestEncoder_RecordEmbeddedPtrStruct(t *testing.T) {
 	"name": "test",
 	"fields" : [
 		{"name": "a", "type": "long"},
-	    {"name": "b", "type": "string"}
+	    {"name": "b", "type": "string"},
+	    {"name": "c", "type": "string"}
 	]
 }`
-	obj := TestEmbeddedPtrRecord{TestEmbed: &TestEmbed{A: 27}, B: "foo"}
+	obj := TestEmbeddedPtrRecord{TestEmbed: &TestEmbed{A: 27, B: "foo"}, C: "bar"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
@@ -223,7 +225,7 @@ func TestEncoder_RecordEmbeddedPtrStruct(t *testing.T) {
 	err = enc.Encode(obj)
 
 	require.NoError(t, err)
-	assert.Equal(t, []byte{0x36, 0x06, 0x66, 0x6f, 0x6f}, buf.Bytes())
+	assert.Equal(t, []byte{0x36, 0x06, 0x66, 0x6f, 0x6f, 0x06, 0x62, 0x61, 0x72}, buf.Bytes())
 }
 
 func TestEncoder_RecordEmbeddedPtrStructNull(t *testing.T) {
@@ -234,10 +236,11 @@ func TestEncoder_RecordEmbeddedPtrStructNull(t *testing.T) {
 	"name": "test",
 	"fields" : [
 		{"name": "a", "type": "long"},
-	    {"name": "b", "type": "string"}
+	    {"name": "b", "type": "string"},
+	    {"name": "c", "type": "string"}
 	]
 }`
-	obj := TestEmbeddedPtrRecord{B: "foo"}
+	obj := TestEmbeddedPtrRecord{C: "foo"}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
