@@ -114,7 +114,7 @@ func (d *structDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 			}
 
 			if f.Type().Kind() == reflect.Ptr {
-				if *((*unsafe.Pointer)(ptr)) == nil {
+				if *((*unsafe.Pointer)(fieldPtr)) == nil {
 					newPtr := f.Type().UnsafeNew()
 					*((*unsafe.Pointer)(fieldPtr)) = newPtr
 				}
@@ -208,7 +208,7 @@ func (e *structEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 			}
 
 			if f.Type().Kind() == reflect.Ptr {
-				if *((*unsafe.Pointer)(ptr)) == nil {
+				if *((*unsafe.Pointer)(fieldPtr)) == nil {
 					w.Error = fmt.Errorf("embedded field %q is nil", f.Name())
 					return
 				}
