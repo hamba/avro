@@ -190,7 +190,7 @@ type errorDecoder struct {
 	err error
 }
 
-func (d *errorDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
+func (d *errorDecoder) Decode(_ unsafe.Pointer, r *Reader) {
 	if r.Error == nil {
 		r.Error = d.err
 	}
@@ -200,7 +200,7 @@ type errorEncoder struct {
 	err error
 }
 
-func (e *errorEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
+func (e *errorEncoder) Encode(_ unsafe.Pointer, w *Writer) {
 	if w.Error == nil {
 		w.Error = e.err
 	}

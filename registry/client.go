@@ -331,10 +331,7 @@ func (c *Client) SetGlobalCompatibilityLevel(ctx context.Context, lvl string) er
 	}
 
 	req := compatPayload{Compatibility: lvl}
-	if err := c.request(ctx, http.MethodPut, "config", req, nil); err != nil {
-		return err
-	}
-	return nil
+	return c.request(ctx, http.MethodPut, "config", req, nil)
 }
 
 // SetCompatibilityLevel sets the compatibility level of a subject.
@@ -344,10 +341,7 @@ func (c *Client) SetCompatibilityLevel(ctx context.Context, subject, lvl string)
 	}
 
 	req := compatPayload{Compatibility: lvl}
-	if err := c.request(ctx, http.MethodPut, path.Join("config", subject), req, nil); err != nil {
-		return err
-	}
-	return nil
+	return c.request(ctx, http.MethodPut, path.Join("config", subject), req, nil)
 }
 
 // GetGlobalCompatibilityLevel gets the global compatibility level.
