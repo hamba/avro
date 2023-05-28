@@ -213,10 +213,10 @@ func (r *Reader) ReadString() string {
 	return *(*string)(unsafe.Pointer(&b))
 }
 
-func (r *Reader) readBytes(typ string) []byte {
+func (r *Reader) readBytes(op string) []byte {
 	size := int(r.ReadLong())
 	if size < 0 {
-		r.ReportError("ReadString", "invalid "+typ+" length")
+		r.ReportError("ReadString", "invalid "+op+" length")
 		return nil
 	}
 	if size == 0 {
