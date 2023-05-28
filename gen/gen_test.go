@@ -3,6 +3,7 @@ package gen_test
 import (
 	"bytes"
 	"flag"
+	"go/format"
 	"os"
 	"regexp"
 	"strings"
@@ -149,14 +150,17 @@ func TestGenerator(t *testing.T) {
 	err = g.Write(&buf)
 	require.NoError(t, err)
 
+	formatted, err := format.Source(buf.Bytes())
+	require.NoError(t, err)
+
 	if *update {
-		err = os.WriteFile("testdata/golden_multiple.go", buf.Bytes(), 0600)
+		err = os.WriteFile("testdata/golden_multiple.go", formatted, 0600)
 		require.NoError(t, err)
 	}
 
 	want, err := os.ReadFile("testdata/golden_multiple.go")
 	require.NoError(t, err)
-	assert.Equal(t, want, buf.Bytes())
+	assert.Equal(t, string(want), string(formatted))
 }
 
 // generate is a utility to run the generation and return the result as a tuple
