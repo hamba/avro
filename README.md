@@ -139,14 +139,14 @@ At this moment recursive structs are not supported. It is planned for the future
 Benchmark source code can be found at: [https://github.com/nrwiersma/avro-benchmarks](https://github.com/nrwiersma/avro-benchmarks)
 
 ```
-BenchmarkGoAvroDecode-10       	  495176	      2413 ns/op	     418 B/op	      27 allocs/op
-BenchmarkGoAvroEncode-10       	  420168	      2917 ns/op	     948 B/op	      63 allocs/op
-BenchmarkGoGenAvroDecode-10    	  757150	      1552 ns/op	     728 B/op	      45 allocs/op
-BenchmarkGoGenAvroEncode-10    	 1882940	       639.0 ns/op	     256 B/op	       3 allocs/op
-BenchmarkHambaDecode-10        	 3138063	       383.0 ns/op	      64 B/op	       4 allocs/op
-BenchmarkHambaEncode-10        	 4377513	       273.3 ns/op	     112 B/op	       1 allocs/op
-BenchmarkLinkedinDecode-10     	 1000000	      1109 ns/op	    1688 B/op	      35 allocs/op
-BenchmarkLinkedinEncode-10     	 2641016	       456.0 ns/op	     248 B/op	       5 allocs/op
+BenchmarkGoAvroDecode-8      	  788455	      1505 ns/op	     418 B/op	      27 allocs/op
+BenchmarkGoAvroEncode-8      	  624343	      1908 ns/op	     806 B/op	      63 allocs/op
+BenchmarkGoGenAvroDecode-8   	 1360375	       876.4 ns/op	     320 B/op	      11 allocs/op
+BenchmarkGoGenAvroEncode-8   	 2801583	       425.9 ns/op	     240 B/op	       3 allocs/op
+BenchmarkHambaDecode-8       	 5046832	       238.7 ns/op	      47 B/op	       0 allocs/op
+BenchmarkHambaEncode-8       	 6017635	       196.2 ns/op	     112 B/op	       1 allocs/op
+BenchmarkLinkedinDecode-8    	 1000000	      1003 ns/op	    1688 B/op	      35 allocs/op
+BenchmarkLinkedinEncode-8    	 3170553	       381.5 ns/op	     248 B/op	       5 allocs/op
 ```
 
 Always benchmark with your own workload. The result depends heavily on the data input.
