@@ -206,7 +206,7 @@ func (r *Reader) ReadBytes() []byte {
 // ReadString reads a String from the Reader.
 func (r *Reader) ReadString() string {
 	b := r.readBytes("string")
-	if b == nil {
+	if b == nil || len(b) == 0 {
 		return ""
 	}
 
@@ -219,10 +219,13 @@ func (r *Reader) readBytes(typ string) []byte {
 		r.ReportError("ReadString", "invalid "+typ+" length")
 		return nil
 	}
+	if size == 0 {
+		return []byte{}
+	}
 
 	// The bytes are entirely in the buffer and of a reasonable size.
 	// Use the byte slab.
-	if r.head+size <= r.tail && size <= 1024 && size > 0 {
+	if r.head+size <= r.tail && size <= 1024 {
 		if cap(r.slab) < size {
 			r.slab = make([]byte, 1024)
 		}
