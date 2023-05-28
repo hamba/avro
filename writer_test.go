@@ -51,7 +51,7 @@ func TestWriter_FlushShortWrite(t *testing.T) {
 	_, _ = w.Write([]byte("test"))
 
 	err := w.Flush()
-	
+
 	require.ErrorIs(t, err, io.ErrShortWrite)
 }
 

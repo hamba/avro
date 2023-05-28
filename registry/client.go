@@ -1,9 +1,7 @@
-/*
-Package registry implements a Confluent Schema Registry compliant client.
-
-See the Confluent Schema Registry docs for an understanding of the
-API: https://docs.confluent.io/current/schema-registry/docs/api.html
-*/
+// Package registry implements a Confluent Schema Registry compliant client.
+//
+// See the Confluent Schema Registry docs for an understanding of the
+// API: https://docs.confluent.io/current/schema-registry/docs/api.html
 package registry
 
 import (
