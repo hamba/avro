@@ -6,7 +6,7 @@
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/hamba/avro)](https://goreportcard.com/report/github.com/hamba/avro)
 [![Build Status](https://github.com/hamba/avro/actions/workflows/test.yml/badge.svg)](https://github.com/hamba/avro/actions)
-[![Coverage Status](https://coveralls.io/repos/github/hamba/avro/badge.svg?branch=master)](https://coveralls.io/github/hamba/avro?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/hamba/avro/badge.svg?branch=main)](https://coveralls.io/github/hamba/avro?branch=main)
 [![Go Reference](https://pkg.go.dev/badge/github.com/hamba/avro/v2.svg)](https://pkg.go.dev/github.com/hamba/avro/v2)
 [![GitHub release](https://img.shields.io/github/release/hamba/avro.svg)](https://github.com/hamba/avro/releases)
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/hamba/avro/master/LICENSE)
