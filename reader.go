@@ -206,7 +206,7 @@ func (r *Reader) ReadBytes() []byte {
 // ReadString reads a String from the Reader.
 func (r *Reader) ReadString() string {
 	b := r.readBytes("string")
-	if b == nil || len(b) == 0 {
+	if len(b) == 0 {
 		return ""
 	}
 
