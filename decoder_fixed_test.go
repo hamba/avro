@@ -123,7 +123,6 @@ func TestDecoder_FixedLogicalDurationSizeNot12(t *testing.T) {
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
 	require.NoError(t, err)
 
-	fmt.Printf("decoder: starting test\n")
 	got := avro.LogicalDuration{}
 	err = dec.Decode(&got)
 	assert.Error(t, err)

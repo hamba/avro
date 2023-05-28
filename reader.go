@@ -26,6 +26,7 @@ func WithReaderConfig(cfg API) ReaderFunc {
 type Reader struct {
 	cfg    *frozenConfig
 	reader io.Reader
+	slab   []byte
 	buf    []byte
 	head   int
 	tail   int
@@ -199,35 +200,45 @@ func (r *Reader) ReadDouble() float64 {
 
 // ReadBytes reads Bytes from the Reader.
 func (r *Reader) ReadBytes() []byte {
-	size := r.ReadLong()
+	return r.readBytes("bytes")
+}
+
+// ReadString reads a String from the Reader.
+func (r *Reader) ReadString() string {
+	b := r.readBytes("string")
+	if len(b) == 0 {
+		return ""
+	}
+
+	return *(*string)(unsafe.Pointer(&b))
+}
+
+func (r *Reader) readBytes(op string) []byte {
+	size := int(r.ReadLong())
 	if size < 0 {
-		r.ReportError("ReadBytes", "invalid bytes length")
+		r.ReportError("ReadString", "invalid "+op+" length")
 		return nil
+	}
+	if size == 0 {
+		return []byte{}
+	}
+
+	// The bytes are entirely in the buffer and of a reasonable size.
+	// Use the byte slab.
+	if r.head+size <= r.tail && size <= 1024 {
+		if cap(r.slab) < size {
+			r.slab = make([]byte, 1024)
+		}
+		dst := r.slab[:size]
+		r.slab = r.slab[size:]
+		copy(dst, r.buf[r.head:r.head+size])
+		r.head += size
+		return dst
 	}
 
 	buf := make([]byte, size)
 	r.Read(buf)
 	return buf
-}
-
-// ReadString reads a String from the Reader.
-func (r *Reader) ReadString() string {
-	size := int(r.ReadLong())
-	if size < 0 {
-		r.ReportError("ReadString", "invalid string length")
-		return ""
-	}
-
-	// The string is entirely in the current buffer, fast path.
-	if r.head+size <= r.tail {
-		ret := string(r.buf[r.head : r.head+size])
-		r.head += size
-		return ret
-	}
-
-	buf := make([]byte, size)
-	r.Read(buf)
-	return *(*string)(unsafe.Pointer(&buf))
 }
 
 // ReadBlockHeader reads a Block Header from the Reader.
