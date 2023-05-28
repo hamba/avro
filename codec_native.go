@@ -310,7 +310,7 @@ func getLogicalType(schema Schema) LogicalType {
 
 type nullCodec struct{}
 
-func (*nullCodec) Encode(ptr unsafe.Pointer, w *Writer) {}
+func (*nullCodec) Encode(unsafe.Pointer, *Writer) {}
 
 type boolCodec struct{}
 
