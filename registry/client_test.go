@@ -537,7 +537,7 @@ func TestClient_IsRegisteredWithRefs(t *testing.T) {
 
 		assert.Contains(t, decoded, "references")
 		refs, ok := decoded["references"].([]any)
-		require.True(t, true)
+		require.True(t, ok)
 		require.Len(t, refs, 1)
 		ref, ok := refs[0].(map[string]any)
 		require.True(t, ok)
