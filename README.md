@@ -164,7 +164,7 @@ go install github.com/hamba/avro/v2/cmd/avrogen@<version>
 Example usage assuming there's a valid schema in `in.avsc`:
 
 ```shell
-./app -pkg avro -o bla.go -tags json:snake,yaml:upper-camel in.avsc
+avrogen -pkg avro -o bla.go -tags json:snake,yaml:upper-camel in.avsc
 ```
 
 Check the options and usage with `-h`:
@@ -174,6 +174,44 @@ avrogen -h
 ```
 
 Or use it as a lib in internal commands, it's the `gen` package
+
+## Avro schema validation
+
+A small Avro schema validation command-line utility is also available. This simple tool leverages the
+schema parsing functionality of the library, showing validation errors or optionally dumping parsed
+schemas to the console. It can be used in CI/CD pipelines to validate schema changes in a repository.
+
+Install the Avro schema validator with:
+
+```shell
+go install github.com/hamba/avro/v2/cmd/avrosv@<version>
+```
+
+Example usage assuming there's a valid schema in `in.avsc` (exit status code is `0`):
+
+```shell
+avrosv in.avsc
+```
+
+An invalid schema will result in a diagnostic output and a non-zero exit status code:
+
+```shell
+avrosv bad-default-schema.avsc; echo $?
+Error: avro: invalid default for field someString. <nil> not a string
+2
+```
+
+Schemas referencing other schemas can also be validated by providing all of them (schemas are parsed in order):
+
+```shell
+avrosv base-schema.avsc schema-withref.avsc
+```
+
+Check the options and usage with `-h`:
+
+```shell
+avrosv -h
+```
 
 ## Go Version Support
 

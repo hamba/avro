@@ -1,0 +1,7 @@
+{
+  "type": "record",
+  "name": "testref",
+  "fields": [
+    { "name": "someref", "type": "test" }
+  ]
+}
