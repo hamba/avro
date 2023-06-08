@@ -37,7 +37,7 @@ type Config struct {
 	// call to Marshal() and Unmarshal()
 	DisableCaching bool
 
-	// DisableArrayBytesLength disables the encoding of the length of the array in bytes.
+	// DisableArraySizeBytes disables encoding of an array size in bytes.
 	// Encoded arrays will be prefixed with only the number of elements in the array in
 	// contrast with default behavior which prefixes the array with the number of elements
 	// and the number of bytes in the array. Both approaches are valid according to the
