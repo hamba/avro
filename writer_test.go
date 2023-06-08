@@ -449,7 +449,7 @@ func TestWriter_WriteBlockHeader(t *testing.T) {
 
 	for _, test := range tests {
 		cfg := avro.Config{
-			DisableArraySizeBytes: test.disableSize,
+			DisableBlockSizeHeader: test.disableSize,
 		}.Freeze()
 
 		w := avro.NewWriter(nil, 50, avro.WithWriterConfig(cfg))
@@ -492,7 +492,7 @@ func TestWriter_WriteBlockCB(t *testing.T) {
 
 	for _, test := range tests {
 		cfg := avro.Config{
-			DisableArraySizeBytes: test.disableSize,
+			DisableBlockSizeHeader: test.disableSize,
 		}.Freeze()
 
 		w := avro.NewWriter(nil, 50, avro.WithWriterConfig(cfg))

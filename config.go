@@ -21,6 +21,13 @@ type Config struct {
 	// This defaults to 100.
 	BlockLength int
 
+	// DisableBlockSizeHeader disables encoding of an array/map size in bytes.
+	// Encoded array/map will be prefixed with only the number of elements in
+	// contrast with default behavior which prefixes them with the number of elements
+	// and the total number of bytes in the array/map. Both approaches are valid according to the
+	// Avro specification, however not all decoders support the latter.
+	DisableBlockSizeHeader bool
+
 	// UnionResolutionError determines if an error will be returned
 	// when a type cannot be resolved while decoding a union.
 	UnionResolutionError bool
@@ -36,13 +43,6 @@ type Config struct {
 	// Disable caching layer for encoders and decoders, forcing them to get rebuilt on every
 	// call to Marshal() and Unmarshal()
 	DisableCaching bool
-
-	// DisableArraySizeBytes disables encoding of an array size in bytes.
-	// Encoded arrays will be prefixed with only the number of elements in the array in
-	// contrast with default behavior which prefixes the array with the number of elements
-	// and the number of bytes in the array. Both approaches are valid according to the
-	// Avro specification, however not all decoders support the latter.
-	DisableArraySizeBytes bool
 }
 
 // Freeze makes the configuration immutable.
