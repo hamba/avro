@@ -36,6 +36,13 @@ type Config struct {
 	// Disable caching layer for encoders and decoders, forcing them to get rebuilt on every
 	// call to Marshal() and Unmarshal()
 	DisableCaching bool
+
+	// DisableArrayBytesLength disables the encoding of the length of the array in bytes.
+	// Encoded arrays will be prefixed with only the number of elements in the array in
+	// contrast with default behavior which prefixes the array with the number of elements
+	// and the number of bytes in the array. Both approaches are valid according to the
+	// Avro specification, however not all decoders support the latter.
+	DisableArraySizeBytes bool
 }
 
 // Freeze makes the configuration immutable.
