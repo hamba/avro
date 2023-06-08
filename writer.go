@@ -159,7 +159,7 @@ func (w *Writer) WriteString(s string) {
 
 // WriteBlockHeader writes a Block Header to the Writer.
 func (w *Writer) WriteBlockHeader(l, s int64) {
-	if s > 0 {
+	if s > 0 && !w.cfg.config.DisableBlockSizeHeader {
 		w.WriteLong(-l)
 		w.WriteLong(s)
 		return

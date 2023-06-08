@@ -424,9 +424,10 @@ func TestWriter_WriteString(t *testing.T) {
 
 func TestWriter_WriteBlockHeader(t *testing.T) {
 	tests := []struct {
-		len  int64
-		size int64
-		want []byte
+		len         int64
+		size        int64
+		disableSize bool
+		want        []byte
 	}{
 		{
 			len:  64,
@@ -438,10 +439,20 @@ func TestWriter_WriteBlockHeader(t *testing.T) {
 			size: 64,
 			want: []byte{0x7F, 0x80, 0x01},
 		},
+		{
+			len:         64,
+			size:        64,
+			disableSize: true,
+			want:        []byte{0x80, 0x01},
+		},
 	}
 
 	for _, test := range tests {
-		w := avro.NewWriter(nil, 50)
+		cfg := avro.Config{
+			DisableBlockSizeHeader: test.disableSize,
+		}.Freeze()
+
+		w := avro.NewWriter(nil, 50, avro.WithWriterConfig(cfg))
 
 		w.WriteBlockHeader(test.len, test.size)
 
@@ -450,17 +461,47 @@ func TestWriter_WriteBlockHeader(t *testing.T) {
 }
 
 func TestWriter_WriteBlockCB(t *testing.T) {
-	w := avro.NewWriter(nil, 50)
+	tests := []struct {
+		disableSize   bool
+		writeCallback func(w *avro.Writer) int64
+		want          []byte
+		wantLen       int64
+	}{
+		{
+			writeCallback: func(w *avro.Writer) int64 {
+				w.WriteString("foo")
+				w.WriteString("avro")
 
-	wrote := w.WriteBlockCB(func(w *avro.Writer) int64 {
-		w.WriteString("foo")
-		w.WriteString("avro")
+				return 2
+			},
+			want:    []byte{0x03, 0x12, 0x06, 0x66, 0x6F, 0x6F, 0x08, 0x61, 0x76, 0x72, 0x6F},
+			wantLen: 2,
+		},
+		{
+			disableSize: true,
+			writeCallback: func(w *avro.Writer) int64 {
+				w.WriteString("foo")
+				w.WriteString("avro")
 
-		return 2
-	})
+				return 2
+			},
+			want:    []byte{0x04, 0x06, 0x66, 0x6F, 0x6F, 0x08, 0x61, 0x76, 0x72, 0x6F},
+			wantLen: 2,
+		},
+	}
 
-	assert.Equal(t, []byte{0x03, 0x12, 0x06, 0x66, 0x6F, 0x6F, 0x08, 0x61, 0x76, 0x72, 0x6F}, w.Buffer())
-	assert.Equal(t, int64(2), wrote)
+	for _, test := range tests {
+		cfg := avro.Config{
+			DisableBlockSizeHeader: test.disableSize,
+		}.Freeze()
+
+		w := avro.NewWriter(nil, 50, avro.WithWriterConfig(cfg))
+
+		wrote := w.WriteBlockCB(test.writeCallback)
+
+		assert.Equal(t, test.want, w.Buffer())
+		assert.Equal(t, test.wantLen, wrote)
+	}
 }
 
 type errorWriter struct{}

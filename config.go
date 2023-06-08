@@ -21,6 +21,13 @@ type Config struct {
 	// This defaults to 100.
 	BlockLength int
 
+	// DisableBlockSizeHeader disables encoding of an array/map size in bytes.
+	// Encoded array/map will be prefixed with only the number of elements in
+	// contrast with default behavior which prefixes them with the number of elements
+	// and the total number of bytes in the array/map. Both approaches are valid according to the
+	// Avro specification, however not all decoders support the latter.
+	DisableBlockSizeHeader bool
+
 	// UnionResolutionError determines if an error will be returned
 	// when a type cannot be resolved while decoding a union.
 	UnionResolutionError bool
