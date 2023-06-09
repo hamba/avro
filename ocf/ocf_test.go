@@ -409,6 +409,80 @@ func TestEncoder(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestEncoder_WithEncodingConfig(t *testing.T) {
+	arrSchema := `{"type": "array", "items": "long"}`
+	syncMarker := [16]byte{0x1F, 0x1F, 0x1F, 0x1F, 0x2F, 0x2F, 0x2F, 0x2F, 0x3F, 0x3F, 0x3F, 0x3F, 0x4F, 0x4F, 0x4F, 0x4F}
+
+	skipOcfHeader := func(encoded []byte) []byte {
+		index := bytes.Index(encoded, syncMarker[:])
+		require.False(t, index == -1)
+		return encoded[index+len(syncMarker):] // +1 for the null byte
+	}
+
+	tests := []struct {
+		name        string
+		data        any
+		encConfig   avro.API
+		wantPayload []byte // without OCF header
+	}{
+		{
+			name: "no encoding config",
+			data: []int64{1, 2, 3, 4, 5},
+			wantPayload: []byte{
+				0x2, 0x10, // OCF block header: 1 elems, 8 bytes
+				0x9, 0xA, // array block header: 5 elems, 5 bytes
+				0x2, 0x4, 0x6, 0x8, 0xA, 0x0, // array block payload with terminator
+				0x1F, 0x1F, 0x1F, 0x1F, 0x2F, 0x2F, 0x2F, 0x2F, 0x3F, 0x3F, 0x3F, 0x3F, 0x4F, 0x4F, 0x4F, 0x4F, // OCF trailing sync marker
+			},
+		},
+		{
+			name:      "no array bytes size",
+			encConfig: avro.Config{DisableBlockSizeHeader: true}.Freeze(),
+			data:      []int64{1, 2, 3, 4, 5},
+			wantPayload: []byte{
+				0x2, 0x0E, // OCF block header: 1 elem, 7 bytes
+				0xA,                          // array block header: 5 elems
+				0x2, 0x4, 0x6, 0x8, 0xA, 0x0, // array block payload with terminator
+				0x1F, 0x1F, 0x1F, 0x1F, 0x2F, 0x2F, 0x2F, 0x2F, 0x3F, 0x3F, 0x3F, 0x3F, 0x4F, 0x4F, 0x4F, 0x4F, // OCF trailing sync marker
+			},
+		},
+		{
+			name:      "non-default array block length",
+			encConfig: avro.Config{BlockLength: 5}.Freeze(),
+			data:      []int64{1, 2, 3, 4, 5, 6, 7, 8, 9},
+			wantPayload: []byte{
+				0x2, 0x1c, // OCF block header: 1 elems, 15 bytes
+				0x9, 0xA, // array block 1 header: 5 elems, 5 bytes
+				0x2, 0x4, 0x6, 0x8, 0xA, // array block 1
+				0x7, 0x8, // array block 2 header: 4 elems, 4 bytes
+				0xC, 0xE, 0x10, 0x12, 0x0, // array block 2 with terminator
+				0x1F, 0x1F, 0x1F, 0x1F, 0x2F, 0x2F, 0x2F, 0x2F, 0x3F, 0x3F, 0x3F, 0x3F, 0x4F, 0x4F, 0x4F, 0x4F, // OCF sync marker
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			buf := &bytes.Buffer{}
+			opts := []ocf.EncoderFunc{ocf.WithSyncBlock(syncMarker)}
+			if tt.encConfig != nil {
+				opts = append(opts, ocf.WithEncodingConfig(tt.encConfig))
+			}
+			enc, err := ocf.NewEncoder(arrSchema, buf, opts...)
+			require.NoError(t, err)
+
+			err = enc.Encode(tt.data)
+			require.NoError(t, err)
+
+			err = enc.Close()
+			assert.NoError(t, err)
+
+			assert.Equal(t, tt.wantPayload, skipOcfHeader(buf.Bytes()))
+		})
+	}
+
+}
+
 func TestEncoder_ExistingOCF(t *testing.T) {
 	record := FullRecord{
 		Strings: []string{"another", "record"},

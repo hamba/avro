@@ -144,6 +144,7 @@ type encoderConfig struct {
 	CodecCompression int
 	Metadata         map[string][]byte
 	Sync             [16]byte
+	EncodingConfig   avro.API
 }
 
 // EncoderFunc represents an configuration function for Encoder.
@@ -186,6 +187,13 @@ func WithSyncBlock(sync [16]byte) EncoderFunc {
 	}
 }
 
+// WithEncodingConfig sets the value encoder config on the OCF encoder.
+func WithEncodingConfig(wCfg avro.API) EncoderFunc {
+	return func(cfg *encoderConfig) {
+		cfg.EncodingConfig = wCfg
+	}
+}
+
 // Encoder writes Avro container file to an output stream.
 type Encoder struct {
 	writer  *avro.Writer
@@ -209,6 +217,7 @@ func NewEncoder(s string, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
 		CodecName:        Null,
 		CodecCompression: -1,
 		Metadata:         map[string][]byte{},
+		EncodingConfig:   avro.DefaultConfig,
 	}
 	for _, opt := range opts {
 		opt(&cfg)
@@ -233,12 +242,12 @@ func NewEncoder(s string, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
 				return nil, err
 			}
 
-			writer := avro.NewWriter(w, 512)
+			writer := avro.NewWriter(w, 512, avro.WithWriterConfig(cfg.EncodingConfig))
 			buf := &bytes.Buffer{}
 			e := &Encoder{
 				writer:      writer,
 				buf:         buf,
-				encoder:     avro.NewEncoderForSchema(h.Schema, buf),
+				encoder:     cfg.EncodingConfig.NewEncoder(h.Schema, buf),
 				sync:        h.Sync,
 				codec:       h.Codec,
 				blockLength: cfg.BlockLength,
@@ -268,7 +277,7 @@ func NewEncoder(s string, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
 		return nil, err
 	}
 
-	writer := avro.NewWriter(w, 512)
+	writer := avro.NewWriter(w, 512, avro.WithWriterConfig(cfg.EncodingConfig))
 	writer.WriteVal(HeaderSchema, header)
 	if err = writer.Flush(); err != nil {
 		return nil, err
@@ -278,7 +287,7 @@ func NewEncoder(s string, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
 	e := &Encoder{
 		writer:      writer,
 		buf:         buf,
-		encoder:     avro.NewEncoderForSchema(schema, buf),
+		encoder:     cfg.EncodingConfig.NewEncoder(schema, buf),
 		sync:        header.Sync,
 		codec:       codec,
 		blockLength: cfg.BlockLength,
