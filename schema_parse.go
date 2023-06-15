@@ -17,17 +17,12 @@ var DefaultSchemaCache = &SchemaCache{}
 
 // Parse parses a schema string.
 func Parse(schema string) (Schema, error) {
-	return ParseWithCache(schema, "", DefaultSchemaCache)
+	return ParseBytes([]byte(schema))
 }
 
-// ParseWithCache parses a schema string using the given namespace and  schema cache.
+// ParseWithCache parses a schema string using the given namespace and schema cache.
 func ParseWithCache(schema, namespace string, cache *SchemaCache) (Schema, error) {
-	var json any
-	if err := jsoniter.Unmarshal([]byte(schema), &json); err != nil {
-		json = schema
-	}
-
-	return parseType(namespace, json, cache)
+	return ParseBytesWithCache([]byte(schema), namespace, cache)
 }
 
 // MustParse parses a schema string, panicing if there is an error.
@@ -58,6 +53,21 @@ func ParseFiles(paths ...string) (Schema, error) {
 	}
 
 	return schema, nil
+}
+
+// ParseBytes parses a schema byte slice.
+func ParseBytes(schema []byte) (Schema, error) {
+	return ParseBytesWithCache(schema, "", DefaultSchemaCache)
+}
+
+// ParseBytesWithCache parses a schema byte slice using the given namespace and schema cache.
+func ParseBytesWithCache(schema []byte, namespace string, cache *SchemaCache) (Schema, error) {
+	var json any
+	if err := jsoniter.Unmarshal(schema, &json); err != nil {
+		json = string(schema)
+	}
+
+	return parseType(namespace, json, cache)
 }
 
 func parseType(namespace string, v any, cache *SchemaCache) (Schema, error) {
