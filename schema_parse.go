@@ -64,7 +64,7 @@ func ParseBytes(schema []byte) (Schema, error) {
 func ParseBytesWithCache(schema []byte, namespace string, cache *SchemaCache) (Schema, error) {
 	var json any
 	if err := jsoniter.Unmarshal(schema, &json); err != nil {
-		json = schema
+		json = string(schema)
 	}
 
 	return parseType(namespace, json, cache)
