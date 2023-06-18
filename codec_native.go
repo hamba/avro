@@ -22,43 +22,43 @@ func createDecoderOfNative(schema Schema, typ reflect2.Type) ValDecoder {
 		if schema.Type() != Int {
 			break
 		}
-		return &intCodec{}
+		return &intCodec[int]{}
 
 	case reflect.Int8:
 		if schema.Type() != Int {
 			break
 		}
-		return &int8Codec{}
+		return &intCodec[int8]{}
 
 	case reflect.Uint8:
 		if schema.Type() != Int {
 			break
 		}
-		return &uint8Codec{}
+		return &intCodec[uint8]{}
 
 	case reflect.Int16:
 		if schema.Type() != Int {
 			break
 		}
-		return &int16Codec{}
+		return &intCodec[int16]{}
 
 	case reflect.Uint16:
 		if schema.Type() != Int {
 			break
 		}
-		return &uint16Codec{}
+		return &intCodec[uint16]{}
 
 	case reflect.Int32:
 		if schema.Type() != Int {
 			break
 		}
-		return &int32Codec{}
+		return &intCodec[int32]{}
 
 	case reflect.Uint32:
 		if schema.Type() != Long {
 			break
 		}
-		return &uint32Codec{}
+		return &longCodec[uint32]{}
 
 	case reflect.Int64:
 		st := schema.Type()
@@ -71,7 +71,7 @@ func createDecoderOfNative(schema Schema, typ reflect2.Type) ValDecoder {
 			return &timeMicrosCodec{}
 
 		case st == Long:
-			return &int64Codec{}
+			return &longCodec[int64]{}
 
 		default:
 			break
@@ -157,46 +157,46 @@ func createEncoderOfNative(schema Schema, typ reflect2.Type) ValEncoder {
 		if schema.Type() != Int {
 			break
 		}
-		return &intCodec{}
+		return &intCodec[int]{}
 
 	case reflect.Int8:
 		if schema.Type() != Int {
 			break
 		}
-		return &int8Codec{}
+		return &intCodec[int8]{}
 
 	case reflect.Uint8:
 		if schema.Type() != Int {
 			break
 		}
-		return &uint8Codec{}
+		return &intCodec[uint8]{}
 
 	case reflect.Int16:
 		if schema.Type() != Int {
 			break
 		}
-		return &int16Codec{}
+		return &intCodec[int16]{}
 
 	case reflect.Uint16:
 		if schema.Type() != Int {
 			break
 		}
-		return &uint16Codec{}
+		return &intCodec[uint16]{}
 
 	case reflect.Int32:
 		switch schema.Type() {
 		case Long:
-			return &int32LongCodec{}
+			return &longCodec[int32]{}
 
 		case Int:
-			return &int32Codec{}
+			return &intCodec[int32]{}
 		}
 
 	case reflect.Uint32:
 		if schema.Type() != Long {
 			break
 		}
-		return &uint32Codec{}
+		return &longCodec[uint32]{}
 
 	case reflect.Int64:
 		st := schema.Type()
@@ -209,7 +209,7 @@ func createEncoderOfNative(schema Schema, typ reflect2.Type) ValEncoder {
 			return &timeMicrosCodec{}
 
 		case st == Long:
-			return &int64Codec{}
+			return &longCodec[int64]{}
 
 		default:
 			break
@@ -322,90 +322,32 @@ func (*boolCodec) Encode(ptr unsafe.Pointer, w *Writer) {
 	w.WriteBool(*((*bool)(ptr)))
 }
 
-type intCodec struct{}
-
-func (*intCodec) Decode(ptr unsafe.Pointer, r *Reader) {
-	*((*int)(ptr)) = int(r.ReadInt())
+type smallInt interface {
+	~int | ~int8 | ~int16 | ~int32 | ~uint | ~uint8 | ~uint16
 }
 
-func (*intCodec) Encode(ptr unsafe.Pointer, w *Writer) {
-	w.WriteInt(int32(*((*int)(ptr))))
+type intCodec[T smallInt] struct{}
+
+func (*intCodec[T]) Decode(ptr unsafe.Pointer, r *Reader) {
+	*((*T)(ptr)) = T(r.ReadInt())
 }
 
-type int8Codec struct{}
-
-func (*int8Codec) Decode(ptr unsafe.Pointer, r *Reader) {
-	*((*int8)(ptr)) = int8(r.ReadInt())
+func (*intCodec[T]) Encode(ptr unsafe.Pointer, w *Writer) {
+	w.WriteInt(int32(*((*T)(ptr))))
 }
 
-func (*int8Codec) Encode(ptr unsafe.Pointer, w *Writer) {
-	w.WriteInt(int32(*((*int8)(ptr))))
+type largeInt interface {
+	~int32 | ~uint32 | int64
 }
 
-type uint8Codec struct{}
+type longCodec[T largeInt] struct{}
 
-func (*uint8Codec) Decode(ptr unsafe.Pointer, r *Reader) {
-	*((*uint8)(ptr)) = uint8(r.ReadInt())
+func (*longCodec[T]) Decode(ptr unsafe.Pointer, r *Reader) {
+	*((*T)(ptr)) = T(r.ReadLong())
 }
 
-func (*uint8Codec) Encode(ptr unsafe.Pointer, w *Writer) {
-	w.WriteInt(int32(*((*uint8)(ptr))))
-}
-
-type int16Codec struct{}
-
-func (*int16Codec) Decode(ptr unsafe.Pointer, r *Reader) {
-	*((*int16)(ptr)) = int16(r.ReadInt())
-}
-
-func (*int16Codec) Encode(ptr unsafe.Pointer, w *Writer) {
-	w.WriteInt(int32(*((*int16)(ptr))))
-}
-
-type uint16Codec struct{}
-
-func (*uint16Codec) Decode(ptr unsafe.Pointer, r *Reader) {
-	*((*uint16)(ptr)) = uint16(r.ReadInt())
-}
-
-func (*uint16Codec) Encode(ptr unsafe.Pointer, w *Writer) {
-	w.WriteInt(int32(*((*uint16)(ptr))))
-}
-
-type int32Codec struct{}
-
-func (*int32Codec) Decode(ptr unsafe.Pointer, r *Reader) {
-	*((*int32)(ptr)) = r.ReadInt()
-}
-
-func (*int32Codec) Encode(ptr unsafe.Pointer, w *Writer) {
-	w.WriteInt(*((*int32)(ptr)))
-}
-
-type uint32Codec struct{}
-
-func (*uint32Codec) Decode(ptr unsafe.Pointer, r *Reader) {
-	*((*uint32)(ptr)) = uint32(r.ReadLong())
-}
-
-func (*uint32Codec) Encode(ptr unsafe.Pointer, w *Writer) {
-	w.WriteLong(int64(*((*uint32)(ptr))))
-}
-
-type int32LongCodec struct{}
-
-func (*int32LongCodec) Encode(ptr unsafe.Pointer, w *Writer) {
-	w.WriteLong(int64(*((*int32)(ptr))))
-}
-
-type int64Codec struct{}
-
-func (*int64Codec) Decode(ptr unsafe.Pointer, r *Reader) {
-	*((*int64)(ptr)) = r.ReadLong()
-}
-
-func (*int64Codec) Encode(ptr unsafe.Pointer, w *Writer) {
-	w.WriteLong(*((*int64)(ptr)))
+func (*longCodec[T]) Encode(ptr unsafe.Pointer, w *Writer) {
+	w.WriteLong(int64(*((*T)(ptr))))
 }
 
 type float32Codec struct{}
