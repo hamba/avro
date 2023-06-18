@@ -24,6 +24,7 @@ linters:
     - structcheck # deprecated
     - varcheck # deprecated
     - cyclop # duplicate of gocyclo
+    - depguard
     - exhaustive
     - exhaustruct
     - forcetypeassert
