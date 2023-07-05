@@ -621,6 +621,20 @@ func TestDecoder_UnionInterfaceWithDecimal_Negative(t *testing.T) {
 	})
 }
 
+func TestDecoder_UnionInterfaceWithUUID(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x2, 0x48, 0x66, 0x33, 0x36, 0x65, 0x35, 0x38, 0x39, 0x61, 0x2d, 0x33, 0x61, 0x35, 0x32, 0x2d, 0x34, 0x39, 0x32, 0x62, 0x2d, 0x62, 0x39, 0x35, 0x63, 0x2d, 0x64, 0x61, 0x64, 0x33, 0x34, 0x35, 0x65, 0x38, 0x64, 0x32, 0x61, 0x63}
+	schema := `["null", {"type": "string", "logicalType": "uuid"}]`
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	var got any
+	err := dec.Decode(&got)
+
+	require.NoError(t, err)
+	assert.Equal(t, "f36e589a-3a52-492b-b95c-dad345e8d2ac", got)
+}
+
 func TestDecoder_UnionInterfaceUnresolvableTypeWithError(t *testing.T) {
 	defer ConfigTeardown()
 
