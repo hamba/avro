@@ -8,6 +8,8 @@ import (
 	"github.com/modern-go/reflect2"
 )
 
+const maxByteSliceSize = 1024 * 1024
+
 // DefaultConfig is the default API.
 var DefaultConfig = Config{}.Freeze()
 
@@ -43,6 +45,10 @@ type Config struct {
 	// Disable caching layer for encoders and decoders, forcing them to get rebuilt on every
 	// call to Marshal() and Unmarshal()
 	DisableCaching bool
+
+	// MaxByteSliceSize is the maximum size of `bytes` or `string` types the Reader will create, defaulting to 1MiB.
+	// If this size is exceeded, the Reader returns an error. This can be disabled by setting a negative number.
+	MaxByteSliceSize int
 }
 
 // Freeze makes the configuration immutable.
@@ -251,4 +257,12 @@ func (c *frozenConfig) getBlockLength() int {
 		return 100
 	}
 	return blockSize
+}
+
+func (c *frozenConfig) getMaxByteSliceSize() int {
+	size := c.config.MaxByteSliceSize
+	if size == 0 {
+		return maxByteSliceSize
+	}
+	return size
 }

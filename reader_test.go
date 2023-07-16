@@ -507,6 +507,19 @@ func TestReader_ReadBytes(t *testing.T) {
 	}
 }
 
+func TestReader_ReadBytesLargerThanMaxByteSliceSize(t *testing.T) {
+	data := []byte{
+		246, 255, 255, 255, 255, 10, 255, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
+		32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
+		32, 32, 32, 32, 32, 32, 32,
+	}
+	r := avro.NewReader(bytes.NewReader(data), 4)
+
+	_ = r.ReadBytes()
+
+	assert.Error(t, r.Error)
+}
+
 func TestReader_ReadString(t *testing.T) {
 	tests := []struct {
 		data    []byte
@@ -581,6 +594,19 @@ func TestReader_ReadString(t *testing.T) {
 			assert.Equal(t, test.want, got)
 		})
 	}
+}
+
+func TestReader_ReadStringLargerThanMaxByteSliceSize(t *testing.T) {
+	data := []byte{
+		246, 255, 255, 255, 255, 10, 255, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
+		32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
+		32, 32, 32, 32, 32, 32, 32,
+	}
+	r := avro.NewReader(bytes.NewReader(data), 4)
+
+	_ = r.ReadString()
+
+	assert.Error(t, r.Error)
 }
 
 func TestReader_ReadStringFastPathIsntBoundToBuffer(t *testing.T) {
