@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"unsafe"
 )
 
@@ -216,11 +217,17 @@ func (r *Reader) ReadString() string {
 func (r *Reader) readBytes(op string) []byte {
 	size := int(r.ReadLong())
 	if size < 0 {
-		r.ReportError("ReadString", "invalid "+op+" length")
+		fnName := "Read" + strings.ToTitle(op)
+		r.ReportError(fnName, "invalid "+op+" length")
 		return nil
 	}
 	if size == 0 {
 		return []byte{}
+	}
+	if max := r.cfg.getMaxByteSliceSize(); max > 0 && size > max {
+		fnName := "Read" + strings.ToTitle(op)
+		r.ReportError(fnName, "size is greater than `Config.MaxByteSliceSize`")
+		return nil
 	}
 
 	// The bytes are entirely in the buffer and of a reasonable size.
