@@ -404,7 +404,20 @@ func (s *PrimitiveSchema) String() string {
 
 // MarshalJSON marshals the schema to json.
 func (s *PrimitiveSchema) MarshalJSON() ([]byte, error) {
-	return []byte(s.String()), nil
+	if s.logical == nil && len(s.props) == 0 {
+		return jsoniter.Marshal(s.typ)
+	}
+
+	m := make(map[string]any, len(s.props)+1)
+	for k, v := range s.props {
+		// set properties first so that they can be overridden
+		m[k] = v
+	}
+	m["type"] = s.typ
+	if s.logical != nil {
+		m["logicalType"] = s.logical
+	}
+	return jsoniter.Marshal(m)
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
@@ -500,26 +513,25 @@ func (s *RecordSchema) String() string {
 
 // MarshalJSON marshals the schema to json.
 func (s *RecordSchema) MarshalJSON() ([]byte, error) {
-	typ := "record"
+	m := make(map[string]any, len(s.props)+3)
+	for k, v := range s.props {
+		// set properties first so that they can be overridden
+		m[k] = v
+	}
+	m["name"] = s.full
 	if s.isError {
-		typ = "error"
+		m["type"] = Error
+	} else {
+		m["type"] = Record
 	}
-
-	ss := struct {
-		Name    string   `json:"name"`
-		Aliases []string `json:"aliases,omitempty"`
-		Doc     string   `json:"doc,omitempty"`
-		Type    string   `json:"type"`
-		Fields  []*Field `json:"fields"`
-	}{
-		Name:    s.full,
-		Aliases: s.aliases,
-		Doc:     s.doc,
-		Type:    typ,
-		Fields:  s.fields,
+	m["fields"] = s.fields
+	if len(s.aliases) > 0 {
+		m["aliases"] = s.aliases
 	}
-
-	return jsoniter.Marshal(ss)
+	if s.doc != "" {
+		m["doc"] = s.doc
+	}
+	return jsoniter.Marshal(m)
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
@@ -643,36 +655,26 @@ func (f *Field) String() string {
 
 // MarshalJSON marshals the schema to json.
 func (f *Field) MarshalJSON() ([]byte, error) {
-	type base struct {
-		Name    string   `json:"name"`
-		Aliases []string `json:"aliases,omitempty"`
-		Doc     string   `json:"doc,omitempty"`
-		Type    Schema   `json:"type"`
-		Order   string   `json:"order,omitempty"`
+	m := make(map[string]any, len(f.props)+2)
+	for k, v := range f.props {
+		// set properties first so that they can be overridden
+		m[k] = v
 	}
-	type ext struct {
-		base
-		Default any `json:"default"`
+	m["type"] = f.typ
+	m["name"] = f.name
+	if f.aliases != nil {
+		m["aliases"] = f.aliases
 	}
-
-	b := base{
-		Name:    f.name,
-		Aliases: f.aliases,
-		Doc:     f.doc,
-		Type:    f.typ,
+	if f.doc != "" {
+		m["doc"] = f.doc
 	}
 	if f.order != Asc {
-		b.Order = string(f.order)
+		m["order"] = string(f.order)
 	}
-
-	var s any = b
 	if f.hasDef {
-		s = ext{
-			base:    s.(base),
-			Default: f.Default(),
-		}
+		m["default"] = f.Default()
 	}
-	return jsoniter.Marshal(s)
+	return jsoniter.Marshal(m)
 }
 
 // EnumSchema is an Avro enum type schema.
@@ -769,22 +771,25 @@ func (s *EnumSchema) String() string {
 
 // MarshalJSON marshals the schema to json.
 func (s *EnumSchema) MarshalJSON() ([]byte, error) {
-	ss := struct {
-		Name    string   `json:"name"`
-		Aliases []string `json:"aliases,omitempty"`
-		Doc     string   `json:"doc,omitempty"`
-		Type    string   `json:"type"`
-		Symbols []string `json:"symbols"`
-		Default string   `json:"default,omitempty"`
-	}{
-		Name:    s.full,
-		Aliases: s.aliases,
-		Doc:     s.doc,
-		Type:    "enum",
-		Symbols: s.symbols,
-		Default: s.def,
+	m := make(map[string]any, len(s.props)+3)
+	for k, v := range s.props {
+		// set properties first so that they can be overridden
+		m[k] = v
 	}
-	return jsoniter.Marshal(ss)
+	m["type"] = Enum
+	m["name"] = s.full
+	m["symbols"] = s.symbols
+	if len(s.aliases) > 0 {
+		m["aliases"] = s.aliases
+	}
+	if s.doc != "" {
+		m["doc"] = s.doc
+	}
+	if s.def != "" {
+		m["default"] = s.def
+	}
+
+	return jsoniter.Marshal(m)
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
@@ -835,14 +840,15 @@ func (s *ArraySchema) String() string {
 
 // MarshalJSON marshals the schema to json.
 func (s *ArraySchema) MarshalJSON() ([]byte, error) {
-	ss := struct {
-		Type  string `json:"type"`
-		Items Schema `json:"items"`
-	}{
-		Type:  "array",
-		Items: s.items,
+	m := make(map[string]any, len(s.props)+2)
+	for k, v := range s.props {
+		// set properties first so that they can be overridden
+		m[k] = v
 	}
-	return jsoniter.Marshal(ss)
+	m["type"] = Array
+	m["items"] = s.items
+
+	return jsoniter.Marshal(m)
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
@@ -893,14 +899,15 @@ func (s *MapSchema) String() string {
 
 // MarshalJSON marshals the schema to json.
 func (s *MapSchema) MarshalJSON() ([]byte, error) {
-	ss := struct {
-		Type   string `json:"type"`
-		Values Schema `json:"values"`
-	}{
-		Type:   "map",
-		Values: s.values,
+	m := make(map[string]any, len(s.props)+2)
+	for k, v := range s.props {
+		// set properties first so that they can be overridden
+		m[k] = v
 	}
-	return jsoniter.Marshal(ss)
+	m["type"] = Map
+	m["values"] = s.values
+
+	return jsoniter.Marshal(m)
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
@@ -1065,28 +1072,21 @@ func (s *FixedSchema) String() string {
 
 // MarshalJSON marshals the schema to json.
 func (s *FixedSchema) MarshalJSON() ([]byte, error) {
-	ss := struct {
-		Name    string   `json:"name"`
-		Aliases []string `json:"aliases,omitempty"`
-		Type    string   `json:"type"`
-		Size    int      `json:"size"`
-	}{
-		Name:    s.full,
-		Aliases: s.aliases,
-		Type:    "fixed",
-		Size:    s.size,
+	m := make(map[string]any, len(s.props)+3)
+	for k, v := range s.props {
+		// set properties first so that they can be overridden
+		m[k] = v
 	}
-	json, err := jsoniter.MarshalToString(ss)
-	if err != nil {
-		return nil, err
+	m["name"] = s.full
+	m["type"] = Fixed
+	m["size"] = s.size
+	if len(s.aliases) > 0 {
+		m["aliases"] = s.aliases
 	}
-
-	var logical string
 	if s.logical != nil {
-		logical = "," + s.logical.String()
+		m["logicalType"] = s.logical
 	}
-
-	return []byte(json[:len(json)-1] + logical + "}"), nil
+	return jsoniter.Marshal(m)
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
