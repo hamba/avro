@@ -3,6 +3,7 @@ package avro_test
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/big"
 	"testing"
 
@@ -127,4 +128,31 @@ func TestDecoder_FixedLogicalDurationSizeNot12(t *testing.T) {
 	err = dec.Decode(&got)
 	assert.Error(t, err)
 	assert.Equal(t, fmt.Errorf("avro: avro.LogicalDuration is unsupported for Avro fixed, size=11"), err)
+}
+
+func TestDecoder_FixedUint64_Full(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
+	schema := `{"type":"fixed", "name": "test", "size": 8}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	var got uint64
+	err = dec.Decode(&got)
+	require.NoError(t, err)
+	assert.Equal(t, uint64(math.MaxUint64), got)
+}
+func TestDecoder_FixedUint64_Simple(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00}
+	schema := `{"type":"fixed", "name": "test", "size": 8}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	var got uint64
+	err = dec.Decode(&got)
+	require.NoError(t, err)
+	assert.Equal(t, uint64(256), got)
 }

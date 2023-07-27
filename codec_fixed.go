@@ -20,6 +20,14 @@ func createDecoderOfFixed(schema Schema, typ reflect2.Type) ValDecoder {
 		}
 		return &fixedCodec{arrayType: typ.(*reflect2.UnsafeArrayType)}
 
+	case reflect.Uint64:
+		fixed := schema.(*FixedSchema)
+		if fixed.Size() != 8 {
+			break
+		}
+
+		return &fixedUint64Codec{}
+
 	case reflect.Struct:
 		ls := fixed.Logical()
 		if ls == nil {
@@ -51,6 +59,14 @@ func createEncoderOfFixed(schema Schema, typ reflect2.Type) ValEncoder {
 		}
 		return &fixedCodec{arrayType: typ.(*reflect2.UnsafeArrayType)}
 
+	case reflect.Uint64:
+		fixed := schema.(*FixedSchema)
+		if fixed.Size() != 8 {
+			break
+		}
+
+		return &fixedUint64Codec{}
+
 	case reflect.Ptr:
 		ptrType := typ.(*reflect2.UnsafePtrType)
 		elemType := ptrType.Elem()
@@ -78,6 +94,20 @@ func createEncoderOfFixed(schema Schema, typ reflect2.Type) ValEncoder {
 	return &errorEncoder{
 		err: fmt.Errorf("avro: %s is unsupported for Avro %s, size=%d", typ.String(), schema.Type(), fixed.Size()),
 	}
+}
+
+type fixedUint64Codec [8]byte
+
+func (c *fixedUint64Codec) Decode(ptr unsafe.Pointer, r *Reader) {
+	buffer := c[:]
+	r.Read(buffer)
+	*(*uint64)(ptr) = binary.BigEndian.Uint64(buffer)
+}
+
+func (c *fixedUint64Codec) Encode(ptr unsafe.Pointer, w *Writer) {
+	buffer := c[:]
+	binary.BigEndian.PutUint64(buffer, *(*uint64)(ptr))
+	_, _ = w.Write(buffer)
 }
 
 type fixedCodec struct {
