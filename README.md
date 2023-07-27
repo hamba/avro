@@ -77,6 +77,7 @@ More examples in the [godoc](https://godoc.org/github.com/hamba/avro).
 | `double`                | `float64`                                              | `float64`                |
 | `long`                  | `int64`, `uint32`\*                                    | `int64`, `uint32`        |
 | `int`                   | `int`, `int32`, `int16`, `int8`, `uint8`\*, `uint16`\* | `int`, `uint8`, `uint16` |
+| `fixed`                 | `uint64`                                               | `uint64`                 |
 | `string`                | `string`                                               | `string`                 |
 | `array`                 | `[]T`                                                  | `[]any`          |
 | `enum`                  | `string`                                               | `string`                 |
