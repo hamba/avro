@@ -541,12 +541,12 @@ func (s *RecordSchema) MarshalJSON() ([]byte, error) {
 	buf := new(bytes.Buffer)
 	buf.WriteString(`{"name":"` + s.full + `"`)
 	if len(s.aliases) > 0 {
-		if aliasesJSON, err := jsoniter.Marshal(s.aliases); err != nil {
+		aliasesJSON, err := jsoniter.Marshal(s.aliases)
+		if err != nil {
 			return nil, err
-		} else {
-			buf.WriteString(`,"aliases":`)
-			buf.Write(aliasesJSON)
 		}
+		buf.WriteString(`,"aliases":`)
+		buf.Write(aliasesJSON)
 	}
 	if s.doc != "" {
 		buf.WriteString(`,"doc":"` + s.doc + `"`)
@@ -556,12 +556,12 @@ func (s *RecordSchema) MarshalJSON() ([]byte, error) {
 	} else {
 		buf.WriteString(`,"type":"record"`)
 	}
-	if fieldsJSON, err := jsoniter.Marshal(s.fields); err != nil {
+	fieldsJSON, err := jsoniter.Marshal(s.fields)
+	if err != nil {
 		return nil, err
-	} else {
-		buf.WriteString(`,"fields":`)
-		buf.Write(fieldsJSON)
 	}
+	buf.WriteString(`,"fields":`)
+	buf.Write(fieldsJSON)
 	if err := s.marshalPropertiesToJSON(buf); err != nil {
 		return nil, err
 	}
@@ -693,29 +693,29 @@ func (f *Field) MarshalJSON() ([]byte, error) {
 	buf := new(bytes.Buffer)
 	buf.WriteString(`{"name":"` + f.name + `"`)
 	if len(f.aliases) > 0 {
-		if aliasesJSON, err := jsoniter.Marshal(f.aliases); err != nil {
+		aliasesJSON, err := jsoniter.Marshal(f.aliases)
+		if err != nil {
 			return nil, err
-		} else {
-			buf.WriteString(`,"aliases":`)
-			buf.Write(aliasesJSON)
 		}
+		buf.WriteString(`,"aliases":`)
+		buf.Write(aliasesJSON)
 	}
 	if f.doc != "" {
 		buf.WriteString(`,"doc":"` + f.doc + `"`)
 	}
-	if typeJSON, err := jsoniter.Marshal(f.typ); err != nil {
+	typeJSON, err := jsoniter.Marshal(f.typ)
+	if err != nil {
 		return nil, err
-	} else {
-		buf.WriteString(`,"type":`)
-		buf.Write(typeJSON)
 	}
+	buf.WriteString(`,"type":`)
+	buf.Write(typeJSON)
 	if f.hasDef {
-		if defaultValueJSON, err := jsoniter.Marshal(f.Default()); err != nil {
+		defaultValueJSON, err := jsoniter.Marshal(f.Default())
+		if err != nil {
 			return nil, err
-		} else {
-			buf.WriteString(`,"default":`)
-			buf.Write(defaultValueJSON)
 		}
+		buf.WriteString(`,"default":`)
+		buf.Write(defaultValueJSON)
 	}
 	if f.order != "" && f.order != Asc {
 		buf.WriteString(`,"order":"` + string(f.order) + `"`)
@@ -824,23 +824,23 @@ func (s *EnumSchema) MarshalJSON() ([]byte, error) {
 	buf := new(bytes.Buffer)
 	buf.WriteString(`{"name":"` + s.full + `"`)
 	if len(s.aliases) > 0 {
-		if aliasesJSON, err := jsoniter.Marshal(s.aliases); err != nil {
+		aliasesJSON, err := jsoniter.Marshal(s.aliases)
+		if err != nil {
 			return nil, err
-		} else {
-			buf.WriteString(`,"aliases":`)
-			buf.Write(aliasesJSON)
 		}
+		buf.WriteString(`,"aliases":`)
+		buf.Write(aliasesJSON)
 	}
 	if s.doc != "" {
 		buf.WriteString(`,"doc":"` + s.doc + `"`)
 	}
 	buf.WriteString(`,"type":"enum"`)
-	if symbolsJSON, err := jsoniter.Marshal(s.symbols); err != nil {
+	symbolsJSON, err := jsoniter.Marshal(s.symbols)
+	if err != nil {
 		return nil, err
-	} else {
-		buf.WriteString(`,"symbols":`)
-		buf.Write(symbolsJSON)
 	}
+	buf.WriteString(`,"symbols":`)
+	buf.Write(symbolsJSON)
 	if s.def != "" {
 		buf.WriteString(`,"default":"` + s.def + `"`)
 	}
@@ -901,13 +901,13 @@ func (s *ArraySchema) String() string {
 func (s *ArraySchema) MarshalJSON() ([]byte, error) {
 	buf := new(bytes.Buffer)
 	buf.WriteString(`{"type":"array"`)
-	if itemsJSON, err := jsoniter.Marshal(s.items); err != nil {
+	itemsJSON, err := jsoniter.Marshal(s.items)
+	if err != nil {
 		return nil, err
-	} else {
-		buf.WriteString(`,"items":`)
-		buf.Write(itemsJSON)
 	}
-	if err := s.marshalPropertiesToJSON(buf); err != nil {
+	buf.WriteString(`,"items":`)
+	buf.Write(itemsJSON)
+	if err = s.marshalPropertiesToJSON(buf); err != nil {
 		return nil, err
 	}
 	buf.WriteString("}")
@@ -964,12 +964,12 @@ func (s *MapSchema) String() string {
 func (s *MapSchema) MarshalJSON() ([]byte, error) {
 	buf := new(bytes.Buffer)
 	buf.WriteString(`{"type":"map"`)
-	if valuesJSON, err := jsoniter.Marshal(s.values); err != nil {
+	valuesJSON, err := jsoniter.Marshal(s.values)
+	if err != nil {
 		return nil, err
-	} else {
-		buf.WriteString(`,"values":`)
-		buf.Write(valuesJSON)
 	}
+	buf.WriteString(`,"values":`)
+	buf.Write(valuesJSON)
 	if err := s.marshalPropertiesToJSON(buf); err != nil {
 		return nil, err
 	}
@@ -1142,12 +1142,12 @@ func (s *FixedSchema) MarshalJSON() ([]byte, error) {
 	buf := new(bytes.Buffer)
 	buf.WriteString(`{"name":"` + s.full + `"`)
 	if len(s.aliases) > 0 {
-		if aliasesJSON, err := jsoniter.Marshal(s.aliases); err != nil {
+		aliasesJSON, err := jsoniter.Marshal(s.aliases)
+		if err != nil {
 			return nil, err
-		} else {
-			buf.WriteString(`,"aliases":`)
-			buf.Write(aliasesJSON)
 		}
+		buf.WriteString(`,"aliases":`)
+		buf.Write(aliasesJSON)
 	}
 	buf.WriteString(`,"type":"fixed"`)
 	buf.WriteString(`,"size":` + strconv.Itoa(s.size))
