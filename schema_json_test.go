@@ -60,6 +60,10 @@ func TestSchema_JSON(t *testing.T) {
 			json:  `"long"`,
 		},
 		{
+			input: `{"property-b": "value-bar", "type":"long", "property-a": "value-foo"}`,
+			json:  `{"type":"long","property-a":"value-foo","property-b":"value-bar"}`,
+		},
+		{
 			input: `{"type":"long","logicalType":"time-micros"}`,
 			json:  `{"type":"long","logicalType":"time-micros"}`,
 		},
@@ -154,6 +158,10 @@ func TestSchema_JSON(t *testing.T) {
 		{
 			input: `{"fields":[], "type":"record", "name":"foo", "doc":"foo", "aliases":["foo","bar"]}`,
 			json:  `{"name":"foo","aliases":["foo","bar"],"doc":"foo","type":"record","fields":[]}`,
+		},
+		{
+			input: `{"fields":[], "property-foo": "value-bar", "type":"record", "name":"foo", "doc":"foo", "aliases":["foo","bar"]}`,
+			json:  `{"name":"foo","aliases":["foo","bar"],"doc":"foo","type":"record","fields":[],"property-foo":"value-bar"}`,
 		},
 		{
 			input: `{"fields":[{"type":{"type":"boolean"}, "name":"f1"}], "type":"record", "name":"foo"}`,
