@@ -1231,7 +1231,7 @@ func (s *RefSchema) Schema() Schema {
 
 // String returns the canonical form of the schema.
 func (s *RefSchema) String() string {
-	return `"` + s.actual.FullName() + `"`
+	return s.actual.String()
 }
 
 // MarshalJSON marshals the schema to json.
