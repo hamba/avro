@@ -535,6 +535,38 @@ func TestRecordSchema_WithReference(t *testing.T) {
 	assert.Equal(t, s.Fingerprint(), s.(*avro.RecordSchema).Fields()[1].Type().Fingerprint())
 }
 
+func TestRecordSchema_WithReferenceFullName(t *testing.T) {
+	schm := `
+{
+   "type": "record",
+   "name": "org.hamba.avro.ValidName",
+    "fields": [
+        {
+            "name": "someEnum1",
+            "type": {
+                "name": "refIntType",
+                "type": "record",
+                "fields": [
+                    {"name": "intField", "type": "int"}
+                ]
+            }
+        },
+        {
+            "name": "someEnum2",
+            "type": "org.hamba.avro.refIntType"
+        }
+    ]
+}
+`
+
+	s, err := avro.Parse(schm)
+
+	require.NoError(t, err)
+	assert.Equal(t, avro.Record, s.Type())
+	assert.Equal(t, avro.Ref, s.(*avro.RecordSchema).Fields()[1].Type().Type())
+	assert.Equal(t, s.(*avro.RecordSchema).Fields()[0].Type().Fingerprint(), s.(*avro.RecordSchema).Fields()[1].Type().Fingerprint())
+}
+
 func TestRecordSchema_WithAliasReference(t *testing.T) {
 	schm := `
 {
