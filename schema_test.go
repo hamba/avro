@@ -542,7 +542,7 @@ func TestRecordSchema_WithReferenceFullName(t *testing.T) {
    "name": "org.hamba.avro.ValidName",
     "fields": [
         {
-            "name": "someEnum1",
+            "name": "recordType1",
             "type": {
                 "name": "refIntType",
                 "type": "record",
@@ -552,7 +552,7 @@ func TestRecordSchema_WithReferenceFullName(t *testing.T) {
             }
         },
         {
-            "name": "someEnum2",
+            "name": "recordType2",
             "type": "org.hamba.avro.refIntType"
         }
     ]
