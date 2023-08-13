@@ -247,7 +247,7 @@ func parseRecord(typ Type, namespace string, m map[string]any, cache *SchemaCach
 	}
 
 	for i, f := range r.Fields {
-		field, err := parseField(r.Namespace, f, cache)
+		field, err := parseField(rec.namespace, f, cache)
 		if err != nil {
 			return nil, err
 		}
