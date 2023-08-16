@@ -185,7 +185,7 @@ func TestReader_ReadNext(t *testing.T) {
 			name:    "Fixed",
 			data:    []byte{0x66, 0x6F, 0x6F, 0x66, 0x6F, 0x6F},
 			schema:  `{"type":"fixed", "name": "test", "size": 6}`,
-			want:    []byte{'f', 'o', 'o', 'f', 'o', 'o'},
+			want:    [6]byte{'f', 'o', 'o', 'f', 'o', 'o'},
 			wantErr: require.NoError,
 		},
 		{
