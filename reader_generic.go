@@ -2,6 +2,7 @@ package avro
 
 import (
 	"fmt"
+	"reflect"
 	"time"
 )
 
@@ -118,7 +119,7 @@ func (r *Reader) ReadNext(schema Schema) any {
 			dec := ls.(*DecimalLogicalSchema)
 			return ratFromBytes(obj, dec.Scale())
 		}
-		return obj
+		return byteSliceToArray(obj, size)
 	default:
 		r.ReportError("Read", fmt.Sprintf("unexpected schema type: %v", schema.Type()))
 		return nil
@@ -151,4 +152,12 @@ func (r *Reader) ReadMapCB(fn func(*Reader, string) bool) {
 			fn(r, field)
 		}
 	}
+}
+
+var byteType = reflect.TypeOf((*byte)(nil)).Elem()
+
+func byteSliceToArray(b []byte, size int) any {
+	vArr := reflect.New(reflect.ArrayOf(size, byteType)).Elem()
+	reflect.Copy(vArr, reflect.ValueOf(b))
+	return vArr.Interface()
 }
