@@ -79,11 +79,11 @@ More examples in the [godoc](https://godoc.org/github.com/hamba/avro).
 | `int`                   | `int`, `int32`, `int16`, `int8`, `uint8`\*, `uint16`\* | `int`, `uint8`, `uint16` |
 | `fixed`                 | `uint64`                                               | `uint64`                 |
 | `string`                | `string`                                               | `string`                 |
-| `array`                 | `[]T`                                                  | `[]any`          |
+| `array`                 | `[]T`                                                  | `[]any`                  |
 | `enum`                  | `string`                                               | `string`                 |
-| `fixed`                 | `[n]byte`                                              | `[]byte`                 |
-| `map`                   | `map[string]T{}`                                       | `map[string]any` |
-| `record`                | `struct`                                               | `map[string]any` |
+| `fixed`                 | `[n]byte`                                              | `[n]byte`                |
+| `map`                   | `map[string]T{}`                                       | `map[string]any`         |
+| `record`                | `struct`                                               | `map[string]any`         |
 | `union`                 | *see below*                                            | *see below*              |
 | `int.date`              | `time.Time`                                            | `time.Time`              |
 | `int.time-millis`       | `time.Duration`                                        | `time.Duration`          |
