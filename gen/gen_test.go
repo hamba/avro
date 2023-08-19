@@ -132,7 +132,7 @@ func TestStruct_GenFromRecordSchema(t *testing.T) {
 
 	want, err := os.ReadFile("testdata/golden.go")
 	require.NoError(t, err)
-	assert.Equal(t, want, file)
+	assert.Equal(t, string(want), string(file))
 }
 
 func TestStruct_GenFromRecordSchemaWithFullName(t *testing.T) {
@@ -149,7 +149,7 @@ func TestStruct_GenFromRecordSchemaWithFullName(t *testing.T) {
 
 	want, err := os.ReadFile("testdata/golden_fullname.go")
 	require.NoError(t, err)
-	assert.Equal(t, want, file)
+	assert.Equal(t, string(want), string(file))
 }
 
 func TestGenerator(t *testing.T) {
