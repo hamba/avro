@@ -135,6 +135,23 @@ func TestStruct_GenFromRecordSchema(t *testing.T) {
 	assert.Equal(t, want, file)
 }
 
+func TestStruct_GenFromRecordSchemaWithFullName(t *testing.T) {
+	schema, err := os.ReadFile("testdata/golden.avsc")
+	require.NoError(t, err)
+
+	gc := gen.Config{PackageName: "Something", FullName: true}
+	file, _ := generate(t, string(schema), gc)
+
+	if *update {
+		err = os.WriteFile("testdata/golden_fullname.go", file, 0600)
+		require.NoError(t, err)
+	}
+
+	want, err := os.ReadFile("testdata/golden_fullname.go")
+	require.NoError(t, err)
+	assert.Equal(t, want, file)
+}
+
 func TestGenerator(t *testing.T) {
 	unionSchema, err := avro.ParseFiles("testdata/uniontype.avsc")
 	require.NoError(t, err)
