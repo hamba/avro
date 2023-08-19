@@ -18,6 +18,7 @@ import (
 type Config struct {
 	PackageName string
 	Tags        map[string]TagStyle
+	FullName    bool
 }
 
 // TagStyle defines the styling for a tag.
@@ -91,7 +92,7 @@ func StructFromSchema(schema avro.Schema, w io.Writer, cfg Config) error {
 		return errors.New("can only generate Go code from Record Schemas")
 	}
 
-	g := NewGenerator(strcase.ToSnake(cfg.PackageName), cfg.Tags)
+	g := NewGenerator(strcase.ToSnake(cfg.PackageName), cfg.Tags, WithFullName(cfg.FullName))
 	g.Parse(rec)
 
 	buf := &bytes.Buffer{}
@@ -108,21 +109,40 @@ func StructFromSchema(schema avro.Schema, w io.Writer, cfg Config) error {
 	return err
 }
 
+// OptsFunc is a function that configures a generator.
+type OptsFunc func(*Generator)
+
+// WithFullName configures the generator to use the full name of a record
+// when creating the struct name.
+func WithFullName(b bool) OptsFunc {
+	return func(g *Generator) {
+		g.fullName = b
+	}
+}
+
 // Generator generates Go structs from schemas.
 type Generator struct {
-	pkg               string
-	tags              map[string]TagStyle
+	pkg      string
+	tags     map[string]TagStyle
+	fullName bool
+
 	imports           []string
 	thirdPartyImports []string
 	typedefs          []typedef
 }
 
 // NewGenerator returns a generator.
-func NewGenerator(pkg string, tags map[string]TagStyle) *Generator {
-	return &Generator{
+func NewGenerator(pkg string, tags map[string]TagStyle, opts ...OptsFunc) *Generator {
+	g := &Generator{
 		pkg:  pkg,
 		tags: tags,
 	}
+
+	for _, opt := range opts {
+		opt(g)
+	}
+
+	return g
 }
 
 // Parse parses an avro schema into Go types.
@@ -133,7 +153,7 @@ func (g *Generator) Parse(schema avro.Schema) {
 func (g *Generator) generate(schema avro.Schema) string {
 	switch t := schema.(type) {
 	case *avro.RecordSchema:
-		typeName := strcase.ToGoPascal(t.Name())
+		typeName := g.resolveTypeName(t)
 		fields := make([]field, len(t.Fields()))
 		for i, f := range t.Fields() {
 			fSchema := f.Type()
@@ -152,7 +172,7 @@ func (g *Generator) generate(schema avro.Schema) string {
 func (g *Generator) resolveType(schema avro.Schema) string {
 	switch s := schema.(type) {
 	case *avro.RefSchema:
-		return resolveRefSchema(s)
+		return g.resolveRefSchema(s)
 	case *avro.RecordSchema:
 		return g.generate(s)
 	case *avro.PrimitiveSchema:
@@ -180,10 +200,17 @@ func (g *Generator) resolveType(schema avro.Schema) string {
 	}
 }
 
-func resolveRefSchema(s *avro.RefSchema) string {
+func (g *Generator) resolveTypeName(s avro.NamedSchema) string {
+	if g.fullName {
+		return strcase.ToGoPascal(s.FullName())
+	}
+	return strcase.ToGoPascal(s.Name())
+}
+
+func (g *Generator) resolveRefSchema(s *avro.RefSchema) string {
 	typ := ""
 	if sx, ok := s.Schema().(*avro.RecordSchema); ok {
-		typ = strcase.ToGoPascal(sx.Name())
+		typ = g.resolveTypeName(sx)
 	}
 	return typ
 }

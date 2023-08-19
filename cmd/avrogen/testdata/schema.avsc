@@ -1,6 +1,7 @@
 {
   "type": "record",
   "name": "test",
+  "namespace": "a.b",
   "fields": [
     { "name": "someString", "type": "string" }
   ]

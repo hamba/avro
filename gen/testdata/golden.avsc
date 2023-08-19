@@ -1,6 +1,7 @@
 {
   "type": "record",
   "name": "test",
+  "namespace": "a.b",
   "fields": [
     {
       "name": "aString",
@@ -44,7 +45,7 @@
     {
       "name": "innerRecord",
       "type": {
-        "name": "InnerRecord",
+        "name": "a.c.InnerRecord",
         "type": "record",
         "fields": [
           {

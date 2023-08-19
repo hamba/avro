@@ -15,9 +15,10 @@ import (
 )
 
 type config struct {
-	Pkg  string
-	Out  string
-	Tags string
+	Pkg      string
+	Out      string
+	Tags     string
+	FullName bool
 }
 
 func main() {
@@ -31,6 +32,7 @@ func realMain(args []string, out io.Writer) int {
 	flgs.StringVar(&cfg.Pkg, "pkg", "", "The package name of the output file.")
 	flgs.StringVar(&cfg.Out, "o", "", "The output file path.")
 	flgs.StringVar(&cfg.Tags, "tags", "", "The additional field tags <tag-name>:{snake|camel|upper-camel|kebab}>[,...]")
+	flgs.BoolVar(&cfg.FullName, "fullname", false, "Use the full name of the Record schema to create the struct name.")
 	flgs.Usage = func() {
 		_, _ = fmt.Fprintln(out, "Usage: avrogen [options] schemas")
 		_, _ = fmt.Fprintln(out, "Options:")
@@ -50,7 +52,7 @@ func realMain(args []string, out io.Writer) int {
 		return 1
 	}
 
-	g := gen.NewGenerator(cfg.Pkg, tags)
+	g := gen.NewGenerator(cfg.Pkg, tags, gen.WithFullName(cfg.FullName))
 	for _, file := range flgs.Args() {
 		schema, err := avro.ParseFiles(filepath.Clean(file))
 		if err != nil {
