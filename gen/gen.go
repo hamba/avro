@@ -152,6 +152,8 @@ func WithFullName(b bool) OptsFunc {
 	}
 }
 
+// WithEncoders configures the generator to generate schema and encoders on
+// all objects.
 func WithEncoders(b bool) OptsFunc {
 	return func(g *Generator) {
 		g.encoders = b
