@@ -379,7 +379,6 @@ func (g *Generator) Write(w io.Writer) error {
 }
 
 type typedef struct {
-	Ref    string
 	Name   string
 	Fields []field
 	Schema string
