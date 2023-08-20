@@ -89,7 +89,7 @@ func (o *{{ .Name }}) Unmarshal(b []byte) error {
 
 // Marshal encodes the receiver.
 func (o *{{ .Name }}) Marshal() ([]byte, error) {
-	return avro.Marshal(o.schema, o)
+	return avro.Marshal(o.Schema(), o)
 }
 {{- end }}
 {{ end }}`

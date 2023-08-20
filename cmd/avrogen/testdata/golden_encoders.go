@@ -28,5 +28,5 @@ func (o *Test) Unmarshal(b []byte) error {
 
 // Marshal encodes the receiver.
 func (o *Test) Marshal() ([]byte, error) {
-	return avro.Marshal(o.schema, o)
+	return avro.Marshal(o.Schema(), o)
 }

@@ -32,7 +32,7 @@ func (o *InnerRecord) Unmarshal(b []byte) error {
 
 // Marshal encodes the receiver.
 func (o *InnerRecord) Marshal() ([]byte, error) {
-	return avro.Marshal(o.schema, o)
+	return avro.Marshal(o.Schema(), o)
 }
 
 // RecordInMap is a generated struct.
@@ -57,7 +57,7 @@ func (o *RecordInMap) Unmarshal(b []byte) error {
 
 // Marshal encodes the receiver.
 func (o *RecordInMap) Marshal() ([]byte, error) {
-	return avro.Marshal(o.schema, o)
+	return avro.Marshal(o.Schema(), o)
 }
 
 // RecordInArray is a generated struct.
@@ -82,7 +82,7 @@ func (o *RecordInArray) Unmarshal(b []byte) error {
 
 // Marshal encodes the receiver.
 func (o *RecordInArray) Marshal() ([]byte, error) {
-	return avro.Marshal(o.schema, o)
+	return avro.Marshal(o.Schema(), o)
 }
 
 // RecordInNullableUnion is a generated struct.
@@ -107,7 +107,7 @@ func (o *RecordInNullableUnion) Unmarshal(b []byte) error {
 
 // Marshal encodes the receiver.
 func (o *RecordInNullableUnion) Marshal() ([]byte, error) {
-	return avro.Marshal(o.schema, o)
+	return avro.Marshal(o.Schema(), o)
 }
 
 // Record1InNonNullableUnion is a generated struct.
@@ -132,7 +132,7 @@ func (o *Record1InNonNullableUnion) Unmarshal(b []byte) error {
 
 // Marshal encodes the receiver.
 func (o *Record1InNonNullableUnion) Marshal() ([]byte, error) {
-	return avro.Marshal(o.schema, o)
+	return avro.Marshal(o.Schema(), o)
 }
 
 // Record2InNonNullableUnion is a generated struct.
@@ -157,7 +157,7 @@ func (o *Record2InNonNullableUnion) Unmarshal(b []byte) error {
 
 // Marshal encodes the receiver.
 func (o *Record2InNonNullableUnion) Marshal() ([]byte, error) {
-	return avro.Marshal(o.schema, o)
+	return avro.Marshal(o.Schema(), o)
 }
 
 // Record1InNullableUnion is a generated struct.
@@ -182,7 +182,7 @@ func (o *Record1InNullableUnion) Unmarshal(b []byte) error {
 
 // Marshal encodes the receiver.
 func (o *Record1InNullableUnion) Marshal() ([]byte, error) {
-	return avro.Marshal(o.schema, o)
+	return avro.Marshal(o.Schema(), o)
 }
 
 // Record2InNullableUnion is a generated struct.
@@ -207,7 +207,7 @@ func (o *Record2InNullableUnion) Unmarshal(b []byte) error {
 
 // Marshal encodes the receiver.
 func (o *Record2InNullableUnion) Marshal() ([]byte, error) {
-	return avro.Marshal(o.schema, o)
+	return avro.Marshal(o.Schema(), o)
 }
 
 // Test is a generated struct.
@@ -257,5 +257,5 @@ func (o *Test) Unmarshal(b []byte) error {
 
 // Marshal encodes the receiver.
 func (o *Test) Marshal() ([]byte, error) {
-	return avro.Marshal(o.schema, o)
+	return avro.Marshal(o.Schema(), o)
 }
