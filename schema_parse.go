@@ -67,7 +67,11 @@ func ParseBytesWithCache(schema []byte, namespace string, cache *SchemaCache) (S
 		json = string(schema)
 	}
 
-	return parseType(namespace, json, cache)
+	s, err := parseType(namespace, json, cache)
+	if err != nil {
+		return nil, err
+	}
+	return derefSchema(s), nil
 }
 
 func parseType(namespace string, v any, cache *SchemaCache) (Schema, error) {

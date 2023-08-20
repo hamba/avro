@@ -1225,7 +1225,7 @@ func (s *RefSchema) Type() Type {
 }
 
 // Schema returns the schema being referenced.
-func (s *RefSchema) Schema() Schema {
+func (s *RefSchema) Schema() NamedSchema {
 	return s.actual
 }
 

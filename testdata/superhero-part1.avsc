@@ -1,0 +1,12 @@
+{
+  "type": "record",
+  "name": "Superpower",
+  "namespace": "com.model",
+  "fields": [
+    {"name": "id", "type": "int"},
+    {"name": "name", "type": "string"},
+    {"name": "damage", "type": "float"},
+    {"name": "energy", "type": "float"},
+    {"name": "passive", "type": "boolean"}
+  ]
+}
