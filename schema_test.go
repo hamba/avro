@@ -1255,6 +1255,15 @@ func TestSchema_FingerprintUsingInvalidType(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestSchema_MultiFile(t *testing.T) {
+	got, err := avro.ParseFiles("testdata/superhero-part1.avsc", "testdata/superhero-part2.avsc")
+
+	require.NoError(t, err)
+	want, err := avro.ParseFiles("testdata/superhero.avsc")
+	require.NoError(t, err)
+	assert.Equal(t, want, got)
+}
+
 func TestSchema_Interop(t *testing.T) {
 	schm := `
 {

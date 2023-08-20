@@ -208,8 +208,20 @@ func (g *Generator) resolveRecordSchema(schema *avro.RecordSchema) string {
 	}
 
 	typeName := g.resolveTypeName(schema)
-	g.typedefs = append(g.typedefs, newType(typeName, fields))
+	if !g.hasTypeDef(typeName) {
+		g.typedefs = append(g.typedefs, newType(typeName, fields))
+	}
 	return typeName
+}
+
+func (g *Generator) hasTypeDef(name string) bool {
+	for _, def := range g.typedefs {
+		if def.Name != name {
+			continue
+		}
+		return true
+	}
+	return false
 }
 
 func (g *Generator) resolveRefSchema(s *avro.RefSchema) string {
