@@ -534,3 +534,24 @@ func decodeMap(in, v any, meta *mapstructure.Metadata) error {
 	decoder, _ := mapstructure.NewDecoder(cfg)
 	return decoder.Decode(in)
 }
+
+func derefSchema(schema Schema) Schema {
+	seen := map[string]struct{}{}
+
+	return walkSchema(schema, func(schema Schema) Schema {
+		if ns, ok := schema.(NamedSchema); ok {
+			seen[ns.FullName()] = struct{}{}
+			return schema
+		}
+
+		ref, isRef := schema.(*RefSchema)
+		if !isRef {
+			return schema
+		}
+
+		if _, haveSeen := seen[ref.Schema().FullName()]; !haveSeen {
+			return ref.Schema()
+		}
+		return schema
+	})
+}
