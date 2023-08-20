@@ -9,39 +9,48 @@ import (
 	"github.com/hamba/avro/v2"
 )
 
+// ACInnerRecord is a generated struct.
 type ACInnerRecord struct {
 	InnerJustBytes                   []byte    `avro:"innerJustBytes"`
 	InnerPrimitiveNullableArrayUnion *[]string `avro:"innerPrimitiveNullableArrayUnion"`
 }
 
+// ABRecordInMap is a generated struct.
 type ABRecordInMap struct {
 	Name string `avro:"name"`
 }
 
+// ABRecordInArray is a generated struct.
 type ABRecordInArray struct {
 	AString string `avro:"aString"`
 }
 
+// ABRecordInNullableUnion is a generated struct.
 type ABRecordInNullableUnion struct {
 	AString string `avro:"aString"`
 }
 
+// ABRecord1InNonNullableUnion is a generated struct.
 type ABRecord1InNonNullableUnion struct {
 	AString string `avro:"aString"`
 }
 
+// ABRecord2InNonNullableUnion is a generated struct.
 type ABRecord2InNonNullableUnion struct {
 	AString string `avro:"aString"`
 }
 
+// ABRecord1InNullableUnion is a generated struct.
 type ABRecord1InNullableUnion struct {
 	AString string `avro:"aString"`
 }
 
+// ABRecord2InNullableUnion is a generated struct.
 type ABRecord2InNullableUnion struct {
 	AString string `avro:"aString"`
 }
 
+// ABTest is a generated struct.
 type ABTest struct {
 	AString                         string                   `avro:"aString"`
 	ABoolean                        bool                     `avro:"aBoolean"`
