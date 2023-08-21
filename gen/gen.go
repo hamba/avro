@@ -61,25 +61,22 @@ import (
 )
 {{ end }}
 
+
+
 {{- range .Typedefs }}
 // {{ .Name }} is a generated struct.
 type {{ .Name }} struct {
 	{{- range .Fields }}
 		{{ .Name }} {{ .Type }} {{ .Tag }}
 	{{- end }}
-{{- if $encoders }}
-
-    schema avro.Schema
-{{- end }}
 }
 
 {{- if $encoders }}
+var schema{{ .Name }} = avro.MustParse(` + "`{{ .Schema }}`" + `)
+
 // Schema returns the schema for {{ .Name }}.
 func (o *{{ .Name }}) Schema() avro.Schema {
-  if o.schema == nil {
-    o.schema = avro.MustParse(` + "`{{ .Schema }}`" + `)
-  }
-  return o.schema
+  return schema{{ .Name }}
 }
 
 // Unmarshal decodes b into the receiver.
