@@ -9,16 +9,13 @@ import (
 // Test is a generated struct.
 type Test struct {
 	SomeString string `avro:"someString"`
-
-	schema avro.Schema
 }
+
+var schemaTest = avro.MustParse(`{"name":"a.b.test","type":"record","fields":[{"name":"someString","type":"string"}]}`)
 
 // Schema returns the schema for Test.
 func (o *Test) Schema() avro.Schema {
-	if o.schema == nil {
-		o.schema = avro.MustParse(`{"name":"a.b.test","type":"record","fields":[{"name":"someString","type":"string"}]}`)
-	}
-	return o.schema
+	return schemaTest
 }
 
 // Unmarshal decodes b into the receiver.
