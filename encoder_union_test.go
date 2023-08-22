@@ -444,6 +444,21 @@ func TestEncoder_UnionInterfaceWithDecimal(t *testing.T) {
 	})
 }
 
+func TestEncoder_UnionInterfaceWithUUID(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `["null", {"type": "string", "logicalType": "uuid"}]`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	var val any = "f36e589a-3a52-492b-b95c-dad345e8d2ac"
+	err = enc.Encode(val)
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x2, 0x48, 0x66, 0x33, 0x36, 0x65, 0x35, 0x38, 0x39, 0x61, 0x2d, 0x33, 0x61, 0x35, 0x32, 0x2d, 0x34, 0x39, 0x32, 0x62, 0x2d, 0x62, 0x39, 0x35, 0x63, 0x2d, 0x64, 0x61, 0x64, 0x33, 0x34, 0x35, 0x65, 0x38, 0x64, 0x32, 0x61, 0x63}, buf.Bytes())
+}
+
 func TestEncoder_UnionInterfaceUnregisteredType(t *testing.T) {
 	defer ConfigTeardown()
 
