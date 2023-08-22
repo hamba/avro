@@ -92,6 +92,7 @@ More examples in the [godoc](https://godoc.org/github.com/hamba/avro).
 | `long.timestamp-micros` | `time.Time`                                            | `time.Time`              |
 | `bytes.decimal`         | `*big.Rat`                                             | `*big.Rat`               |
 | `fixed.decimal`         | `*big.Rat`                                             | `*big.Rat`               |
+| `string.uuid`           | `string`                                               | `string`                 |
 
 \* Please note that when the Go type is an unsigned integer care must be taken to ensure that information is not lost 
 when converting between the Avro type and Go type. For example, storing a *negative* number in Avro of `int = -100`
