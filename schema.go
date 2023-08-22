@@ -1,11 +1,13 @@
 package avro
 
 import (
+	"bytes"
 	"crypto/md5"
 	"crypto/sha256"
 	"errors"
 	"fmt"
 	"hash"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -314,6 +316,23 @@ func (p properties) Prop(name string) any {
 	return p.props[name]
 }
 
+func (p properties) marshalPropertiesToJSON(buf *bytes.Buffer) error {
+	sortedPropertyKeys := make([]string, 0, len(p.props))
+	for k := range p.props {
+		sortedPropertyKeys = append(sortedPropertyKeys, k)
+	}
+	sort.Strings(sortedPropertyKeys)
+	for _, k := range sortedPropertyKeys {
+		vv, err := jsoniter.Marshal(p.props[k])
+		if err != nil {
+			return err
+		}
+		buf.WriteString(`,"` + k + `":`)
+		buf.Write(vv)
+	}
+	return nil
+}
+
 type schemaConfig struct {
 	aliases []string
 	doc     string
@@ -404,7 +423,26 @@ func (s *PrimitiveSchema) String() string {
 
 // MarshalJSON marshals the schema to json.
 func (s *PrimitiveSchema) MarshalJSON() ([]byte, error) {
-	return []byte(s.String()), nil
+	if s.logical == nil && len(s.props) == 0 {
+		return jsoniter.Marshal(s.typ)
+	}
+
+	buf := new(bytes.Buffer)
+	buf.WriteString(`{"type":"` + string(s.typ) + `"`)
+	if s.logical != nil {
+		buf.WriteString(`,"logicalType":"` + string(s.logical.Type()) + `"`)
+		if d, ok := s.logical.(*DecimalLogicalSchema); ok {
+			buf.WriteString(`,"precision":` + strconv.Itoa(d.prec))
+			if d.scale > 0 {
+				buf.WriteString(`,"scale":` + strconv.Itoa(d.scale))
+			}
+		}
+	}
+	if err := s.marshalPropertiesToJSON(buf); err != nil {
+		return nil, err
+	}
+	buf.WriteString("}")
+	return buf.Bytes(), nil
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
@@ -500,26 +538,35 @@ func (s *RecordSchema) String() string {
 
 // MarshalJSON marshals the schema to json.
 func (s *RecordSchema) MarshalJSON() ([]byte, error) {
-	typ := "record"
+	buf := new(bytes.Buffer)
+	buf.WriteString(`{"name":"` + s.full + `"`)
+	if len(s.aliases) > 0 {
+		aliasesJSON, err := jsoniter.Marshal(s.aliases)
+		if err != nil {
+			return nil, err
+		}
+		buf.WriteString(`,"aliases":`)
+		buf.Write(aliasesJSON)
+	}
+	if s.doc != "" {
+		buf.WriteString(`,"doc":"` + s.doc + `"`)
+	}
 	if s.isError {
-		typ = "error"
+		buf.WriteString(`,"type":"error"`)
+	} else {
+		buf.WriteString(`,"type":"record"`)
 	}
-
-	ss := struct {
-		Name    string   `json:"name"`
-		Aliases []string `json:"aliases,omitempty"`
-		Doc     string   `json:"doc,omitempty"`
-		Type    string   `json:"type"`
-		Fields  []*Field `json:"fields"`
-	}{
-		Name:    s.full,
-		Aliases: s.aliases,
-		Doc:     s.doc,
-		Type:    typ,
-		Fields:  s.fields,
+	fieldsJSON, err := jsoniter.Marshal(s.fields)
+	if err != nil {
+		return nil, err
 	}
-
-	return jsoniter.Marshal(ss)
+	buf.WriteString(`,"fields":`)
+	buf.Write(fieldsJSON)
+	if err := s.marshalPropertiesToJSON(buf); err != nil {
+		return nil, err
+	}
+	buf.WriteString("}")
+	return buf.Bytes(), nil
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
@@ -643,36 +690,41 @@ func (f *Field) String() string {
 
 // MarshalJSON marshals the schema to json.
 func (f *Field) MarshalJSON() ([]byte, error) {
-	type base struct {
-		Name    string   `json:"name"`
-		Aliases []string `json:"aliases,omitempty"`
-		Doc     string   `json:"doc,omitempty"`
-		Type    Schema   `json:"type"`
-		Order   string   `json:"order,omitempty"`
-	}
-	type ext struct {
-		base
-		Default any `json:"default"`
-	}
-
-	b := base{
-		Name:    f.name,
-		Aliases: f.aliases,
-		Doc:     f.doc,
-		Type:    f.typ,
-	}
-	if f.order != Asc {
-		b.Order = string(f.order)
-	}
-
-	var s any = b
-	if f.hasDef {
-		s = ext{
-			base:    s.(base),
-			Default: f.Default(),
+	buf := new(bytes.Buffer)
+	buf.WriteString(`{"name":"` + f.name + `"`)
+	if len(f.aliases) > 0 {
+		aliasesJSON, err := jsoniter.Marshal(f.aliases)
+		if err != nil {
+			return nil, err
 		}
+		buf.WriteString(`,"aliases":`)
+		buf.Write(aliasesJSON)
 	}
-	return jsoniter.Marshal(s)
+	if f.doc != "" {
+		buf.WriteString(`,"doc":"` + f.doc + `"`)
+	}
+	typeJSON, err := jsoniter.Marshal(f.typ)
+	if err != nil {
+		return nil, err
+	}
+	buf.WriteString(`,"type":`)
+	buf.Write(typeJSON)
+	if f.hasDef {
+		defaultValueJSON, err := jsoniter.Marshal(f.Default())
+		if err != nil {
+			return nil, err
+		}
+		buf.WriteString(`,"default":`)
+		buf.Write(defaultValueJSON)
+	}
+	if f.order != "" && f.order != Asc {
+		buf.WriteString(`,"order":"` + string(f.order) + `"`)
+	}
+	if err := f.marshalPropertiesToJSON(buf); err != nil {
+		return nil, err
+	}
+	buf.WriteString("}")
+	return buf.Bytes(), nil
 }
 
 // EnumSchema is an Avro enum type schema.
@@ -769,22 +821,34 @@ func (s *EnumSchema) String() string {
 
 // MarshalJSON marshals the schema to json.
 func (s *EnumSchema) MarshalJSON() ([]byte, error) {
-	ss := struct {
-		Name    string   `json:"name"`
-		Aliases []string `json:"aliases,omitempty"`
-		Doc     string   `json:"doc,omitempty"`
-		Type    string   `json:"type"`
-		Symbols []string `json:"symbols"`
-		Default string   `json:"default,omitempty"`
-	}{
-		Name:    s.full,
-		Aliases: s.aliases,
-		Doc:     s.doc,
-		Type:    "enum",
-		Symbols: s.symbols,
-		Default: s.def,
+	buf := new(bytes.Buffer)
+	buf.WriteString(`{"name":"` + s.full + `"`)
+	if len(s.aliases) > 0 {
+		aliasesJSON, err := jsoniter.Marshal(s.aliases)
+		if err != nil {
+			return nil, err
+		}
+		buf.WriteString(`,"aliases":`)
+		buf.Write(aliasesJSON)
 	}
-	return jsoniter.Marshal(ss)
+	if s.doc != "" {
+		buf.WriteString(`,"doc":"` + s.doc + `"`)
+	}
+	buf.WriteString(`,"type":"enum"`)
+	symbolsJSON, err := jsoniter.Marshal(s.symbols)
+	if err != nil {
+		return nil, err
+	}
+	buf.WriteString(`,"symbols":`)
+	buf.Write(symbolsJSON)
+	if s.def != "" {
+		buf.WriteString(`,"default":"` + s.def + `"`)
+	}
+	if err := s.marshalPropertiesToJSON(buf); err != nil {
+		return nil, err
+	}
+	buf.WriteString("}")
+	return buf.Bytes(), nil
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
@@ -835,14 +899,19 @@ func (s *ArraySchema) String() string {
 
 // MarshalJSON marshals the schema to json.
 func (s *ArraySchema) MarshalJSON() ([]byte, error) {
-	ss := struct {
-		Type  string `json:"type"`
-		Items Schema `json:"items"`
-	}{
-		Type:  "array",
-		Items: s.items,
+	buf := new(bytes.Buffer)
+	buf.WriteString(`{"type":"array"`)
+	itemsJSON, err := jsoniter.Marshal(s.items)
+	if err != nil {
+		return nil, err
 	}
-	return jsoniter.Marshal(ss)
+	buf.WriteString(`,"items":`)
+	buf.Write(itemsJSON)
+	if err = s.marshalPropertiesToJSON(buf); err != nil {
+		return nil, err
+	}
+	buf.WriteString("}")
+	return buf.Bytes(), nil
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
@@ -893,14 +962,19 @@ func (s *MapSchema) String() string {
 
 // MarshalJSON marshals the schema to json.
 func (s *MapSchema) MarshalJSON() ([]byte, error) {
-	ss := struct {
-		Type   string `json:"type"`
-		Values Schema `json:"values"`
-	}{
-		Type:   "map",
-		Values: s.values,
+	buf := new(bytes.Buffer)
+	buf.WriteString(`{"type":"map"`)
+	valuesJSON, err := jsoniter.Marshal(s.values)
+	if err != nil {
+		return nil, err
 	}
-	return jsoniter.Marshal(ss)
+	buf.WriteString(`,"values":`)
+	buf.Write(valuesJSON)
+	if err := s.marshalPropertiesToJSON(buf); err != nil {
+		return nil, err
+	}
+	buf.WriteString("}")
+	return buf.Bytes(), nil
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
@@ -1065,28 +1139,32 @@ func (s *FixedSchema) String() string {
 
 // MarshalJSON marshals the schema to json.
 func (s *FixedSchema) MarshalJSON() ([]byte, error) {
-	ss := struct {
-		Name    string   `json:"name"`
-		Aliases []string `json:"aliases,omitempty"`
-		Type    string   `json:"type"`
-		Size    int      `json:"size"`
-	}{
-		Name:    s.full,
-		Aliases: s.aliases,
-		Type:    "fixed",
-		Size:    s.size,
+	buf := new(bytes.Buffer)
+	buf.WriteString(`{"name":"` + s.full + `"`)
+	if len(s.aliases) > 0 {
+		aliasesJSON, err := jsoniter.Marshal(s.aliases)
+		if err != nil {
+			return nil, err
+		}
+		buf.WriteString(`,"aliases":`)
+		buf.Write(aliasesJSON)
 	}
-	json, err := jsoniter.MarshalToString(ss)
-	if err != nil {
+	buf.WriteString(`,"type":"fixed"`)
+	buf.WriteString(`,"size":` + strconv.Itoa(s.size))
+	if s.logical != nil {
+		buf.WriteString(`,"logicalType":"` + string(s.logical.Type()) + `"`)
+		if d, ok := s.logical.(*DecimalLogicalSchema); ok {
+			buf.WriteString(`,"precision":` + strconv.Itoa(d.prec))
+			if d.scale > 0 {
+				buf.WriteString(`,"scale":` + strconv.Itoa(d.scale))
+			}
+		}
+	}
+	if err := s.marshalPropertiesToJSON(buf); err != nil {
 		return nil, err
 	}
-
-	var logical string
-	if s.logical != nil {
-		logical = "," + s.logical.String()
-	}
-
-	return []byte(json[:len(json)-1] + logical + "}"), nil
+	buf.WriteString("}")
+	return buf.Bytes(), nil
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.
@@ -1147,7 +1225,7 @@ func (s *RefSchema) Type() Type {
 }
 
 // Schema returns the schema being referenced.
-func (s *RefSchema) Schema() Schema {
+func (s *RefSchema) Schema() NamedSchema {
 	return s.actual
 }
 

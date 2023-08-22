@@ -94,6 +94,52 @@ func TestAvroGen_GeneratesSchema(t *testing.T) {
 	assert.Equal(t, want, got)
 }
 
+func TestAvroGen_GeneratesSchemaWithFullname(t *testing.T) {
+	path, err := os.MkdirTemp("./", "avrogen")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll(path) })
+
+	file := filepath.Join(path, "test.go")
+	args := []string{"avrogen", "-pkg", "testpkg", "-o", file, "-fullname", "testdata/schema.avsc"}
+	gotCode := realMain(args, io.Discard)
+	require.Equal(t, 0, gotCode)
+
+	got, err := os.ReadFile(file)
+	require.NoError(t, err)
+
+	if *update {
+		err = os.WriteFile("testdata/golden_fullname.go", got, 0600)
+		require.NoError(t, err)
+	}
+
+	want, err := os.ReadFile("testdata/golden_fullname.go")
+	require.NoError(t, err)
+	assert.Equal(t, want, got)
+}
+
+func TestAvroGen_GeneratesSchemaWithEncoders(t *testing.T) {
+	path, err := os.MkdirTemp("./", "avrogen")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll(path) })
+
+	file := filepath.Join(path, "test.go")
+	args := []string{"avrogen", "-pkg", "testpkg", "-o", file, "-encoders", "testdata/schema.avsc"}
+	gotCode := realMain(args, io.Discard)
+	require.Equal(t, 0, gotCode)
+
+	got, err := os.ReadFile(file)
+	require.NoError(t, err)
+
+	if *update {
+		err = os.WriteFile("testdata/golden_encoders.go", got, 0600)
+		require.NoError(t, err)
+	}
+
+	want, err := os.ReadFile("testdata/golden_encoders.go")
+	require.NoError(t, err)
+	assert.Equal(t, want, got)
+}
+
 func TestParseTags(t *testing.T) {
 	tests := []struct {
 		name string

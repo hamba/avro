@@ -77,12 +77,13 @@ More examples in the [godoc](https://godoc.org/github.com/hamba/avro).
 | `double`                | `float64`                                              | `float64`                |
 | `long`                  | `int64`, `uint32`\*                                    | `int64`, `uint32`        |
 | `int`                   | `int`, `int32`, `int16`, `int8`, `uint8`\*, `uint16`\* | `int`, `uint8`, `uint16` |
+| `fixed`                 | `uint64`                                               | `uint64`                 |
 | `string`                | `string`                                               | `string`                 |
-| `array`                 | `[]T`                                                  | `[]any`          |
+| `array`                 | `[]T`                                                  | `[]any`                  |
 | `enum`                  | `string`                                               | `string`                 |
-| `fixed`                 | `[n]byte`                                              | `[]byte`                 |
-| `map`                   | `map[string]T{}`                                       | `map[string]any` |
-| `record`                | `struct`                                               | `map[string]any` |
+| `fixed`                 | `[n]byte`                                              | `[n]byte`                |
+| `map`                   | `map[string]T{}`                                       | `map[string]any`         |
+| `record`                | `struct`                                               | `map[string]any`         |
 | `union`                 | *see below*                                            | *see below*              |
 | `int.date`              | `time.Time`                                            | `time.Time`              |
 | `int.time-millis`       | `time.Duration`                                        | `time.Duration`          |
@@ -125,10 +126,17 @@ encoding and decoding.
 Enums may also implement `TextMarshaler` and `TextUnmarshaler`, and must resolve to valid symbols in the given enum schema.
 
 ##### Identical Underlying Types
+
 One type can be [ConvertibleTo](https://go.dev/ref/spec#Conversions) another type if they have identical underlying types. 
 A non-native type is allowed be used if it can be convertible to *time.Time*, *big.Rat* or *avro.LogicalDuration* for the particular of *LogicalTypes*.
 
 Ex.: `type Timestamp time.Time`
+
+##### Untrusted Input With Bytes and Strings
+
+For security reasons, the configuration `Config.MaxByteSliceSize` restricts the maximum size of `bytes` and `string` types created
+by the `Reader`. The default maximum size is `1MiB` and is configurable. This is required to stop untrusted input from consuming all memory and
+crashing the application. Should this not be need, setting a negative number will disable the behaviour.
 
 ### Recursive Structs
 

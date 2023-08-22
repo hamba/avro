@@ -535,6 +535,38 @@ func TestRecordSchema_WithReference(t *testing.T) {
 	assert.Equal(t, s.Fingerprint(), s.(*avro.RecordSchema).Fields()[1].Type().Fingerprint())
 }
 
+func TestRecordSchema_WithReferenceFullName(t *testing.T) {
+	schm := `
+{
+   "type": "record",
+   "name": "org.hamba.avro.ValidName",
+    "fields": [
+        {
+            "name": "recordType1",
+            "type": {
+                "name": "refIntType",
+                "type": "record",
+                "fields": [
+                    {"name": "intField", "type": "int"}
+                ]
+            }
+        },
+        {
+            "name": "recordType2",
+            "type": "org.hamba.avro.refIntType"
+        }
+    ]
+}
+`
+
+	s, err := avro.Parse(schm)
+
+	require.NoError(t, err)
+	assert.Equal(t, avro.Record, s.Type())
+	assert.Equal(t, avro.Ref, s.(*avro.RecordSchema).Fields()[1].Type().Type())
+	assert.Equal(t, s.(*avro.RecordSchema).Fields()[0].Type().Fingerprint(), s.(*avro.RecordSchema).Fields()[1].Type().Fingerprint())
+}
+
 func TestRecordSchema_WithAliasReference(t *testing.T) {
 	schm := `
 {
@@ -1221,6 +1253,15 @@ func TestSchema_FingerprintUsingInvalidType(t *testing.T) {
 	_, err := schema.FingerprintUsing("test")
 
 	assert.Error(t, err)
+}
+
+func TestSchema_MultiFile(t *testing.T) {
+	got, err := avro.ParseFiles("testdata/superhero-part1.avsc", "testdata/superhero-part2.avsc")
+
+	require.NoError(t, err)
+	want, err := avro.ParseFiles("testdata/superhero.avsc")
+	require.NoError(t, err)
+	assert.Equal(t, want, got)
 }
 
 func TestSchema_Interop(t *testing.T) {

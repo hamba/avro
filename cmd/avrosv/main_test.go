@@ -112,7 +112,7 @@ func TestAvroSv_Verbose(t *testing.T) {
 		{
 			name:    "dumps a schema with a reference to an existing schema",
 			args:    []string{"avrosv", "-v", "testdata/schema.avsc", "testdata/withref-schema.avsc"},
-			out:     "{\"name\":\"testref\",\"type\":\"record\",\"fields\":[{\"name\":\"someref\",\"type\":\"test\"}]}\n",
+			out:     "{\"name\":\"testref\",\"type\":\"record\",\"fields\":[{\"name\":\"someref\",\"type\":{\"name\":\"test\",\"type\":\"record\",\"fields\":[{\"name\":\"someString\",\"type\":\"string\"}]}}]}\n",
 			wantErr: false,
 		},
 	}
