@@ -67,14 +67,15 @@ func ParseBytesWithCache(schema []byte, namespace string, cache *SchemaCache) (S
 		json = string(schema)
 	}
 
-	s, err := parseType(namespace, json, cache)
+	seen := seenCache{}
+	s, err := parseType(namespace, json, seen, cache)
 	if err != nil {
 		return nil, err
 	}
 	return derefSchema(s), nil
 }
 
-func parseType(namespace string, v any, cache *SchemaCache) (Schema, error) {
+func parseType(namespace string, v any, seen seenCache, cache *SchemaCache) (Schema, error) {
 	switch val := v.(type) {
 	case nil:
 		return &NullSchema{}, nil
@@ -83,10 +84,10 @@ func parseType(namespace string, v any, cache *SchemaCache) (Schema, error) {
 		return parsePrimitiveType(namespace, val, cache)
 
 	case map[string]any:
-		return parseComplexType(namespace, val, cache)
+		return parseComplexType(namespace, val, seen, cache)
 
 	case []any:
-		return parseUnion(namespace, val, cache)
+		return parseUnion(namespace, val, seen, cache)
 	}
 
 	return nil, fmt.Errorf("avro: unknown type: %v", v)
@@ -111,9 +112,9 @@ func parsePrimitiveType(namespace, s string, cache *SchemaCache) (Schema, error)
 	}
 }
 
-func parseComplexType(namespace string, m map[string]any, cache *SchemaCache) (Schema, error) {
+func parseComplexType(namespace string, m map[string]any, seen seenCache, cache *SchemaCache) (Schema, error) {
 	if val, ok := m["type"].([]any); ok {
-		return parseUnion(namespace, val, cache)
+		return parseUnion(namespace, val, seen, cache)
 	}
 
 	str, ok := m["type"].(string)
@@ -130,22 +131,22 @@ func parseComplexType(namespace string, m map[string]any, cache *SchemaCache) (S
 		return parsePrimitive(typ, m)
 
 	case Record, Error:
-		return parseRecord(typ, namespace, m, cache)
+		return parseRecord(typ, namespace, m, seen, cache)
 
 	case Enum:
-		return parseEnum(namespace, m, cache)
+		return parseEnum(namespace, m, seen, cache)
 
 	case Array:
-		return parseArray(namespace, m, cache)
+		return parseArray(namespace, m, seen, cache)
 
 	case Map:
-		return parseMap(namespace, m, cache)
+		return parseMap(namespace, m, seen, cache)
 
 	case Fixed:
-		return parseFixed(namespace, m, cache)
+		return parseFixed(namespace, m, seen, cache)
 
 	default:
-		return parseType(namespace, string(typ), cache)
+		return parseType(namespace, string(typ), seen, cache)
 	}
 }
 
@@ -205,7 +206,7 @@ type recordSchema struct {
 	Props     map[string]any   `mapstructure:",remain"`
 }
 
-func parseRecord(typ Type, namespace string, m map[string]any, cache *SchemaCache) (Schema, error) {
+func parseRecord(typ Type, namespace string, m map[string]any, seen seenCache, cache *SchemaCache) (Schema, error) {
 	var (
 		r    recordSchema
 		meta mapstructure.Metadata
@@ -244,6 +245,10 @@ func parseRecord(typ Type, namespace string, m map[string]any, cache *SchemaCach
 		return nil, err
 	}
 
+	if err = seen.Add(rec.FullName()); err != nil {
+		return nil, err
+	}
+
 	ref := NewRefSchema(rec)
 	cache.Add(rec.FullName(), ref)
 	for _, alias := range rec.Aliases() {
@@ -251,7 +256,7 @@ func parseRecord(typ Type, namespace string, m map[string]any, cache *SchemaCach
 	}
 
 	for i, f := range r.Fields {
-		field, err := parseField(rec.namespace, f, cache)
+		field, err := parseField(rec.namespace, f, seen, cache)
 		if err != nil {
 			return nil, err
 		}
@@ -271,7 +276,7 @@ type fieldSchema struct {
 	Props   map[string]any `mapstructure:",remain"`
 }
 
-func parseField(namespace string, m map[string]any, cache *SchemaCache) (*Field, error) {
+func parseField(namespace string, m map[string]any, seen seenCache, cache *SchemaCache) (*Field, error) {
 	var (
 		f    fieldSchema
 		meta mapstructure.Metadata
@@ -287,7 +292,7 @@ func parseField(namespace string, m map[string]any, cache *SchemaCache) (*Field,
 	if !hasKey(meta.Keys, "type") {
 		return nil, errors.New("avro: field requires a type")
 	}
-	typ, err := parseType(namespace, f.Type, cache)
+	typ, err := parseType(namespace, f.Type, seen, cache)
 	if err != nil {
 		return nil, err
 	}
@@ -317,7 +322,7 @@ type enumSchema struct {
 	Props     map[string]any `mapstructure:",remain"`
 }
 
-func parseEnum(namespace string, m map[string]any, cache *SchemaCache) (Schema, error) {
+func parseEnum(namespace string, m map[string]any, seen seenCache, cache *SchemaCache) (Schema, error) {
 	var (
 		e    enumSchema
 		meta mapstructure.Metadata
@@ -340,6 +345,10 @@ func parseEnum(namespace string, m map[string]any, cache *SchemaCache) (Schema, 
 		return nil, err
 	}
 
+	if err = seen.Add(enum.FullName()); err != nil {
+		return nil, err
+	}
+
 	cache.Add(enum.FullName(), enum)
 	for _, alias := range enum.Aliases() {
 		cache.Add(alias, enum)
@@ -353,7 +362,7 @@ type arraySchema struct {
 	Props map[string]any `mapstructure:",remain"`
 }
 
-func parseArray(namespace string, m map[string]any, cache *SchemaCache) (Schema, error) {
+func parseArray(namespace string, m map[string]any, seen seenCache, cache *SchemaCache) (Schema, error) {
 	var (
 		a    arraySchema
 		meta mapstructure.Metadata
@@ -365,7 +374,7 @@ func parseArray(namespace string, m map[string]any, cache *SchemaCache) (Schema,
 	if !hasKey(meta.Keys, "items") {
 		return nil, errors.New("avro: array must have an items key")
 	}
-	schema, err := parseType(namespace, a.Items, cache)
+	schema, err := parseType(namespace, a.Items, seen, cache)
 	if err != nil {
 		return nil, err
 	}
@@ -378,7 +387,7 @@ type mapSchema struct {
 	Props  map[string]any `mapstructure:",remain"`
 }
 
-func parseMap(namespace string, m map[string]any, cache *SchemaCache) (Schema, error) {
+func parseMap(namespace string, m map[string]any, seen seenCache, cache *SchemaCache) (Schema, error) {
 	var (
 		ms   mapSchema
 		meta mapstructure.Metadata
@@ -390,7 +399,7 @@ func parseMap(namespace string, m map[string]any, cache *SchemaCache) (Schema, e
 	if !hasKey(meta.Keys, "values") {
 		return nil, errors.New("avro: map must have an values key")
 	}
-	schema, err := parseType(namespace, ms.Values, cache)
+	schema, err := parseType(namespace, ms.Values, seen, cache)
 	if err != nil {
 		return nil, err
 	}
@@ -398,11 +407,11 @@ func parseMap(namespace string, m map[string]any, cache *SchemaCache) (Schema, e
 	return NewMapSchema(schema, WithProps(ms.Props)), nil
 }
 
-func parseUnion(namespace string, v []any, cache *SchemaCache) (Schema, error) {
+func parseUnion(namespace string, v []any, seen seenCache, cache *SchemaCache) (Schema, error) {
 	var err error
 	types := make([]Schema, len(v))
 	for i := range v {
-		types[i], err = parseType(namespace, v[i], cache)
+		types[i], err = parseType(namespace, v[i], seen, cache)
 		if err != nil {
 			return nil, err
 		}
@@ -423,7 +432,7 @@ type fixedSchema struct {
 	Props       map[string]any `mapstructure:",remain"`
 }
 
-func parseFixed(namespace string, m map[string]any, cache *SchemaCache) (Schema, error) {
+func parseFixed(namespace string, m map[string]any, seen seenCache, cache *SchemaCache) (Schema, error) {
 	var (
 		f    fixedSchema
 		meta mapstructure.Metadata
@@ -450,6 +459,10 @@ func parseFixed(namespace string, m map[string]any, cache *SchemaCache) (Schema,
 
 	fixed, err := NewFixedSchema(f.Name, f.Namespace, f.Size, logical, WithAliases(f.Aliases), WithProps(f.Props))
 	if err != nil {
+		return nil, err
+	}
+
+	if err = seen.Add(fixed.FullName()); err != nil {
 		return nil, err
 	}
 
@@ -554,4 +567,14 @@ func derefSchema(schema Schema) Schema {
 		}
 		return schema
 	})
+}
+
+type seenCache map[string]struct{}
+
+func (c seenCache) Add(name string) error {
+	if _, ok := c[name]; ok {
+		return fmt.Errorf("duplicate name %q", name)
+	}
+	c[name] = struct{}{}
+	return nil
 }
