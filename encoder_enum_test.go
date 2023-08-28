@@ -87,7 +87,7 @@ func TestEncoder_EnumTextMarshalerObj(t *testing.T) {
 	"type": "record",
 	"name": "test",
 	"fields" : [
-		{"name": "a", "type": {"type":"enum", "name": "test", "symbols": ["foo", "bar"]}}
+		{"name": "a", "type": {"type":"enum", "name": "test1", "symbols": ["foo", "bar"]}}
     ]
 }`
 	buf := bytes.NewBuffer([]byte{})

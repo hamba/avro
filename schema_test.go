@@ -1264,6 +1264,30 @@ func TestSchema_MultiFile(t *testing.T) {
 	assert.Equal(t, want, got)
 }
 
+func TestSchema_DoesNotAllowDuplicateFullNames(t *testing.T) {
+	schm := `
+{
+   "type": "record",
+   "name": "Interop",
+   "namespace": "org.hamba.avro",
+   "fields": [
+       {
+           "name": "intField",
+           "type": {
+             "type": "record",
+             "name": "Interop",
+             "fields": []
+           }
+       }
+  ]
+}
+`
+
+	_, err := avro.Parse(schm)
+
+	assert.Error(t, err)
+}
+
 func TestSchema_Interop(t *testing.T) {
 	schm := `
 {

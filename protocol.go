@@ -224,7 +224,9 @@ func ParseProtocol(protocol string) (*Protocol, error) {
 	if err := jsoniter.Unmarshal([]byte(protocol), &m); err != nil {
 		return nil, err
 	}
-	return parseProtocol(m, cache)
+
+	seen := seenCache{}
+	return parseProtocol(m, seen, cache)
 }
 
 type protocol struct {
@@ -236,7 +238,7 @@ type protocol struct {
 	Props     map[string]any            `mapstructure:",remain"`
 }
 
-func parseProtocol(m map[string]any, cache *SchemaCache) (*Protocol, error) {
+func parseProtocol(m map[string]any, seen seenCache, cache *SchemaCache) (*Protocol, error) {
 	var (
 		p    protocol
 		meta mapstructure.Metadata
@@ -254,7 +256,7 @@ func parseProtocol(m map[string]any, cache *SchemaCache) (*Protocol, error) {
 		err   error
 	)
 	if len(p.Types) > 0 {
-		types, err = parseProtocolTypes(p.Namespace, p.Types, cache)
+		types, err = parseProtocolTypes(p.Namespace, p.Types, seen, cache)
 		if err != nil {
 			return nil, err
 		}
@@ -263,7 +265,7 @@ func parseProtocol(m map[string]any, cache *SchemaCache) (*Protocol, error) {
 	messages := map[string]*Message{}
 	if len(p.Messages) > 0 {
 		for k, msg := range p.Messages {
-			message, err := parseMessage(p.Namespace, msg, cache)
+			message, err := parseMessage(p.Namespace, msg, seen, cache)
 			if err != nil {
 				return nil, err
 			}
@@ -275,10 +277,10 @@ func parseProtocol(m map[string]any, cache *SchemaCache) (*Protocol, error) {
 	return NewProtocol(p.Protocol, p.Namespace, types, messages, WithProtoDoc(p.Doc), WithProtoProps(p.Props))
 }
 
-func parseProtocolTypes(namespace string, types []any, cache *SchemaCache) ([]NamedSchema, error) {
+func parseProtocolTypes(namespace string, types []any, seen seenCache, cache *SchemaCache) ([]NamedSchema, error) {
 	ts := make([]NamedSchema, len(types))
 	for i, typ := range types {
-		schema, err := parseType(namespace, typ, cache)
+		schema, err := parseType(namespace, typ, seen, cache)
 		if err != nil {
 			return nil, err
 		}
@@ -303,7 +305,7 @@ type message struct {
 	Props    map[string]any   `mapstructure:",remain"`
 }
 
-func parseMessage(namespace string, m map[string]any, cache *SchemaCache) (*Message, error) {
+func parseMessage(namespace string, m map[string]any, seen seenCache, cache *SchemaCache) (*Message, error) {
 	var (
 		msg  message
 		meta mapstructure.Metadata
@@ -314,7 +316,7 @@ func parseMessage(namespace string, m map[string]any, cache *SchemaCache) (*Mess
 
 	fields := make([]*Field, len(msg.Request))
 	for i, f := range msg.Request {
-		field, err := parseField(namespace, f, cache)
+		field, err := parseField(namespace, f, seen, cache)
 		if err != nil {
 			return nil, err
 		}
@@ -328,7 +330,7 @@ func parseMessage(namespace string, m map[string]any, cache *SchemaCache) (*Mess
 
 	var response Schema
 	if msg.Response != nil {
-		schema, err := parseType(namespace, msg.Response, cache)
+		schema, err := parseType(namespace, msg.Response, seen, cache)
 		if err != nil {
 			return nil, err
 		}
@@ -341,7 +343,7 @@ func parseMessage(namespace string, m map[string]any, cache *SchemaCache) (*Mess
 	types := []Schema{NewPrimitiveSchema(String, nil)}
 	if len(msg.Errors) > 0 {
 		for _, e := range msg.Errors {
-			schema, err := parseType(namespace, e, cache)
+			schema, err := parseType(namespace, e, seen, cache)
 			if err != nil {
 				return nil, err
 			}

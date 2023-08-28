@@ -103,13 +103,14 @@ func TestDecoder_EnumTextUnmarshalerObj(t *testing.T) {
 	"type": "record",
 	"name": "test",
 	"fields" : [
-		{"name": "a", "type": {"type":"enum", "name": "test", "symbols": ["foo", "bar"]}}
+		{"name": "a", "type": {"type":"enum", "name": "test1", "symbols": ["foo", "bar"]}}
     ]
 }`
-	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
 
 	var got testEnumUnmarshalerObj
-	err := dec.Decode(&got)
+	err = dec.Decode(&got)
 
 	require.NoError(t, err)
 	require.NotNil(t, got)
