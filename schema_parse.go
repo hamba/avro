@@ -349,7 +349,8 @@ func parseEnum(namespace string, m map[string]any, seen seenCache, cache *Schema
 		return nil, err
 	}
 
-	cache.Add(enum.FullName(), enum)
+	ref := NewRefSchema(enum)
+	cache.Add(enum.FullName(), ref)
 	for _, alias := range enum.Aliases() {
 		cache.Add(alias, enum)
 	}
@@ -466,7 +467,8 @@ func parseFixed(namespace string, m map[string]any, seen seenCache, cache *Schem
 		return nil, err
 	}
 
-	cache.Add(fixed.FullName(), fixed)
+	ref := NewRefSchema(fixed)
+	cache.Add(fixed.FullName(), ref)
 	for _, alias := range fixed.Aliases() {
 		cache.Add(alias, fixed)
 	}
