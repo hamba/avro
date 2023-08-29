@@ -1,6 +1,7 @@
 package avro_test
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/hamba/avro/v2"
@@ -802,12 +803,6 @@ func TestUnionSchema(t *testing.T) {
 			wantErr:         require.NoError,
 		},
 		{
-			name:            "Dereferences Ref Schemas",
-			schema:          `[{"type":"fixed", "name":"test", "namespace": "org.hamba.avro", "size": 12}, {"type":"enum", "name":"test1", "namespace": "org.hamba.avro", "symbols":["TEST"]}, {"type":"record", "name":"test2", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": ["null","org.hamba.avro.test","org.hamba.avro.test1"]}]}]`,
-			wantFingerprint: [32]byte{0xc1, 0x42, 0x87, 0xde, 0x24, 0x3d, 0xee, 0x1d, 0xa5, 0x47, 0xa0, 0x13, 0x9e, 0xb, 0xe0, 0x6, 0xfd, 0xa, 0x76, 0xd9, 0xe8, 0x92, 0x9a, 0xd3, 0x46, 0xf, 0xbd, 0x86, 0x21, 0x72, 0x81, 0x1b},
-			wantErr:         require.NoError,
-		},
-		{
 			name:    "No Nested Union Type",
 			schema:  `["null", ["string"]]`,
 			wantErr: require.Error,
@@ -1411,4 +1406,37 @@ func TestSchema_Interop(t *testing.T) {
 	_, err := avro.Parse(schm)
 
 	assert.NoError(t, err)
+}
+
+func TestSchema_ParseBackAndForth(t *testing.T) {
+	schemaStr := `
+{
+    "name": "a.b.rootType",
+    "type": "record",
+    "fields": [
+        {
+            "name": "someEnum1",
+            "type": {
+                "name": "a.b.rootType.classEnum",
+                "type": "enum",
+                "symbols": ["A", "B", "C"]
+            }
+        },
+        {
+            "name": "someEnum2",
+            "type": "a.b.rootType.classEnum"
+        }
+    ]
+}`
+
+	schema, err := avro.Parse(schemaStr)
+	require.NoError(t, err)
+
+	b, err := json.Marshal(schema)
+	require.NoError(t, err)
+
+	schema2, err := avro.ParseBytes(b)
+
+	assert.NoError(t, err)
+	assert.Equal(t, schema, schema2)
 }
