@@ -80,7 +80,10 @@ func realMain(args []string, out, dumpout io.Writer) int {
 	}
 
 	if cfg.Out == "" {
-		dumpout.Write(formatted)
+		if _, err = dumpout.Write(formatted); err != nil {
+			_, _ = fmt.Fprintf(out, "Error: could not write to stdout: %v\n", err)
+			return 4
+		}
 	} else {
 		if err = os.WriteFile(cfg.Out, formatted, 0o600); err != nil {
 			_, _ = fmt.Fprintf(out, "Error: could not write file: %v\n", err)
