@@ -15,11 +15,12 @@ import (
 )
 
 type config struct {
-	Pkg      string
-	Out      string
-	Tags     string
-	FullName bool
-	Encoders bool
+	Pkg         string
+	Out         string
+	Tags        string
+	FullName    bool
+	Encoders    bool
+	Initialisms string
 }
 
 func main() {
@@ -35,6 +36,7 @@ func realMain(args []string, out io.Writer) int {
 	flgs.StringVar(&cfg.Tags, "tags", "", "The additional field tags <tag-name>:{snake|camel|upper-camel|kebab}>[,...]")
 	flgs.BoolVar(&cfg.FullName, "fullname", false, "Use the full name of the Record schema to create the struct name.")
 	flgs.BoolVar(&cfg.Encoders, "encoders", false, "Generate encoders for the structs.")
+	flgs.StringVar(&cfg.Initialisms, "initialisms", "", "Custom initialisms <VAL>[,...] for struct and field names.")
 	flgs.Usage = func() {
 		_, _ = fmt.Fprintln(out, "Usage: avrogen [options] schemas")
 		_, _ = fmt.Fprintln(out, "Options:")
@@ -48,7 +50,14 @@ func realMain(args []string, out io.Writer) int {
 		_, _ = fmt.Fprintln(out, "Error: "+err.Error())
 		return 1
 	}
+
 	tags, err := parseTags(cfg.Tags)
+	if err != nil {
+		_, _ = fmt.Fprintln(out, "Error: "+err.Error())
+		return 1
+	}
+
+	initialisms, err := parseInitialisms(cfg.Initialisms)
 	if err != nil {
 		_, _ = fmt.Fprintln(out, "Error: "+err.Error())
 		return 1
@@ -57,6 +66,7 @@ func realMain(args []string, out io.Writer) int {
 	opts := []gen.OptsFunc{
 		gen.WithFullName(cfg.FullName),
 		gen.WithEncoders(cfg.Encoders),
+		gen.WithInitialisms(initialisms),
 	}
 	g := gen.NewGenerator(cfg.Pkg, tags, opts...)
 	for _, file := range flgs.Args() {
@@ -131,5 +141,21 @@ func parseTags(raw string) (map[string]gen.TagStyle, error) {
 		}
 		result[parts[0]] = style
 	}
+	return result, nil
+}
+
+func parseInitialisms(raw string) ([]string, error) {
+	if raw == "" {
+		return []string{}, nil
+	}
+
+	result := []string{}
+	for _, initialism := range strings.Split(raw, ",") {
+		if initialism != strings.ToUpper(initialism) {
+			return nil, fmt.Errorf("initialism %q must be fully in upper case", initialism)
+		}
+		result = append(result, initialism)
+	}
+
 	return result, nil
 }
