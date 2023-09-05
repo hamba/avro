@@ -31,7 +31,7 @@ func realMain(args []string, out, dumpout io.Writer) int {
 	flgs := flag.NewFlagSet("avrogen", flag.ExitOnError)
 	flgs.SetOutput(out)
 	flgs.StringVar(&cfg.Pkg, "pkg", "", "The package name of the output file.")
-	flgs.StringVar(&cfg.Out, "o", "", "The output file path (dump to stdout if not provided).")
+	flgs.StringVar(&cfg.Out, "o", "", "The output file path to write to instead of stdout.")
 	flgs.StringVar(&cfg.Tags, "tags", "", "The additional field tags <tag-name>:{snake|camel|upper-camel|kebab}>[,...]")
 	flgs.BoolVar(&cfg.FullName, "fullname", false, "Use the full name of the Record schema to create the struct name.")
 	flgs.BoolVar(&cfg.Encoders, "encoders", false, "Generate encoders for the structs.")
