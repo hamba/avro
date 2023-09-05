@@ -79,17 +79,26 @@ func realMain(args []string, out, dumpout io.Writer) int {
 		return 3
 	}
 
-	if cfg.Out == "" {
-		if _, err = dumpout.Write(formatted); err != nil {
-			_, _ = fmt.Fprintf(out, "Error: could not write to stdout: %v\n", err)
-			return 4
-		}
-	} else {
-		if err = os.WriteFile(cfg.Out, formatted, 0o600); err != nil {
-			_, _ = fmt.Fprintf(out, "Error: could not write file: %v\n", err)
+	writer := dumpout
+	if cfg.Out != "" {
+		if writer, err = os.Create(cfg.Out); err != nil {
+			_, _ = fmt.Fprintf(out, "Error: could not create output file: %v\n", err)
 			return 4
 		}
 	}
+
+	if _, err := writer.Write(formatted); err != nil {
+		_, _ = fmt.Fprintf(out, "Error: could not write code: %v\n", err)
+		return 4
+	}
+
+	if f, ok := writer.(*os.File); ok {
+		if err := f.Close(); err != nil {
+			_, _ = fmt.Fprintf(out, "Error: could not close output file: %v\n", err)
+			return 4
+		}
+	}
+
 	return 0
 }
 
