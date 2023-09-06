@@ -16,39 +16,39 @@ var update = flag.Bool("update", false, "Update golden files")
 
 func TestAvroGen_RequiredFlags(t *testing.T) {
 	tests := []struct {
-		name     string
-		args     []string
-		exitCode int
+		name         string
+		args         []string
+		wantExitCode int
 	}{
 		{
-			name:     "validates schema is set",
-			args:     []string{"avrogen", "-pkg", "test", "-o", "some/file"},
-			exitCode: 1,
+			name:         "validates schema is set",
+			args:         []string{"avrogen", "-pkg", "test", "-o", "some/file"},
+			wantExitCode: 1,
 		},
 		{
-			name:     "validates schema exists",
-			args:     []string{"avrogen", "-pkg", "test", "-o", "some/file", "some/schema"},
-			exitCode: 2,
+			name:         "validates schema exists",
+			args:         []string{"avrogen", "-pkg", "test", "-o", "some/file", "some/schema"},
+			wantExitCode: 2,
 		},
 		{
-			name:     "validates package is set",
-			args:     []string{"avrogen", "-o", "some/file", "schema.avsc"},
-			exitCode: 1,
+			name:         "validates package is set",
+			args:         []string{"avrogen", "-o", "some/file", "schema.avsc"},
+			wantExitCode: 1,
 		},
 		{
-			name:     "validates tag format are valid",
-			args:     []string{"avrogen", "-o", "some/file", "-pkg", "test", "-tags", "snake", "schema.avsc"},
-			exitCode: 1,
+			name:         "validates tag format are valid",
+			args:         []string{"avrogen", "-o", "some/file", "-pkg", "test", "-tags", "snake", "schema.avsc"},
+			wantExitCode: 1,
 		},
 		{
-			name:     "validates tag key are valid",
-			args:     []string{"avrogen", "-o", "some/file", "-pkg", "test", "-tags", ":snake", "schema.avsc"},
-			exitCode: 1,
+			name:         "validates tag key are valid",
+			args:         []string{"avrogen", "-o", "some/file", "-pkg", "test", "-tags", ":snake", "schema.avsc"},
+			wantExitCode: 1,
 		},
 		{
-			name:     "validates tag style are valid",
-			args:     []string{"avrogen", "-o", "some/file", "-pkg", "test", "-tags", "json:something", "schema.avsc"},
-			exitCode: 1,
+			name:         "validates tag style are valid",
+			args:         []string{"avrogen", "-o", "some/file", "-pkg", "test", "-tags", "json:something", "schema.avsc"},
+			wantExitCode: 1,
 		},
 	}
 
@@ -57,7 +57,7 @@ func TestAvroGen_RequiredFlags(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			got := realMain(test.args, io.Discard, io.Discard)
 
-			assert.Equal(t, test.exitCode, got)
+			assert.Equal(t, test.wantExitCode, got)
 		})
 	}
 }
