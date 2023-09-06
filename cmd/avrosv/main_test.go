@@ -105,6 +105,12 @@ func TestAvroSv_Verbose(t *testing.T) {
 			wantStdout:   "{\"name\":\"testref\",\"type\":\"record\",\"fields\":[{\"name\":\"someref\",\"type\":{\"name\":\"test\",\"type\":\"record\",\"fields\":[{\"name\":\"someString\",\"type\":\"string\"}]}}]}\n",
 			wantExitCode: 0,
 		},
+		{
+			name:         "does not dump any schema when the schema file is invalid",
+			args:         []string{"avrosv", "-v", "testdata/bad-schema.avsc"},
+			wantStdout:   "",
+			wantExitCode: 2,
+		},
 	}
 
 	for _, test := range tests {
