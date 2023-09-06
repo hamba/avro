@@ -177,22 +177,22 @@ func TestParseInitialisms(t *testing.T) {
 	tests := []struct {
 		name        string
 		initialisms string
-		wantErr     bool
+		errFunc     assert.ErrorAssertionFunc
 	}{
 		{
 			name:        "single initialism",
 			initialisms: "ABC",
-			wantErr:     false,
+			errFunc:     assert.NoError,
 		},
 		{
 			name:        "multiple initialisms",
 			initialisms: "ABC,DEF",
-			wantErr:     false,
+			errFunc:     assert.NoError,
 		},
 		{
 			name:        "wrong initialism",
 			initialisms: "ABC,def,GHI",
-			wantErr:     true,
+			errFunc:     assert.Error,
 		},
 	}
 
@@ -201,12 +201,7 @@ func TestParseInitialisms(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			_, err := parseInitialisms(test.initialisms)
 
-			if test.wantErr {
-				assert.Error(t, err)
-				return
-			}
-
-			require.NoError(t, err)
+			test.errFunc(t, err)
 		})
 	}
 }
