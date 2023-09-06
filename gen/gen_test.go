@@ -75,6 +75,24 @@ func TestStruct_HandlesGoInitialisms(t *testing.T) {
 	assert.Contains(t, lines, "type HTTPRecord struct {")
 }
 
+func TestStruct_HandlesAdditionalInitialisms(t *testing.T) {
+	schema := `{
+  "type": "record",
+  "name": "CidOverHttpRecord",
+  "fields": [
+    { "name": "someString", "type": "string" }
+  ]
+}`
+	gc := gen.Config{
+		PackageName: "Something",
+		Initialisms: []string{"CID"},
+	}
+
+	_, lines := generate(t, schema, gc)
+
+	assert.Contains(t, lines, "type CIDOverHTTPRecord struct {")
+}
+
 func TestStruct_ConfigurableFieldTags(t *testing.T) {
 	schema := `{
   "type": "record",

@@ -180,3 +180,36 @@ func TestParseTags(t *testing.T) {
 		})
 	}
 }
+
+func TestParseInitialisms(t *testing.T) {
+	tests := []struct {
+		name        string
+		initialisms string
+		errFunc     assert.ErrorAssertionFunc
+	}{
+		{
+			name:        "single initialism",
+			initialisms: "ABC",
+			errFunc:     assert.NoError,
+		},
+		{
+			name:        "multiple initialisms",
+			initialisms: "ABC,DEF",
+			errFunc:     assert.NoError,
+		},
+		{
+			name:        "wrong initialism",
+			initialisms: "ABC,def,GHI",
+			errFunc:     assert.Error,
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			_, err := parseInitialisms(test.initialisms)
+
+			test.errFunc(t, err)
+		})
+	}
+}

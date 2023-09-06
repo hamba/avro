@@ -20,6 +20,7 @@ type Config struct {
 	Tags        map[string]TagStyle
 	FullName    bool
 	Encoders    bool
+	Initialisms []string
 }
 
 // TagStyle defines the styling for a tag.
@@ -120,6 +121,7 @@ func StructFromSchema(schema avro.Schema, w io.Writer, cfg Config) error {
 	opts := []OptsFunc{
 		WithFullName(cfg.FullName),
 		WithEncoders(cfg.Encoders),
+		WithInitialisms(cfg.Initialisms),
 	}
 	g := NewGenerator(strcase.ToSnake(cfg.PackageName), cfg.Tags, opts...)
 	g.Parse(rec)
@@ -160,16 +162,27 @@ func WithEncoders(b bool) OptsFunc {
 	}
 }
 
+// WithInitialisms configures the generator to use additional custom initialisms
+// when styling struct and field names.
+func WithInitialisms(ss []string) OptsFunc {
+	return func(g *Generator) {
+		g.initialisms = ss
+	}
+}
+
 // Generator generates Go structs from schemas.
 type Generator struct {
-	pkg      string
-	tags     map[string]TagStyle
-	fullName bool
-	encoders bool
+	pkg         string
+	tags        map[string]TagStyle
+	fullName    bool
+	encoders    bool
+	initialisms []string
 
 	imports           []string
 	thirdPartyImports []string
 	typedefs          []typedef
+
+	nameCaser *strcase.Caser
 }
 
 // NewGenerator returns a generator.
@@ -182,6 +195,17 @@ func NewGenerator(pkg string, tags map[string]TagStyle, opts ...OptsFunc) *Gener
 	for _, opt := range opts {
 		opt(g)
 	}
+
+	initialisms := map[string]bool{}
+	for _, v := range g.initialisms {
+		initialisms[v] = true
+	}
+
+	g.nameCaser = strcase.NewCaser(
+		true, // use standard Golint's initialisms
+		initialisms,
+		nil, // use default word split function
+	)
 
 	return g
 }
@@ -231,9 +255,9 @@ func (g *Generator) generate(schema avro.Schema) string {
 
 func (g *Generator) resolveTypeName(s avro.NamedSchema) string {
 	if g.fullName {
-		return strcase.ToGoPascal(s.FullName())
+		return g.nameCaser.ToPascal(s.FullName())
 	}
-	return strcase.ToGoPascal(s.Name())
+	return g.nameCaser.ToPascal(s.Name())
 }
 
 func (g *Generator) resolveRecordSchema(schema *avro.RecordSchema) string {
@@ -241,7 +265,7 @@ func (g *Generator) resolveRecordSchema(schema *avro.RecordSchema) string {
 	for i, f := range schema.Fields() {
 		typ := g.generate(f.Type())
 		tag := f.Name()
-		fields[i] = g.newField(strcase.ToGoPascal(f.Name()), typ, tag)
+		fields[i] = g.newField(g.nameCaser.ToPascal(f.Name()), typ, tag)
 	}
 
 	typeName := g.resolveTypeName(schema)
