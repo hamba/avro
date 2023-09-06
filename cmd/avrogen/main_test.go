@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"io"
 	"os"
@@ -35,11 +36,6 @@ func TestAvroGen_RequiredFlags(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "validates output file is set",
-			args:    []string{"avrogen", "-pkg", "test", "schema.avsc"},
-			wantErr: true,
-		},
-		{
 			name:    "validates tag format are valid",
 			args:    []string{"avrogen", "-o", "some/file", "-pkg", "test", "-tags", "snake", "schema.avsc"},
 			wantErr: true,
@@ -59,7 +55,7 @@ func TestAvroGen_RequiredFlags(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			got := realMain(test.args, io.Discard)
+			got := realMain(test.args, io.Discard, io.Discard)
 
 			if !test.wantErr {
 				assert.Equal(t, 0, got)
@@ -71,6 +67,18 @@ func TestAvroGen_RequiredFlags(t *testing.T) {
 	}
 }
 
+func TestAvroGen_GeneratesSchemaStdout(t *testing.T) {
+	var buf bytes.Buffer
+
+	args := []string{"avrogen", "-pkg", "testpkg", "testdata/schema.avsc"}
+	gotCode := realMain(args, io.Discard, &buf)
+	require.Equal(t, 0, gotCode)
+
+	want, err := os.ReadFile("testdata/golden.go")
+	require.NoError(t, err)
+	assert.Equal(t, want, buf.Bytes())
+}
+
 func TestAvroGen_GeneratesSchema(t *testing.T) {
 	path, err := os.MkdirTemp("./", "avrogen")
 	require.NoError(t, err)
@@ -78,7 +86,7 @@ func TestAvroGen_GeneratesSchema(t *testing.T) {
 
 	file := filepath.Join(path, "test.go")
 	args := []string{"avrogen", "-pkg", "testpkg", "-o", file, "testdata/schema.avsc"}
-	gotCode := realMain(args, io.Discard)
+	gotCode := realMain(args, io.Discard, io.Discard)
 	require.Equal(t, 0, gotCode)
 
 	got, err := os.ReadFile(file)
@@ -101,7 +109,7 @@ func TestAvroGen_GeneratesSchemaWithFullname(t *testing.T) {
 
 	file := filepath.Join(path, "test.go")
 	args := []string{"avrogen", "-pkg", "testpkg", "-o", file, "-fullname", "testdata/schema.avsc"}
-	gotCode := realMain(args, io.Discard)
+	gotCode := realMain(args, io.Discard, io.Discard)
 	require.Equal(t, 0, gotCode)
 
 	got, err := os.ReadFile(file)
@@ -124,7 +132,7 @@ func TestAvroGen_GeneratesSchemaWithEncoders(t *testing.T) {
 
 	file := filepath.Join(path, "test.go")
 	args := []string{"avrogen", "-pkg", "testpkg", "-o", file, "-encoders", "testdata/schema.avsc"}
-	gotCode := realMain(args, io.Discard)
+	gotCode := realMain(args, io.Discard, io.Discard)
 	require.Equal(t, 0, gotCode)
 
 	got, err := os.ReadFile(file)

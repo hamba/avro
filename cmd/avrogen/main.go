@@ -24,15 +24,15 @@ type config struct {
 }
 
 func main() {
-	os.Exit(realMain(os.Args, os.Stderr))
+	os.Exit(realMain(os.Args, os.Stderr, os.Stdout))
 }
 
-func realMain(args []string, out io.Writer) int {
+func realMain(args []string, out, dumpout io.Writer) int {
 	var cfg config
 	flgs := flag.NewFlagSet("avrogen", flag.ExitOnError)
 	flgs.SetOutput(out)
 	flgs.StringVar(&cfg.Pkg, "pkg", "", "The package name of the output file.")
-	flgs.StringVar(&cfg.Out, "o", "", "The output file path.")
+	flgs.StringVar(&cfg.Out, "o", "", "The output file path to write to instead of stdout.")
 	flgs.StringVar(&cfg.Tags, "tags", "", "The additional field tags <tag-name>:{snake|camel|upper-camel|kebab}>[,...]")
 	flgs.BoolVar(&cfg.FullName, "fullname", false, "Use the full name of the Record schema to create the struct name.")
 	flgs.BoolVar(&cfg.Encoders, "encoders", false, "Generate encoders for the structs.")
@@ -85,13 +85,27 @@ func realMain(args []string, out io.Writer) int {
 	}
 	formatted, err := format.Source(buf.Bytes())
 	if err != nil {
-		_, _ = fmt.Fprintf(out, "Error: could format code: %v\n", err)
+		_, _ = fmt.Fprintf(out, "Error: could not format code: %v\n", err)
 		return 3
 	}
-	if err = os.WriteFile(cfg.Out, formatted, 0o600); err != nil {
-		_, _ = fmt.Fprintf(out, "Error: could write file: %v\n", err)
+
+	writer := dumpout
+	if cfg.Out != "" {
+		file, err := os.Create(cfg.Out)
+		if err != nil {
+			_, _ = fmt.Fprintf(out, "Error: could not create output file: %v\n", err)
+			return 4
+		}
+		defer func() { _ = file.Close() }()
+
+		writer = file
+	}
+
+	if _, err := writer.Write(formatted); err != nil {
+		_, _ = fmt.Fprintf(out, "Error: could not write code: %v\n", err)
 		return 4
 	}
+
 	return 0
 }
 
@@ -102,10 +116,6 @@ func validateOpts(nargs int, cfg config) error {
 
 	if cfg.Pkg == "" {
 		return fmt.Errorf("a package is required")
-	}
-
-	if cfg.Out == "" {
-		return fmt.Errorf("an output file is reqired")
 	}
 
 	return nil

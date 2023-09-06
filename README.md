@@ -176,6 +176,8 @@ Example usage assuming there's a valid schema in `in.avsc`:
 avrogen -pkg avro -o bla.go -tags json:snake,yaml:upper-camel in.avsc
 ```
 
+**Tip:** Omit `-o FILE` to dump the generated Go structs to stdout instead of a file.
+
 Check the options and usage with `-h`:
 
 ```shell
