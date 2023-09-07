@@ -66,7 +66,7 @@ func TestAvroGen_GeneratesSchemaStdout(t *testing.T) {
 	var buf bytes.Buffer
 
 	args := []string{"avrogen", "-pkg", "testpkg", "testdata/schema.avsc"}
-	gotCode := realMain(args, io.Discard, &buf)
+	gotCode := realMain(args, &buf, io.Discard)
 	require.Equal(t, 0, gotCode)
 
 	want, err := os.ReadFile("testdata/golden.go")

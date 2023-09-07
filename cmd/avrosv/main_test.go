@@ -11,24 +11,24 @@ import (
 
 func TestAvroSv_RequiredFlags(t *testing.T) {
 	tests := []struct {
-		name    string
-		args    []string
-		wantErr bool
+		name         string
+		args         []string
+		wantExitCode int
 	}{
 		{
-			name:    "validates no schema is set",
-			args:    []string{"avrosv"},
-			wantErr: true,
+			name:         "validates no schema is set",
+			args:         []string{"avrosv"},
+			wantExitCode: 1,
 		},
 		{
-			name:    "validates single schema is set",
-			args:    []string{"avrosv", "some/file"},
-			wantErr: true,
+			name:         "validates single schema is set",
+			args:         []string{"avrosv", "some/file"},
+			wantExitCode: 2,
 		},
 		{
-			name:    "validates multiple schemas are set",
-			args:    []string{"avrosv", "some/file", "some/other"},
-			wantErr: true,
+			name:         "validates multiple schemas are set",
+			args:         []string{"avrosv", "some/file", "some/other"},
+			wantExitCode: 2,
 		},
 	}
 
@@ -37,46 +37,41 @@ func TestAvroSv_RequiredFlags(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			got := realMain(test.args, io.Discard, io.Discard)
 
-			if !test.wantErr {
-				assert.Equal(t, 0, got)
-				return
-			}
-
-			assert.NotEqual(t, 0, got)
+			assert.Equal(t, test.wantExitCode, got)
 		})
 	}
 }
 
 func TestAvroSv_ValidatesSchema(t *testing.T) {
 	tests := []struct {
-		name    string
-		args    []string
-		wantErr bool
+		name         string
+		args         []string
+		wantExitCode int
 	}{
 		{
-			name:    "validates a simple schema",
-			args:    []string{"avrosv", "testdata/schema.avsc"},
-			wantErr: false,
+			name:         "validates a simple schema",
+			args:         []string{"avrosv", "testdata/schema.avsc"},
+			wantExitCode: 0,
 		},
 		{
-			name:    "does not validate a bad schema",
-			args:    []string{"avrosv", "testdata/bad-schema.avsc"},
-			wantErr: true,
+			name:         "does not validate a bad schema",
+			args:         []string{"avrosv", "testdata/bad-schema.avsc"},
+			wantExitCode: 2,
 		},
 		{
-			name:    "does not validate a schema with a bad default",
-			args:    []string{"avrosv", "testdata/bad-default-schema.avsc"},
-			wantErr: true,
+			name:         "does not validate a schema with a bad default",
+			args:         []string{"avrosv", "testdata/bad-default-schema.avsc"},
+			wantExitCode: 2,
 		},
 		{
-			name:    "does not validate a schema with a reference to a missing schema",
-			args:    []string{"avrosv", "testdata/withref-schema.avsc"},
-			wantErr: true,
+			name:         "does not validate a schema with a reference to a missing schema",
+			args:         []string{"avrosv", "testdata/withref-schema.avsc"},
+			wantExitCode: 2,
 		},
 		{
-			name:    "validates a schema with a reference to an existing schema",
-			args:    []string{"avrosv", "testdata/schema.avsc", "testdata/withref-schema.avsc"},
-			wantErr: false,
+			name:         "validates a schema with a reference to an existing schema",
+			args:         []string{"avrosv", "testdata/schema.avsc", "testdata/withref-schema.avsc"},
+			wantExitCode: 0,
 		},
 	}
 
@@ -86,45 +81,49 @@ func TestAvroSv_ValidatesSchema(t *testing.T) {
 			avro.DefaultSchemaCache = &avro.SchemaCache{} // reset the schema cache
 			got := realMain(test.args, io.Discard, io.Discard)
 
-			if !test.wantErr {
-				assert.Equal(t, 0, got)
-				return
-			}
-
-			assert.NotEqual(t, 0, got)
+			assert.Equal(t, test.wantExitCode, got)
 		})
 	}
 }
 
 func TestAvroSv_Verbose(t *testing.T) {
 	tests := []struct {
-		name    string
-		args    []string
-		out     string
-		wantErr bool
+		name         string
+		args         []string
+		wantStdout   string
+		wantExitCode int
 	}{
 		{
-			name:    "dumps a simple schema",
-			args:    []string{"avrosv", "-v", "testdata/schema.avsc"},
-			out:     "{\"name\":\"test\",\"type\":\"record\",\"fields\":[{\"name\":\"someString\",\"type\":\"string\"}]}\n",
-			wantErr: false,
+			name:         "dumps a simple schema",
+			args:         []string{"avrosv", "-v", "testdata/schema.avsc"},
+			wantStdout:   "{\"name\":\"test\",\"type\":\"record\",\"fields\":[{\"name\":\"someString\",\"type\":\"string\"}]}\n",
+			wantExitCode: 0,
 		},
 		{
-			name:    "dumps a schema with a reference to an existing schema",
-			args:    []string{"avrosv", "-v", "testdata/schema.avsc", "testdata/withref-schema.avsc"},
-			out:     "{\"name\":\"testref\",\"type\":\"record\",\"fields\":[{\"name\":\"someref\",\"type\":{\"name\":\"test\",\"type\":\"record\",\"fields\":[{\"name\":\"someString\",\"type\":\"string\"}]}}]}\n",
-			wantErr: false,
+			name:         "dumps a schema with a reference to an existing schema",
+			args:         []string{"avrosv", "-v", "testdata/schema.avsc", "testdata/withref-schema.avsc"},
+			wantStdout:   "{\"name\":\"testref\",\"type\":\"record\",\"fields\":[{\"name\":\"someref\",\"type\":{\"name\":\"test\",\"type\":\"record\",\"fields\":[{\"name\":\"someString\",\"type\":\"string\"}]}}]}\n",
+			wantExitCode: 0,
+		},
+		{
+			name:         "does not dump any schema when the schema file is invalid",
+			args:         []string{"avrosv", "-v", "testdata/bad-schema.avsc"},
+			wantStdout:   "",
+			wantExitCode: 2,
 		},
 	}
 
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
+			var buf bytes.Buffer
+
 			avro.DefaultSchemaCache = &avro.SchemaCache{} // reset the schema cache
-			w := &bytes.Buffer{}
-			got := realMain(test.args, io.Discard, w)
-			assert.Equal(t, 0, got)
-			assert.Equal(t, test.out, w.String())
+
+			got := realMain(test.args, &buf, io.Discard)
+
+			assert.Equal(t, test.wantStdout, buf.String())
+			assert.Equal(t, test.wantExitCode, got)
 		})
 	}
 }

@@ -24,13 +24,13 @@ type config struct {
 }
 
 func main() {
-	os.Exit(realMain(os.Args, os.Stderr, os.Stdout))
+	os.Exit(realMain(os.Args, os.Stdout, os.Stderr))
 }
 
-func realMain(args []string, out, dumpout io.Writer) int {
+func realMain(args []string, stdout, stderr io.Writer) int {
 	var cfg config
 	flgs := flag.NewFlagSet("avrogen", flag.ExitOnError)
-	flgs.SetOutput(out)
+	flgs.SetOutput(stderr)
 	flgs.StringVar(&cfg.Pkg, "pkg", "", "The package name of the output file.")
 	flgs.StringVar(&cfg.Out, "o", "", "The output file path to write to instead of stdout.")
 	flgs.StringVar(&cfg.Tags, "tags", "", "The additional field tags <tag-name>:{snake|camel|upper-camel|kebab}>[,...]")
@@ -38,8 +38,8 @@ func realMain(args []string, out, dumpout io.Writer) int {
 	flgs.BoolVar(&cfg.Encoders, "encoders", false, "Generate encoders for the structs.")
 	flgs.StringVar(&cfg.Initialisms, "initialisms", "", "Custom initialisms <VAL>[,...] for struct and field names.")
 	flgs.Usage = func() {
-		_, _ = fmt.Fprintln(out, "Usage: avrogen [options] schemas")
-		_, _ = fmt.Fprintln(out, "Options:")
+		_, _ = fmt.Fprintln(stderr, "Usage: avrogen [options] schemas")
+		_, _ = fmt.Fprintln(stderr, "Options:")
 		flgs.PrintDefaults()
 	}
 	if err := flgs.Parse(args[1:]); err != nil {
@@ -47,19 +47,19 @@ func realMain(args []string, out, dumpout io.Writer) int {
 	}
 
 	if err := validateOpts(flgs.NArg(), cfg); err != nil {
-		_, _ = fmt.Fprintln(out, "Error: "+err.Error())
+		_, _ = fmt.Fprintln(stderr, "Error: "+err.Error())
 		return 1
 	}
 
 	tags, err := parseTags(cfg.Tags)
 	if err != nil {
-		_, _ = fmt.Fprintln(out, "Error: "+err.Error())
+		_, _ = fmt.Fprintln(stderr, "Error: "+err.Error())
 		return 1
 	}
 
 	initialisms, err := parseInitialisms(cfg.Initialisms)
 	if err != nil {
-		_, _ = fmt.Fprintln(out, "Error: "+err.Error())
+		_, _ = fmt.Fprintln(stderr, "Error: "+err.Error())
 		return 1
 	}
 
@@ -72,7 +72,7 @@ func realMain(args []string, out, dumpout io.Writer) int {
 	for _, file := range flgs.Args() {
 		schema, err := avro.ParseFiles(filepath.Clean(file))
 		if err != nil {
-			_, _ = fmt.Fprintf(out, "Error: %v\n", err)
+			_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
 			return 2
 		}
 		g.Parse(schema)
@@ -80,20 +80,20 @@ func realMain(args []string, out, dumpout io.Writer) int {
 
 	var buf bytes.Buffer
 	if err = g.Write(&buf); err != nil {
-		_, _ = fmt.Fprintf(out, "Error: could not generate code: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "Error: could not generate code: %v\n", err)
 		return 3
 	}
 	formatted, err := format.Source(buf.Bytes())
 	if err != nil {
-		_, _ = fmt.Fprintf(out, "Error: could not format code: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "Error: could not format code: %v\n", err)
 		return 3
 	}
 
-	writer := dumpout
+	writer := stdout
 	if cfg.Out != "" {
 		file, err := os.Create(cfg.Out)
 		if err != nil {
-			_, _ = fmt.Fprintf(out, "Error: could not create output file: %v\n", err)
+			_, _ = fmt.Fprintf(stderr, "Error: could not create output file: %v\n", err)
 			return 4
 		}
 		defer func() { _ = file.Close() }()
@@ -102,7 +102,7 @@ func realMain(args []string, out, dumpout io.Writer) int {
 	}
 
 	if _, err := writer.Write(formatted); err != nil {
-		_, _ = fmt.Fprintf(out, "Error: could not write code: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "Error: could not write code: %v\n", err)
 		return 4
 	}
 
