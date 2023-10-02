@@ -4,9 +4,17 @@ updates:
   directory: "/"
   schedule:
     interval: weekly
+  groups:
+    all:
+      patterns:
+        - "*"
   open-pull-requests-limit: 10
 - package-ecosystem: "github-actions"
   directory: "/"
   schedule:
     interval: weekly
+  groups:
+    all:
+      patterns:
+        - "*"
   open-pull-requests-limit: 10
