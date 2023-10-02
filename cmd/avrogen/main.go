@@ -146,6 +146,8 @@ func parseTags(raw string) (map[string]gen.TagStyle, error) {
 			style = gen.Kebab
 		case string(gen.Snake):
 			style = gen.Snake
+		case string(gen.Original):
+			style = gen.Original
 		default:
 			return nil, fmt.Errorf("style %q is invalid in %q", parts[1], tag)
 		}

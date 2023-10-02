@@ -164,6 +164,10 @@ func TestParseTags(t *testing.T) {
 			name: "kebab case",
 			tags: "json:kebab",
 		},
+		{
+			name: "original case",
+			tags: "json:original",
+		},
 	}
 
 	for _, test := range tests {

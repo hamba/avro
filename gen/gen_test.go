@@ -98,7 +98,7 @@ func TestStruct_ConfigurableFieldTags(t *testing.T) {
   "type": "record",
   "name": "test",
   "fields": [
-    { "name": "someString", "type": "string" }
+    { "name": "someSTRING", "type": "string" }
   ]
 }`
 
@@ -110,7 +110,8 @@ func TestStruct_ConfigurableFieldTags(t *testing.T) {
 		{tagStyle: gen.Snake, expectedTag: "json:\"some_string\""},
 		{tagStyle: gen.Kebab, expectedTag: "json:\"some-string\""},
 		{tagStyle: gen.UpperCamel, expectedTag: "json:\"SomeString\""},
-		{tagStyle: gen.TagStyle(""), expectedTag: "json:\"someString\""},
+		{tagStyle: gen.Original, expectedTag: "json:\"someSTRING\""},
+		{tagStyle: gen.TagStyle(""), expectedTag: "json:\"someSTRING\""},
 	}
 
 	for _, test := range tests {
@@ -127,7 +128,7 @@ func TestStruct_ConfigurableFieldTags(t *testing.T) {
 			for _, expected := range []string{
 				"package something",
 				"type Test struct {",
-				"SomeString string `avro:\"someString\" " + test.expectedTag + "`",
+				"SomeString string `avro:\"someSTRING\" " + test.expectedTag + "`",
 				"}",
 			} {
 				assert.Contains(t, lines, expected)

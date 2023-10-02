@@ -27,6 +27,8 @@ type Config struct {
 type TagStyle string
 
 const (
+	// Original is a style like whAtEVer_IS_InthEInpuT.
+	Original TagStyle = "original"
 	// Snake is a style like im_written_in_snake_case.
 	Snake TagStyle = "snake"
 	// Camel is a style like imWrittenInCamelCase.
@@ -355,6 +357,8 @@ func formatTag(tag string, style TagStyle) string {
 		return strcase.ToCamel(tag)
 	case Snake:
 		return strcase.ToSnake(tag)
+	case Original:
+		fallthrough
 	default:
 		return tag
 	}
