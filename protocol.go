@@ -101,11 +101,6 @@ func (p *Protocol) Hash() string {
 	return p.hash
 }
 
-// Types returns the types of the protocol.
-func (p *Protocol) Types() []NamedSchema {
-	return p.types
-}
-
 // OriginalString returns the original string of the protocol.
 func (p *Protocol) OriginalString() string {
 	return p.originalString
