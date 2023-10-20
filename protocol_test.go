@@ -190,3 +190,17 @@ func TestParseProtocolFile_InvalidPath(t *testing.T) {
 
 	assert.Error(t, err)
 }
+
+func TestParseProtocol_Types(t *testing.T) {
+	protocol, err := avro.ParseProtocolFile("testdata/echo.avpr")
+
+	wantPing := `{"name":"org.hamba.avro.Ping","type":"record","fields":[{"name":"timestamp","type":"long"},{"name":"text","type":"string"}]}`
+	wantPong := `{"name":"org.hamba.avro.Pong","type":"record","fields":[{"name":"timestamp","type":"long"},{"name":"ping","type":"org.hamba.avro.Ping"}]}`
+	wantPongError := `{"name":"org.hamba.avro.PongError","type":"error","fields":[{"name":"timestamp","type":"long"},{"name":"reason","type":"string"}]}`
+	wantLen := 3
+	require.NoError(t, err)
+	assert.Equal(t, wantLen, len(protocol.Types()))
+	assert.Equal(t, wantPing, protocol.Types()[0].String())
+	assert.Equal(t, wantPong, protocol.Types()[1].String())
+	assert.Equal(t, wantPongError, protocol.Types()[2].String())
+}
