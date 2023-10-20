@@ -106,6 +106,11 @@ func (p *Protocol) OriginalString() string {
 	return p.originalString
 }
 
+// Types returns the types of the protocol.
+func (p *Protocol) Types() []NamedSchema {
+	return p.types
+}
+
 // String returns the canonical form of the protocol.
 func (p *Protocol) String() string {
 	types := ""
