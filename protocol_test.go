@@ -21,9 +21,18 @@ func TestMustParseProtocol_PanicsOnError(t *testing.T) {
 }
 
 func TestNewProtocol_ValidatesName(t *testing.T) {
-	_, err := avro.NewProtocol("0test", "", nil, nil)
+	_, err := avro.NewProtocol("0test", "", nil, nil, "")
 
 	assert.Error(t, err)
+}
+
+func TestNewProtocol_OriginalString(t *testing.T) {
+	schema := `{"protocol":"test", "namespace": "org.hamba.avro", "messages":{"test":{"request": [{"name": "foobar", "type": "string"}]}}}`
+
+	proto, err := avro.ParseProtocol(schema)
+
+	assert.NoError(t, err)
+	assert.Equal(t, schema, proto.OriginalString())
 }
 
 func TestNewMessage(t *testing.T) {

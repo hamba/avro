@@ -49,6 +49,8 @@ type Protocol struct {
 	doc string
 
 	hash string
+
+	originalString string
 }
 
 // NewProtocol creates a protocol instance.
@@ -56,6 +58,7 @@ func NewProtocol(
 	name, namepsace string,
 	types []NamedSchema,
 	messages map[string]*Message,
+	protocolString string,
 	opts ...ProtocolOption,
 ) (*Protocol, error) {
 	var cfg protocolConfig
@@ -69,11 +72,12 @@ func NewProtocol(
 	}
 
 	p := &Protocol{
-		name:       n,
-		properties: newProperties(cfg.props, protocolReserved),
-		types:      types,
-		messages:   messages,
-		doc:        cfg.doc,
+		name:           n,
+		properties:     newProperties(cfg.props, protocolReserved),
+		types:          types,
+		messages:       messages,
+		doc:            cfg.doc,
+		originalString: protocolString,
 	}
 
 	b := md5.Sum([]byte(p.String()))
@@ -95,6 +99,16 @@ func (p *Protocol) Doc() string {
 // Hash returns the MD5 hash of the protocol.
 func (p *Protocol) Hash() string {
 	return p.hash
+}
+
+// Types returns the types of the protocol.
+func (p *Protocol) Types() []NamedSchema {
+	return p.types
+}
+
+// OriginalString returns the original string of the protocol.
+func (p *Protocol) OriginalString() string {
+	return p.originalString
 }
 
 // String returns the canonical form of the protocol.
@@ -226,7 +240,7 @@ func ParseProtocol(protocol string) (*Protocol, error) {
 	}
 
 	seen := seenCache{}
-	return parseProtocol(m, seen, cache)
+	return parseProtocol(m, seen, cache, protocol)
 }
 
 type protocol struct {
@@ -238,7 +252,7 @@ type protocol struct {
 	Props     map[string]any            `mapstructure:",remain"`
 }
 
-func parseProtocol(m map[string]any, seen seenCache, cache *SchemaCache) (*Protocol, error) {
+func parseProtocol(m map[string]any, seen seenCache, cache *SchemaCache, protocolString string) (*Protocol, error) {
 	var (
 		p    protocol
 		meta mapstructure.Metadata
@@ -274,7 +288,7 @@ func parseProtocol(m map[string]any, seen seenCache, cache *SchemaCache) (*Proto
 		}
 	}
 
-	return NewProtocol(p.Protocol, p.Namespace, types, messages, WithProtoDoc(p.Doc), WithProtoProps(p.Props))
+	return NewProtocol(p.Protocol, p.Namespace, types, messages, protocolString, WithProtoDoc(p.Doc), WithProtoProps(p.Props))
 }
 
 func parseProtocolTypes(namespace string, types []any, seen seenCache, cache *SchemaCache) ([]NamedSchema, error) {
