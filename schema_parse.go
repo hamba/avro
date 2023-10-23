@@ -565,6 +565,7 @@ func derefSchema(schema Schema) Schema {
 		}
 
 		if _, haveSeen := seen[ref.Schema().FullName()]; !haveSeen {
+			seen[ref.Schema().FullName()] = struct{}{}
 			return ref.Schema()
 		}
 		return schema
