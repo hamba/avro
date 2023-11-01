@@ -177,7 +177,7 @@ func (c *SchemaCompatibility) match(reader, writer Schema) error {
 
 func (c *SchemaCompatibility) checkSchemaName(reader, writer NamedSchema) error {
 	if reader.FullName() != writer.FullName() {
-		return fmt.Errorf("reader schema %s and writer schema %s  names do match", reader.FullName(), writer.FullName())
+		return fmt.Errorf("reader schema %s and writer schema %s  names do not match", reader.FullName(), writer.FullName())
 	}
 
 	return nil
