@@ -176,7 +176,6 @@ func encoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEnc
 		if defaultType.LikePtr() {
 			defaultEncoder = &onePtrEncoder{defaultEncoder}
 		}
-
 		fields = append(fields, &structFieldEncoder{
 			defaultPtr: reflect2.PtrOf(def),
 			encoder:    defaultEncoder,
@@ -332,6 +331,8 @@ type recordMapEncoder struct {
 
 func (e *recordMapEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 	for _, field := range e.fields {
+		// The first property of mapEncoderField is the name, so a pointer
+		// to field is a pointer to the name.
 		valPtr := e.mapType.UnsafeGetIndex(ptr, reflect2.PtrOf(field))
 		if valPtr == nil {
 			// Missing required field
