@@ -172,9 +172,14 @@ func encoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEnc
 		}
 
 		defaultType := reflect2.TypeOf(def)
+		defaultEncoder := encoderOfType(cfg, field.Type(), defaultType)
+		if defaultType.LikePtr() {
+			defaultEncoder = &onePtrEncoder{defaultEncoder}
+		}
+
 		fields = append(fields, &structFieldEncoder{
 			defaultPtr: reflect2.PtrOf(def),
-			encoder:    encoderOfType(cfg, field.Type(), defaultType),
+			encoder:    defaultEncoder,
 		})
 	}
 	return &structEncoder{typ: typ, fields: fields}

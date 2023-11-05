@@ -139,6 +139,42 @@ func TestEncoder_RecordStructPartialWithNullDefault(t *testing.T) {
 	assert.Equal(t, []byte{0x00, 0x06, 0x66, 0x6f, 0x6f}, buf.Bytes())
 }
 
+func TestEncoder_RecordStructPartialWithSubRecordDefault(t *testing.T) {
+	defer ConfigTeardown()
+
+	_, err := avro.Parse(`{
+		"type": "record",
+		"name": "test",
+		"fields" : [
+			{"name": "a", "type": "long"},
+			{"name": "b", "type": "string"}
+		]
+	}`)
+	require.NoError(t, err)
+
+	schema := `{
+		"type": "record",
+		"name": "parent",
+		"fields" : [
+			{
+				"name": "a",
+				"type": "test",
+				"default": {"a": 1000, "b": "def b"}
+			},
+			{"name": "b", "type": "string"}
+		]
+	}`
+	obj := TestPartialRecord{B: "foo"}
+	buf := &bytes.Buffer{}
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode(obj)
+	require.NoError(t, err)
+
+	assert.Equal(t, []byte{0xd0, 0xf, 0xa, 0x64, 0x65, 0x66, 0x20, 0x62, 0x6, 0x66, 0x6f, 0x6f}, buf.Bytes())
+}
+
 func TestEncoder_RecordStructWithNullDefault(t *testing.T) {
 	defer ConfigTeardown()
 
@@ -408,6 +444,43 @@ func TestEncoder_RecordMapWithDefault(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, []byte{0x36, 0x06, 0x66, 0x6f, 0x6f}, buf.Bytes())
+}
+
+func TestEncoder_RecordMapWithSubRecordDefault(t *testing.T) {
+	defer ConfigTeardown()
+
+	_, err := avro.Parse(`{
+		"type": "record",
+		"name": "test",
+		"fields" : [
+			{"name": "a", "type": "long"},
+			{"name": "b", "type": "string"}
+		]
+	}`)
+	require.NoError(t, err)
+
+	schema := `{
+		"type": "record",
+		"name": "parent",
+		"fields" : [
+			{
+				"name": "a",
+				"type": "test",
+				"default": {"a": 1000, "b": "def b"}
+			},
+			{"name": "b", "type": "string"}
+		]
+	}`
+
+	obj := map[string]any{"b": "foo"}
+	buf := &bytes.Buffer{}
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode(obj)
+	require.NoError(t, err)
+
+	assert.Equal(t, []byte{0xd0, 0xf, 0xa, 0x64, 0x65, 0x66, 0x20, 0x62, 0x6, 0x66, 0x6f, 0x6f}, buf.Bytes())
 }
 
 func TestEncoder_RecordMapWithNullDefault(t *testing.T) {
