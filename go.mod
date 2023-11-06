@@ -3,7 +3,7 @@ module github.com/hamba/avro/v2
 go 1.19
 
 require (
-	github.com/ettle/strcase v0.1.1
+	github.com/ettle/strcase v0.2.0
 	github.com/golang/snappy v0.0.4
 	github.com/json-iterator/go v1.1.12
 	github.com/mitchellh/mapstructure v1.5.0
