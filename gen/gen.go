@@ -319,6 +319,8 @@ func (g *Generator) resolveLogicalSchema(logicalType avro.LogicalType) string {
 		typ = "*big.Rat"
 	case "duration":
 		typ = "avro.LogicalDuration"
+	case "uuid":
+		typ = "string"
 	}
 	if strings.Contains(typ, "time") {
 		g.addImport("time")
