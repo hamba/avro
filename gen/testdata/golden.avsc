@@ -258,6 +258,13 @@
     {
       "name": "ref",
       "type": "record2InNullableUnion"
+    },
+    {
+      "name": "uuid",
+      "type": {
+        "type": "string",
+        "logicalType": "uuid"
+      }
     }
   ]
 }

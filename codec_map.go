@@ -1,6 +1,7 @@
 package avro
 
 import (
+	"encoding"
 	"errors"
 	"fmt"
 	"io"
@@ -11,16 +12,28 @@ import (
 )
 
 func createDecoderOfMap(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
-	if typ.Kind() == reflect.Map && typ.(reflect2.MapType).Key().Kind() == reflect.String {
-		return decoderOfMap(cfg, schema, typ)
+	if typ.Kind() == reflect.Map {
+		keyType := typ.(reflect2.MapType).Key()
+		switch {
+		case keyType.Kind() == reflect.String:
+			return decoderOfMap(cfg, schema, typ)
+		case keyType.Implements(textUnmarshalerType):
+			return decoderOfMapUnmarshaler(cfg, schema, typ)
+		}
 	}
 
 	return &errorDecoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s", typ.String(), schema.Type())}
 }
 
 func createEncoderOfMap(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncoder {
-	if typ.Kind() == reflect.Map && typ.(reflect2.MapType).Key().Kind() == reflect.String {
-		return encoderOfMap(cfg, schema, typ)
+	if typ.Kind() == reflect.Map {
+		keyType := typ.(reflect2.MapType).Key()
+		switch {
+		case keyType.Kind() == reflect.String:
+			return encoderOfMap(cfg, schema, typ)
+		case keyType.Implements(textMarshalerType):
+			return encoderOfMapMarshaler(cfg, schema, typ)
+		}
 	}
 
 	return &errorEncoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s", typ.String(), schema.Type())}
@@ -69,6 +82,65 @@ func (d *mapDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 	}
 }
 
+func decoderOfMapUnmarshaler(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
+	m := schema.(*MapSchema)
+	mapType := typ.(*reflect2.UnsafeMapType)
+	decoder := decoderOfType(cfg, m.Values(), mapType.Elem())
+
+	return &mapDecoderUnmarshaler{
+		mapType:  mapType,
+		keyType:  mapType.Key(),
+		elemType: mapType.Elem(),
+		decoder:  decoder,
+	}
+}
+
+type mapDecoderUnmarshaler struct {
+	mapType  *reflect2.UnsafeMapType
+	keyType  reflect2.Type
+	elemType reflect2.Type
+	decoder  ValDecoder
+}
+
+func (d *mapDecoderUnmarshaler) Decode(ptr unsafe.Pointer, r *Reader) {
+	if d.mapType.UnsafeIsNil(ptr) {
+		d.mapType.UnsafeSet(ptr, d.mapType.UnsafeMakeMap(0))
+	}
+
+	for {
+		l, _ := r.ReadBlockHeader()
+		if l == 0 {
+			break
+		}
+
+		for i := int64(0); i < l; i++ {
+			keyPtr := d.keyType.UnsafeNew()
+			keyObj := d.keyType.UnsafeIndirect(keyPtr)
+			if reflect2.IsNil(keyObj) {
+				ptrType := d.keyType.(*reflect2.UnsafePtrType)
+				newPtr := ptrType.Elem().UnsafeNew()
+				*((*unsafe.Pointer)(keyPtr)) = newPtr
+				keyObj = d.keyType.UnsafeIndirect(keyPtr)
+			}
+			unmarshaler := keyObj.(encoding.TextUnmarshaler)
+			err := unmarshaler.UnmarshalText([]byte(r.ReadString()))
+			if err != nil {
+				r.ReportError("mapDecoderUnmarshaler", err.Error())
+				return
+			}
+
+			elemPtr := d.elemType.UnsafeNew()
+			d.decoder.Decode(elemPtr, r)
+
+			d.mapType.UnsafeSetIndex(ptr, keyPtr, elemPtr)
+		}
+	}
+
+	if r.Error != nil && !errors.Is(r.Error, io.EOF) {
+		r.Error = fmt.Errorf("%v: %w", d.mapType, r.Error)
+	}
+}
+
 func encoderOfMap(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncoder {
 	m := schema.(*MapSchema)
 	mapType := typ.(*reflect2.UnsafeMapType)
@@ -101,6 +173,65 @@ func (e *mapEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 				e.encoder.Encode(elemPtr, w)
 			}
 
+			return int64(i)
+		})
+
+		if wrote == 0 {
+			break
+		}
+	}
+
+	if w.Error != nil && !errors.Is(w.Error, io.EOF) {
+		w.Error = fmt.Errorf("%v: %w", e.mapType, w.Error)
+	}
+}
+
+func encoderOfMapMarshaler(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncoder {
+	m := schema.(*MapSchema)
+	mapType := typ.(*reflect2.UnsafeMapType)
+	encoder := encoderOfType(cfg, m.Values(), mapType.Elem())
+
+	return &mapEncoderMarshaller{
+		blockLength: cfg.getBlockLength(),
+		mapType:     mapType,
+		keyType:     mapType.Key(),
+		encoder:     encoder,
+	}
+}
+
+type mapEncoderMarshaller struct {
+	blockLength int
+	mapType     *reflect2.UnsafeMapType
+	keyType     reflect2.Type
+	encoder     ValEncoder
+}
+
+func (e *mapEncoderMarshaller) Encode(ptr unsafe.Pointer, w *Writer) {
+	blockLength := e.blockLength
+
+	iter := e.mapType.UnsafeIterate(ptr)
+
+	for {
+		wrote := w.WriteBlockCB(func(w *Writer) int64 {
+			var i int
+			for i = 0; iter.HasNext() && i < blockLength; i++ {
+				keyPtr, elemPtr := iter.UnsafeNext()
+
+				obj := e.keyType.UnsafeIndirect(keyPtr)
+				if e.keyType.IsNullable() && reflect2.IsNil(obj) {
+					w.Error = errors.New("avro: mapEncoderMarshaller: encoding nil TextMarshaller")
+					return int64(0)
+				}
+				marshaler := (obj).(encoding.TextMarshaler)
+				b, err := marshaler.MarshalText()
+				if err != nil {
+					w.Error = err
+					return int64(0)
+				}
+				w.WriteString(string(b))
+
+				e.encoder.Encode(elemPtr, w)
+			}
 			return int64(i)
 		})
 
