@@ -1,6 +1,7 @@
 package avro_test
 
 import (
+	"log"
 	"testing"
 
 	"github.com/hamba/avro/v2"
@@ -274,4 +275,77 @@ func TestSchemaCompatibility_CompatibleUsesCacheWithError(t *testing.T) {
 	err := sc.Compatible(r, w)
 
 	assert.Error(t, err)
+}
+
+func TestSchemaCompatibility_Resolve(t *testing.T) {
+	sch1 := avro.MustParse(`{
+		"name": "A",
+		"type": "record",
+		"fields": [{
+			"name": "c",
+			"type": "long"
+		},{
+			"name": "a",
+			"type": "int"
+		}]
+	}`)
+
+	type A1 struct {
+		A int32 `avro:"a"`
+		C int32 `avro:"c"`
+	}
+
+	a1 := A1{
+		A: 10,
+		C: 1000000,
+	}
+
+	b, err := avro.Marshal(sch1, a1)
+	if err != nil {
+		t.Fatalf("marshal error%v", err)
+	}
+
+	sch2 := avro.MustParse(`{
+		"name": "A",
+		"type": "record",
+		"fields": [
+		{
+			"name": "b",
+			"type": "string",
+			"default": "boo"
+		},{
+			"name": "aa",
+			"aliases": ["a"],
+			"type": "long"
+		},{
+			"name": "d",
+			"type": {
+				"type": "array", "items": "int"
+			},
+			"default":[1, 2, 3, 4]
+		}]
+	}`)
+
+	sc := avro.NewSchemaCompatibility()
+
+	// resolve composite schema
+	sch, err := sc.Resolve(sch2, sch1)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	type A2 struct {
+		A int64   `avro:"aa"`
+		B string  `avro:"b"`
+		D []int32 `avro:"d"`
+	}
+
+	a2 := A2{}
+
+	err = avro.Unmarshal(sch, b, &a2)
+	if err != nil {
+		t.Fatalf("unmarshal error %v", err)
+	}
+
+	log.Printf("result: %+v", a2)
 }

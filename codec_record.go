@@ -59,6 +59,13 @@ func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 
 	fields := make([]*structFieldDecoder, 0, len(rec.Fields()))
 	for _, field := range rec.Fields() {
+		if field.action == FieldDrain {
+			fields = append(fields, &structFieldDecoder{
+				decoder: createSkipDecoder(field.Type()),
+			})
+			continue
+		}
+
 		sf := structDesc.Fields.Get(field.Name())
 		if sf == nil {
 			for _, alias := range field.Aliases() {
@@ -74,6 +81,21 @@ func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 			fields = append(fields, &structFieldDecoder{
 				decoder: createSkipDecoder(field.Type()),
 			})
+			continue
+		}
+
+		if field.action == FieldSetDefault {
+			if field.hasDef {
+				fields = append(fields, &structFieldDecoder{
+					field:   sf.Field,
+					decoder: createDefaultDecoder(cfg, field.Type(), field.def, sf.Field[len(sf.Field)-1].Type()),
+				})
+			} else {
+				fields = append(fields, &structFieldDecoder{
+					decoder: createSkipDecoder(field.Type()),
+				})
+			}
+
 			continue
 		}
 
@@ -237,6 +259,30 @@ func decoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 
 	fields := make([]recordMapDecoderField, len(rec.Fields()))
 	for i, field := range rec.Fields() {
+		if field.action == FieldDrain {
+			fields[i] = recordMapDecoderField{
+				name:    field.Name(),
+				decoder: createSkipDecoder(field.Type()),
+			}
+			continue
+		}
+
+		if field.action == FieldSetDefault {
+			if field.hasDef {
+				fields[i] = recordMapDecoderField{
+					name:    field.Name(),
+					decoder: createDefaultDecoder(cfg, field.Type(), field.def, mapType.Elem()),
+				}
+			} else {
+				fields[i] = recordMapDecoderField{
+					name:    field.Name(),
+					decoder: createSkipDecoder(field.Type()),
+				}
+			}
+
+			continue
+		}
+
 		fields[i] = recordMapDecoderField{
 			name:    field.Name(),
 			decoder: decoderOfType(cfg, field.Type(), mapType.Elem()),

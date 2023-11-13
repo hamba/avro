@@ -75,6 +75,14 @@ const (
 	Duration        LogicalType = "duration"
 )
 
+// Action is a field action used during decoding process.
+type Action string
+
+const (
+	FieldDrain      Action = "drain"
+	FieldSetDefault Action = "set_default"
+)
+
 // FingerprintType is a fingerprinting algorithm.
 type FingerprintType string
 
@@ -590,6 +598,7 @@ type Field struct {
 	hasDef  bool
 	def     any
 	order   Order
+	action  Action
 }
 
 type noDef struct{}
@@ -642,9 +651,18 @@ func NewField(name string, typ Schema, opts ...SchemaOption) (*Field, error) {
 	return f, nil
 }
 
+// SetFieldAction updates the given field's action. Mainly used for testing purposes.
+func SetFieldAction(field *Field, action Action) {
+	field.action = action
+}
+
 // Name returns the name of a field.
 func (f *Field) Name() string {
 	return f.name
+}
+
+func (f *Field) Action() Action {
+	return f.action
 }
 
 // Aliases return the field aliases.

@@ -203,7 +203,9 @@ func (c *SchemaCompatibility) checkEnumSymbols(reader, writer *EnumSchema) error
 
 func (c *SchemaCompatibility) checkRecordFields(reader, writer *RecordSchema) error {
 	for _, field := range reader.Fields() {
-		f, ok := c.getField(writer.Fields(), field)
+		f, ok := c.getField(writer.Fields(), field, func(gfo *getFieldOptions) {
+			gfo.fieldAlias = true
+		})
 		if !ok {
 			if field.HasDefault() {
 				continue
@@ -230,12 +232,192 @@ func (c *SchemaCompatibility) contains(a []string, s string) bool {
 	return false
 }
 
-func (c *SchemaCompatibility) getField(a []*Field, f *Field) (*Field, bool) {
+type getFieldOptions struct {
+	fieldAlias bool
+	elemAlias  bool
+}
+
+func (c *SchemaCompatibility) getField(a []*Field, f *Field, optFns ...func(*getFieldOptions)) (*Field, bool) {
+	opt := getFieldOptions{}
+	for _, fn := range optFns {
+		if fn == nil {
+			continue
+		}
+		fn(&opt)
+	}
 	for _, field := range a {
 		if field.Name() == f.Name() {
 			return field, true
 		}
+		if opt.fieldAlias {
+			for _, alias := range f.Aliases() {
+				if field.Name() == alias {
+					return field, true
+				}
+			}
+		}
+		if opt.elemAlias {
+			for _, alias := range field.Aliases() {
+				if f.Name() == alias {
+					return field, true
+				}
+			}
+		}
 	}
 
 	return nil, false
+}
+
+func isNative(typ Type) bool {
+	switch typ {
+	case Null, Boolean, Int, Long, Float, Double, Bytes, String:
+		return true
+	default:
+	}
+
+	return false
+}
+
+func isPromotable(typ Type) bool {
+	switch typ {
+	case Int, Long, Float, String, Bytes:
+		return true
+	default:
+	}
+
+	return false
+}
+
+func (c *SchemaCompatibility) Resolve(reader, writer Schema) (Schema, error) {
+	if reader.Type() == Ref {
+		reader = reader.(*RefSchema).Schema()
+	}
+	if writer.Type() == Ref {
+		writer = writer.(*RefSchema).Schema()
+	}
+
+	if err := c.compatible(reader, writer); err != nil {
+		return nil, err
+	}
+
+	if writer.Type() != reader.Type() {
+		if isPromotable(writer.Type()) {
+			return reader, nil
+		}
+
+		if reader.Type() == Union {
+			for _, schema := range reader.(*UnionSchema).Types() {
+				sch, err := c.Resolve(schema, writer)
+				if err != nil {
+					continue
+				}
+
+				return sch, nil
+			}
+
+			return nil, fmt.Errorf("reader union lacking writer schema %s", writer.Type())
+		}
+
+		if writer.Type() == Union {
+			schemas := make([]Schema, 0)
+			for _, schema := range writer.(*UnionSchema).Types() {
+				sch, err := c.Resolve(reader, schema)
+				if err != nil {
+					return nil, err
+				}
+				schemas = append(schemas, sch)
+			}
+			return NewUnionSchema(schemas)
+		}
+	}
+
+	if isNative(writer.Type()) {
+		return reader, nil
+	}
+
+	if writer.Type() == Enum {
+		return reader, nil
+	}
+
+	if writer.Type() == Fixed {
+		return reader, nil
+	}
+
+	if writer.Type() == Union {
+		schemas := make([]Schema, 0)
+		for _, schema := range writer.(*UnionSchema).Types() {
+			sch, err := c.Resolve(reader, schema)
+			if err != nil {
+				return nil, err
+			}
+			schemas = append(schemas, sch)
+		}
+		return NewUnionSchema(schemas)
+	}
+
+	if writer.Type() == Array {
+		schema, err := c.Resolve(reader.(*ArraySchema).Items(), writer.(*ArraySchema).Items())
+		if err != nil {
+			return nil, err
+		}
+		return NewArraySchema(schema), nil
+	}
+
+	if writer.Type() == Map {
+		schema, err := c.Resolve(reader.(*MapSchema).Values(), writer.(*MapSchema).Values())
+		if err != nil {
+			return nil, err
+		}
+		return NewMapSchema(schema), nil
+	}
+
+	if writer.Type() == Record {
+		return c.resolveRecord(reader, writer)
+	}
+
+	return nil, fmt.Errorf("failed to resolve composite schema for %s and %s", reader.Type(), writer.Type())
+}
+
+func (c *SchemaCompatibility) resolveRecord(reader, writer Schema) (Schema, error) {
+	w := writer.(*RecordSchema)
+	r := reader.(*RecordSchema)
+
+	fields := make([]*Field, 0)
+	founds := make(map[string]struct{})
+
+	for _, field := range w.Fields() {
+		if field == nil {
+			continue
+		}
+		f := *field
+		rf, ok := c.getField(r.Fields(), field, func(gfo *getFieldOptions) {
+			gfo.elemAlias = true
+		})
+		if !ok {
+			f.action = FieldDrain
+			fields = append(fields, &f)
+			continue
+		}
+		ft, err := c.Resolve(rf.Type(), field.Type())
+		if err != nil {
+			return nil, err
+		}
+		rf.typ = ft
+		fields = append(fields, rf)
+		founds[rf.Name()] = struct{}{}
+	}
+
+	for _, field := range r.Fields() {
+		if field == nil {
+			continue
+		}
+		if _, ok := founds[field.Name()]; ok {
+			continue
+		}
+		f := *field
+		f.action = FieldSetDefault
+		fields = append(fields, &f)
+	}
+
+	return NewRecordSchema(r.Name(), r.Namespace(), fields)
 }
