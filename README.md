@@ -64,7 +64,7 @@ fmt.Println(out)
 // Outputs: {27 foo}
 ```
 
-More examples in the [godoc](https://godoc.org/github.com/hamba/avro).
+More examples in the [godoc](https://godoc.org/github.com/hamba/avro/v2).
 
 #### Types Conversions
 
