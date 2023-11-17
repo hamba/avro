@@ -394,6 +394,11 @@ type PrimitiveSchema struct {
 
 	typ     Type
 	logical LogicalSchema
+
+	// actual presents the actual type of the encoded value
+	// which can be promoted to schema current type.
+	// This field is only used in the context of write read schema resolution.
+	actual Type
 }
 
 // NewPrimitiveSchema creates a new PrimitiveSchema.

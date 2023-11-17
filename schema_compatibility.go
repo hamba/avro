@@ -302,7 +302,11 @@ func (c *SchemaCompatibility) Resolve(reader, writer Schema) (Schema, error) {
 
 	if writer.Type() != reader.Type() {
 		if isPromotable(writer.Type()) {
-			return reader, nil
+			// TODO clean up
+			r := *reader.(*PrimitiveSchema)
+			r.actual = writer.Type()
+
+			return &r, nil
 		}
 
 		if reader.Type() == Union {

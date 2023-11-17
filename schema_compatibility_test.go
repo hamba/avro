@@ -3,6 +3,7 @@ package avro_test
 import (
 	"log"
 	"testing"
+	"time"
 
 	"github.com/hamba/avro/v2"
 	"github.com/stretchr/testify/assert"
@@ -287,17 +288,23 @@ func TestSchemaCompatibility_Resolve(t *testing.T) {
 		},{
 			"name": "a",
 			"type": "int"
+		},
+		{
+			"name": "k",
+			"type": "string"
 		}]
 	}`)
 
 	type A1 struct {
-		A int32 `avro:"a"`
-		C int32 `avro:"c"`
+		A int32  `avro:"a"`
+		C int32  `avro:"c"`
+		K string `avro:"k"`
 	}
 
 	a1 := A1{
 		A: 10,
 		C: 1000000,
+		K: "K value",
 	}
 
 	b, err := avro.Marshal(sch1, a1)
@@ -309,21 +316,29 @@ func TestSchemaCompatibility_Resolve(t *testing.T) {
 		"name": "A",
 		"type": "record",
 		"fields": [
-		{
-			"name": "b",
-			"type": "string",
-			"default": "boo"
-		},{
-			"name": "aa",
-			"aliases": ["a"],
-			"type": "long"
-		},{
-			"name": "d",
-			"type": {
-				"type": "array", "items": "int"
+			{
+				"name": "k",
+				"type": "bytes"
 			},
-			"default":[1, 2, 3, 4]
-		}]
+			{
+				"name": "b",
+				"type": "string",
+				"default": "boo"
+			},{
+				"name": "aa",
+				"aliases": ["a"],
+				"type": {
+					"type": "long",
+					"logicalType":"time-micros"
+				}
+			},{
+				"name": "d",
+				"type": {
+					"type": "array", "items": "int"
+				},
+				"default":[1, 2, 3, 4]
+			}
+		]
 	}`)
 
 	sc := avro.NewSchemaCompatibility()
@@ -335,9 +350,10 @@ func TestSchemaCompatibility_Resolve(t *testing.T) {
 	}
 
 	type A2 struct {
-		A int64   `avro:"aa"`
-		B string  `avro:"b"`
-		D []int32 `avro:"d"`
+		A time.Duration `avro:"aa"`
+		B string        `avro:"b"`
+		D []int32       `avro:"d"`
+		K []byte        `avro:"k"`
 	}
 
 	a2 := A2{}
@@ -347,5 +363,5 @@ func TestSchemaCompatibility_Resolve(t *testing.T) {
 		t.Fatalf("unmarshal error %v", err)
 	}
 
-	log.Printf("result: %+v", a2)
+	log.Printf("result: %+v %+v %T %+v", a2, a2.A, a2.A, string(a2.K))
 }

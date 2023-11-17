@@ -2,17 +2,25 @@ package avro
 
 import (
 	"fmt"
+	"log"
 	"reflect"
 	"time"
 )
 
 // ReadNext reads the next Avro element as a generic interface.
 func (r *Reader) ReadNext(schema Schema) any {
+	var rp ReaderPromoter = r
+	if sch, ok := schema.(*PrimitiveSchema); ok && sch.actual != "" {
+		rp = &readerPromoter{r: r, actual: sch.actual, current: sch.Type()}
+	}
+
 	var ls LogicalSchema
 	lts, ok := schema.(LogicalTypeSchema)
 	if ok {
 		ls = lts.Logical()
 	}
+
+	log.Println("ls", ls)
 
 	switch schema.Type() {
 	case Boolean:
@@ -34,34 +42,34 @@ func (r *Reader) ReadNext(schema Schema) any {
 		if ls != nil {
 			switch ls.Type() {
 			case TimeMicros:
-				return time.Duration(r.ReadLong()) * time.Microsecond
+				return time.Duration(rp.ReadLong()) * time.Microsecond
 
 			case TimestampMillis:
-				i := r.ReadLong()
+				i := rp.ReadLong()
 				sec := i / 1e3
 				nsec := (i - sec*1e3) * 1e6
 				return time.Unix(sec, nsec).UTC()
 
 			case TimestampMicros:
-				i := r.ReadLong()
+				i := rp.ReadLong()
 				sec := i / 1e6
 				nsec := (i - sec*1e6) * 1e3
 				return time.Unix(sec, nsec).UTC()
 			}
 		}
-		return r.ReadLong()
+		return rp.ReadLong()
 	case Float:
-		return r.ReadFloat()
+		return rp.ReadFloat()
 	case Double:
-		return r.ReadDouble()
+		return rp.ReadDouble()
 	case String:
-		return r.ReadString()
+		return rp.ReadString()
 	case Bytes:
 		if ls != nil && ls.Type() == Decimal {
 			dec := ls.(*DecimalLogicalSchema)
-			return ratFromBytes(r.ReadBytes(), dec.Scale())
+			return ratFromBytes(rp.ReadBytes(), dec.Scale())
 		}
-		return r.ReadBytes()
+		return rp.ReadBytes()
 	case Record:
 		fields := schema.(*RecordSchema).Fields()
 		obj := make(map[string]any, len(fields))
@@ -97,7 +105,7 @@ func (r *Reader) ReadNext(schema Schema) any {
 		return obj
 	case Union:
 		types := schema.(*UnionSchema).Types()
-		idx := int(r.ReadLong())
+		idx := int(rp.ReadLong())
 		if idx < 0 || idx > len(types)-1 {
 			r.ReportError("Read", "unknown union type")
 			return nil
