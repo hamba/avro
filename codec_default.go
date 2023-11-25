@@ -20,7 +20,9 @@ func createDefaultDecoder(cfg *frozenConfig, schema Schema, def any, typ reflect
 
 	switch schema.Type() {
 	case Null:
-		return &nullDefaultDecoder{}
+		return &nullDefaultDecoder{
+			typ: typ,
+		}
 
 	case Boolean:
 		return &boolDefaultDecoder{
@@ -150,10 +152,13 @@ func (d *boolDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 }
 
 type nullDefaultDecoder struct {
+	typ reflect2.Type
 }
 
-func (d *nullDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
-	return
+func (d *nullDefaultDecoder) Decode(ptr unsafe.Pointer, _ *Reader) {
+	if d.typ.IsNullable() {
+		d.typ.UnsafeSet(ptr, d.typ.UnsafeNew())
+	}
 }
 
 type intDefaultDecoder struct {
@@ -270,7 +275,6 @@ func (d *doubleDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 	default:
 		r.ReportError("decode default", "unsupported type")
 	}
-
 }
 
 type stringDefaultDecoder struct {

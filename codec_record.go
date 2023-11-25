@@ -263,6 +263,7 @@ func decoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 			fields[i] = recordMapDecoderField{
 				name:    field.Name(),
 				decoder: createSkipDecoder(field.Type()),
+				skip:    true,
 			}
 			continue
 		}
@@ -272,11 +273,6 @@ func decoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 				fields[i] = recordMapDecoderField{
 					name:    field.Name(),
 					decoder: createDefaultDecoder(cfg, field.Type(), field.def, mapType.Elem()),
-				}
-			} else {
-				fields[i] = recordMapDecoderField{
-					name:    field.Name(),
-					decoder: createSkipDecoder(field.Type()),
 				}
 			}
 
@@ -299,6 +295,7 @@ func decoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 type recordMapDecoderField struct {
 	name    string
 	decoder ValDecoder
+	skip    bool
 }
 
 type recordMapDecoder struct {
@@ -315,6 +312,9 @@ func (d *recordMapDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 	for _, field := range d.fields {
 		elem := d.elemType.UnsafeNew()
 		field.decoder.Decode(elem, r)
+		if field.skip {
+			continue
+		}
 
 		d.mapType.UnsafeSetIndex(ptr, reflect2.PtrOf(field), elem)
 	}

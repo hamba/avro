@@ -337,6 +337,10 @@ func TestSchemaCompatibility_Resolve(t *testing.T) {
 					"type": "array", "items": "int"
 				},
 				"default":[1, 2, 3, 4]
+			},{
+				"name": "g",
+				"type": ["null", "string"],
+				"default": null
 			}
 		]
 	}`)
@@ -354,6 +358,7 @@ func TestSchemaCompatibility_Resolve(t *testing.T) {
 		B string        `avro:"b"`
 		D []int32       `avro:"d"`
 		K []byte        `avro:"k"`
+		G *string       `avro:"g"`
 	}
 
 	a2 := A2{}
@@ -363,5 +368,5 @@ func TestSchemaCompatibility_Resolve(t *testing.T) {
 		t.Fatalf("unmarshal error %v", err)
 	}
 
-	log.Printf("result: %+v %+v %T %+v", a2, a2.A, a2.A, string(a2.K))
+	log.Printf("result: %+v", a2)
 }

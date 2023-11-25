@@ -2,16 +2,15 @@ package avro
 
 import (
 	"fmt"
-	"log"
 	"reflect"
 	"time"
 )
 
 // ReadNext reads the next Avro element as a generic interface.
 func (r *Reader) ReadNext(schema Schema) any {
-	var rp ReaderPromoter = r
+	var rp iReaderPromoter = r
 	if sch, ok := schema.(*PrimitiveSchema); ok && sch.actual != "" {
-		rp = &readerPromoter{r: r, actual: sch.actual, current: sch.Type()}
+		rp = newReaderPromoter(sch.actual, r)
 	}
 
 	var ls LogicalSchema
@@ -19,8 +18,6 @@ func (r *Reader) ReadNext(schema Schema) any {
 	if ok {
 		ls = lts.Logical()
 	}
-
-	log.Println("ls", ls)
 
 	switch schema.Type() {
 	case Boolean:

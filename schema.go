@@ -75,9 +75,30 @@ const (
 	Duration        LogicalType = "duration"
 )
 
+func isNative(typ Type) bool {
+	switch typ {
+	case Null, Boolean, Int, Long, Float, Double, Bytes, String:
+		return true
+	default:
+	}
+
+	return false
+}
+
+func isPromotable(typ Type) bool {
+	switch typ {
+	case Int, Long, Float, String, Bytes:
+		return true
+	default:
+	}
+
+	return false
+}
+
 // Action is a field action used during decoding process.
 type Action string
 
+// Action type constants.
 const (
 	FieldDrain      Action = "drain"
 	FieldSetDefault Action = "set_default"
@@ -397,7 +418,7 @@ type PrimitiveSchema struct {
 
 	// actual presents the actual type of the encoded value
 	// which can be promoted to schema current type.
-	// This field is only used in the context of write read schema resolution.
+	// It's only used in the context of write-read schema resolution.
 	actual Type
 }
 
@@ -666,6 +687,7 @@ func (f *Field) Name() string {
 	return f.name
 }
 
+// Action returns the action of a field.
 func (f *Field) Action() Action {
 	return f.action
 }

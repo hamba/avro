@@ -268,26 +268,10 @@ func (c *SchemaCompatibility) getField(a []*Field, f *Field, optFns ...func(*get
 	return nil, false
 }
 
-func isNative(typ Type) bool {
-	switch typ {
-	case Null, Boolean, Int, Long, Float, Double, Bytes, String:
-		return true
-	default:
-	}
-
-	return false
-}
-
-func isPromotable(typ Type) bool {
-	switch typ {
-	case Int, Long, Float, String, Bytes:
-		return true
-	default:
-	}
-
-	return false
-}
-
+// Resolve returns a composite schema that allows decoding data written by the writer schema,
+// and makes necessary adjustments to support the reader schema.
+//
+// It fails if the writer and reader schemas are not compatible.
 func (c *SchemaCompatibility) Resolve(reader, writer Schema) (Schema, error) {
 	if reader.Type() == Ref {
 		reader = reader.(*RefSchema).Schema()
@@ -300,13 +284,15 @@ func (c *SchemaCompatibility) Resolve(reader, writer Schema) (Schema, error) {
 		return nil, err
 	}
 
+	return c.resolve(reader, writer)
+}
+
+func (c *SchemaCompatibility) resolve(reader, writer Schema) (Schema, error) {
 	if writer.Type() != reader.Type() {
 		if isPromotable(writer.Type()) {
-			// TODO clean up
-			r := *reader.(*PrimitiveSchema)
+			r := NewPrimitiveSchema(reader.Type(), reader.(*PrimitiveSchema).Logical())
 			r.actual = writer.Type()
-
-			return &r, nil
+			return r, nil
 		}
 
 		if reader.Type() == Union {
