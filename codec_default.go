@@ -26,65 +26,63 @@ func createDefaultDecoder(cfg *frozenConfig, schema Schema, def any, typ reflect
 
 	case Boolean:
 		return &boolDefaultDecoder{
-			def: def,
-			typ: typ,
+			def: def.(bool),
 		}
 
 	case Int:
 		return &intDefaultDecoder{
-			def: def,
+			def: def.(int),
 			typ: typ,
 		}
 
 	case Long:
 		return &longDefaultDecoder{
-			def: def,
+			def: def.(int64),
 			typ: typ,
 		}
 
 	case Float:
 		return &floatDefaultDecoder{
-			def: def,
+			def: def.(float32),
 			typ: typ,
 		}
 
 	case Double:
 		return &doubleDefaultDecoder{
-			def: def,
+			def: def.(float64),
 			typ: typ,
 		}
 
 	case String:
 		if typ.Implements(textUnmarshalerType) {
-			return &textDefaultMarshalerCodec{typ, def}
+			return &textDefaultMarshalerCodec{typ, def.(string)}
 		}
 		ptrType := reflect2.PtrTo(typ)
 		if ptrType.Implements(textUnmarshalerType) {
 			return &referenceDecoder{
-				&textDefaultMarshalerCodec{typ: ptrType, def: def},
+				&textDefaultMarshalerCodec{typ: ptrType, def: def.(string)},
 			}
 		}
 
 		return &stringDefaultDecoder{
-			def: def,
-			typ: typ,
+			def: def.(string),
 		}
 
 	case Bytes:
 		return &bytesDefaultDecoder{
-			def: def,
+			def: def.(string),
 			typ: typ,
 		}
 
 	case Fixed:
 		return &fixedDefaultDecoder{
 			fixed: schema.(*FixedSchema),
-			def:   def,
+			def:   def.(string),
 			typ:   typ,
 		}
 
 	case Enum:
-		return &enumDefaultDecoder{typ: typ, def: def}
+		return &enumDefaultDecoder{typ: typ, def: def.(string)}
 
 	case Ref:
 		return createDefaultDecoder(cfg, schema.(*RefSchema).Schema(), def, typ)
@@ -108,7 +106,7 @@ func createDefaultDecoder(cfg *frozenConfig, schema Schema, def any, typ reflect
 
 type textDefaultMarshalerCodec struct {
 	typ reflect2.Type
-	def any
+	def string
 }
 
 func (d textDefaultMarshalerCodec) Decode(ptr unsafe.Pointer, r *Reader) {
@@ -121,7 +119,7 @@ func (d textDefaultMarshalerCodec) Decode(ptr unsafe.Pointer, r *Reader) {
 	}
 	unmarshaler := (obj).(encoding.TextUnmarshaler)
 
-	b := []byte(d.def.(string))
+	b := []byte(d.def)
 
 	err := unmarshaler.UnmarshalText(b)
 	if err != nil {
@@ -138,17 +136,11 @@ func (d *efaceDefaultDecoder) Decode(ptr unsafe.Pointer, _ *Reader) {
 }
 
 type boolDefaultDecoder struct {
-	def any
-	typ reflect2.Type
+	def bool
 }
 
 func (d *boolDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
-	def, ok := d.def.(bool)
-	if !ok {
-		r.ReportError("decode default", "inconvertible type")
-		return
-	}
-	*((*bool)(ptr)) = def
+	*((*bool)(ptr)) = d.def
 }
 
 type nullDefaultDecoder struct {
@@ -162,138 +154,91 @@ func (d *nullDefaultDecoder) Decode(ptr unsafe.Pointer, _ *Reader) {
 }
 
 type intDefaultDecoder struct {
-	def any
+	def int
 	typ reflect2.Type
 }
 
 func (d *intDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
-	def := d.def
-	if reflect.TypeOf(d.def) != d.typ.Type1() {
-		if !reflect.TypeOf(d.def).ConvertibleTo(d.typ.Type1()) {
-			r.ReportError("decode default", "inconvertible type")
-			return
-		}
-
-		def = reflect.ValueOf(d.def).Convert(d.typ.Type1()).Interface()
-	}
-
 	switch d.typ.Kind() {
 	case reflect.Int:
-		*((*int)(ptr)) = def.(int)
+		*((*int)(ptr)) = d.def
 	case reflect.Uint:
-		*((*uint)(ptr)) = def.(uint)
+		*((*uint)(ptr)) = uint(d.def)
 	case reflect.Int8:
-		*((*int8)(ptr)) = def.(int8)
+		*((*int8)(ptr)) = int8(d.def)
 	case reflect.Uint8:
-		*((*uint8)(ptr)) = def.(uint8)
+		*((*uint8)(ptr)) = uint8(d.def)
 	case reflect.Int16:
-		*((*int16)(ptr)) = def.(int16)
+		*((*int16)(ptr)) = int16(d.def)
 	case reflect.Uint16:
-		*((*uint16)(ptr)) = def.(uint16)
+		*((*uint16)(ptr)) = uint16(d.def)
 	case reflect.Int32:
-		*((*int32)(ptr)) = def.(int32)
+		*((*int32)(ptr)) = int32(d.def)
 	default:
 		r.ReportError("decode default", "unsupported type")
 	}
 }
 
 type longDefaultDecoder struct {
-	def any
+	def int64
 	typ reflect2.Type
 }
 
 func (d *longDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
-	def := d.def
-	if reflect.TypeOf(d.def) != d.typ.Type1() {
-		if !reflect.TypeOf(d.def).ConvertibleTo(d.typ.Type1()) {
-			r.ReportError("decode default", "inconvertible type")
-			return
-		}
-
-		def = reflect.ValueOf(d.def).Convert(d.typ.Type1()).Interface()
-	}
-
 	switch d.typ.Kind() {
 	case reflect.Int32:
-		*((*int32)(ptr)) = def.(int32)
+		*((*int32)(ptr)) = int32(d.def)
 	case reflect.Uint32:
-		*((*uint32)(ptr)) = def.(uint32)
+		*((*uint32)(ptr)) = uint32(d.def)
 	case reflect.Int64:
-		*((*int64)(ptr)) = def.(int64)
+		*((*int64)(ptr)) = d.def
 	default:
 		r.ReportError("decode default", "unsupported type")
 	}
 }
 
 type floatDefaultDecoder struct {
-	def any
+	def float32
 	typ reflect2.Type
 }
 
 func (d *floatDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
-	def := d.def
-	if reflect.TypeOf(d.def) != d.typ.Type1() {
-		if !reflect.TypeOf(d.def).ConvertibleTo(d.typ.Type1()) {
-			r.ReportError("decode default", "inconvertible type")
-			return
-		}
-
-		def = reflect.ValueOf(d.def).Convert(d.typ.Type1()).Interface()
-	}
-
 	switch d.typ.Kind() {
 	case reflect.Float32:
-		*((*float32)(ptr)) = def.(float32)
+		*((*float32)(ptr)) = d.def
 	case reflect.Float64:
-		*((*float64)(ptr)) = def.(float64)
+		*((*float64)(ptr)) = float64(d.def)
 	default:
 		r.ReportError("decode default", "unsupported type")
 	}
 }
 
 type doubleDefaultDecoder struct {
-	def any
+	def float64
 	typ reflect2.Type
 }
 
 func (d *doubleDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
-	def := d.def
-	if reflect.TypeOf(d.def) != d.typ.Type1() {
-		if !reflect.TypeOf(d.def).ConvertibleTo(d.typ.Type1()) {
-			r.ReportError("decode default", "inconvertible type")
-			return
-		}
-
-		def = reflect.ValueOf(d.def).Convert(d.typ.Type1()).Interface()
-	}
-
 	switch d.typ.Kind() {
 	case reflect.Float64:
-		*((*float64)(ptr)) = def.(float64)
+		*((*float64)(ptr)) = d.def
 	case reflect.Float32:
-		*((*float32)(ptr)) = def.(float32)
+		*((*float32)(ptr)) = float32(d.def)
 	default:
 		r.ReportError("decode default", "unsupported type")
 	}
 }
 
 type stringDefaultDecoder struct {
-	def any
-	typ reflect2.Type
+	def string
 }
 
 func (d *stringDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
-	def, ok := d.def.(string)
-	if !ok {
-		r.ReportError("decode default", "inconvertible type")
-		return
-	}
-
-	*((*string)(ptr)) = def
+	*((*string)(ptr)) = d.def
 }
 
 type bytesDefaultDecoder struct {
-	def any
+	def string
 	typ reflect2.Type
 }
 
@@ -307,12 +252,7 @@ func (d *bytesDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		return
 	}
 
-	def, ok := d.def.(string)
-	if !ok {
-		r.ReportError("decode default", "inconvertible type")
-		return
-	}
-	runes := []rune(def)
+	runes := []rune(d.def)
 	l := len(runes)
 	b := make([]byte, l)
 	for i := 0; i < l; i++ {
@@ -361,7 +301,7 @@ func defaultDecoderOfRecord(cfg *frozenConfig, schema Schema, def any, typ refle
 
 type enumDefaultDecoder struct {
 	typ reflect2.Type
-	def any
+	def string
 }
 
 func (d *enumDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
@@ -385,20 +325,15 @@ func (d *enumDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		}
 	}
 
-	def, ok := d.def.(string)
-	if !ok {
-		r.ReportError("decode default", "inconvertible type")
-	}
-
 	switch {
 	case d.typ.Kind() == reflect.String:
-		*((*string)(ptr)) = def
+		*((*string)(ptr)) = d.def
 		return
 	case reflect2.PtrTo(d.typ).Implements(textUnmarshalerType):
-		unmarshal(def, true)
+		unmarshal(d.def, true)
 		return
 	case d.typ.Implements(textUnmarshalerType):
-		unmarshal(def, false)
+		unmarshal(d.def, false)
 		return
 	default:
 		r.ReportError("decode default", "unsupported type")
@@ -411,7 +346,7 @@ func defaultDecoderOfArray(cfg *frozenConfig, schema Schema, def any, typ reflec
 	}
 
 	return &sliceDefaultDecoder{
-		def: def,
+		def: def.([]any),
 		typ: typ.(*reflect2.UnsafeSliceType),
 		decoder: func(def any) ValDecoder {
 			return createDefaultDecoder(cfg, schema.(*ArraySchema).Items(), def, typ.(*reflect2.UnsafeSliceType).Elem())
@@ -420,23 +355,17 @@ func defaultDecoderOfArray(cfg *frozenConfig, schema Schema, def any, typ reflec
 }
 
 type sliceDefaultDecoder struct {
-	def     any
+	def     []any
 	typ     *reflect2.UnsafeSliceType
 	decoder func(def any) ValDecoder
 }
 
 func (d *sliceDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
-	def, ok := d.def.([]any)
-	if !ok {
-		r.ReportError("decode default", "inconvertible type")
-		return
-	}
-
-	size := len(def)
+	size := len(d.def)
 	d.typ.UnsafeGrow(ptr, size)
 	for i := 0; i < size; i++ {
 		elemPtr := d.typ.UnsafeGetIndex(ptr, i)
-		d.decoder(def[i]).Decode(elemPtr, nil)
+		d.decoder(d.def[i]).Decode(elemPtr, nil)
 	}
 }
 
@@ -447,7 +376,7 @@ func defaultDecoderOfMap(cfg *frozenConfig, schema Schema, def any, typ reflect2
 
 	return &mapDefaultDecoder{
 		typ: typ.(*reflect2.UnsafeMapType),
-		def: def,
+		def: def.(map[string]any),
 		decoder: func(def any) ValDecoder {
 			return createDefaultDecoder(cfg, schema.(*MapSchema).Values(), def, typ.(*reflect2.UnsafeMapType).Elem())
 		},
@@ -457,20 +386,14 @@ func defaultDecoderOfMap(cfg *frozenConfig, schema Schema, def any, typ reflect2
 type mapDefaultDecoder struct {
 	typ     *reflect2.UnsafeMapType
 	decoder func(def any) ValDecoder
-	def     any
+	def     map[string]any
 }
 
 func (d *mapDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
-	def, ok := d.def.(map[string]any)
-	if !ok {
-		r.ReportError("decode default", "inconvertible type")
-		return
-	}
-
 	if d.typ.UnsafeIsNil(ptr) {
 		d.typ.UnsafeSet(ptr, d.typ.UnsafeMakeMap(0))
 	}
-	for k, v := range def {
+	for k, v := range d.def {
 		key := k
 		keyPtr := reflect2.PtrOf(&key)
 		elemPtr := d.typ.UnsafeNew()
@@ -481,17 +404,12 @@ func (d *mapDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 
 type fixedDefaultDecoder struct {
 	typ   reflect2.Type
-	def   any
+	def   string
 	fixed *FixedSchema
 }
 
 func (d *fixedDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
-	def, ok := d.def.(string)
-	if !ok {
-		r.ReportError("decode default", "inconvertible type")
-		return
-	}
-	runes := []rune(def)
+	runes := []rune(d.def)
 	l := len(runes)
 	b := make([]byte, l)
 	for i := 0; i < l; i++ {
