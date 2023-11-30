@@ -230,7 +230,6 @@ func createEncoderOfNative(schema Schema, typ reflect2.Type) ValEncoder {
 			return &timeMillisCodec{}
 
 		case st == Long && lt == TimeMicros: // time.Duration
-
 			return &timeMicrosCodec{}
 
 		case st == Long:

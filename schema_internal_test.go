@@ -144,7 +144,7 @@ func TestIsValidDefault(t *testing.T) {
 				return NewPrimitiveSchema(Bytes, nil)
 			},
 			def:    "test",
-			want:   "test",
+			want:   []byte("test"),
 			wantOk: true,
 		},
 		{
@@ -199,7 +199,7 @@ func TestIsValidDefault(t *testing.T) {
 				return s
 			},
 			def:    "test",
-			want:   "test",
+			want:   []byte("test"),
 			wantOk: true,
 		},
 		{

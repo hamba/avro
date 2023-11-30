@@ -479,14 +479,33 @@ func (s *PrimitiveSchema) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// Temporary HACK to allow testing schema resolution logic...
+// a better solution would be to extend decoder cache key.
+type primitiveSchemaFingerprint struct {
+	s *PrimitiveSchema
+}
+
+func (sfp *primitiveSchemaFingerprint) String() string {
+	if sfp.s.actual == "" {
+		return sfp.s.String()
+	}
+	return sfp.s.String() + ":" + string(sfp.s.actual)
+}
+
 // Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *PrimitiveSchema) Fingerprint() [32]byte {
-	return s.fingerprinter.Fingerprint(s)
+	return s.fingerprinter.Fingerprint(&primitiveSchemaFingerprint{s: s})
 }
 
 // FingerprintUsing returns the fingerprint of the schema using the given algorithm or an error.
 func (s *PrimitiveSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
 	return s.fingerprinter.FingerprintUsing(typ, s)
+}
+
+// Actual returns the actual type of the schema.
+// This field is only presents during write-read schema resolution.
+func (s *PrimitiveSchema) Actual() Type {
+	return s.actual
 }
 
 // RecordSchema is an Avro record type schema.
@@ -675,11 +694,6 @@ func NewField(name string, typ Schema, opts ...SchemaOption) (*Field, error) {
 	}
 
 	return f, nil
-}
-
-// SetFieldAction updates the given field's action. Mainly used for testing purposes.
-func SetFieldAction(field *Field, action Action) {
-	field.action = action
 }
 
 // Name returns the name of a field.
@@ -1408,9 +1422,17 @@ func isValidDefault(schema Schema, def any) (any, bool) {
 			}
 		}
 		return def, found
-	case String, Bytes, Fixed:
+	case String:
 		if _, ok := def.(string); ok {
 			return def, true
+		}
+	case Bytes, Fixed:
+		// Spec: Default values for bytes and fixed fields are JSON strings,
+		// where Unicode code points 0-255 are mapped to unsigned 8-bit byte values 0-255.
+		if d, ok := def.(string); ok {
+			if b, ok := isValidDefaultBytes(d); ok {
+				return b, true
+			}
 		}
 	case Boolean:
 		if _, ok := def.(bool); ok {
@@ -1522,4 +1544,17 @@ func schemaTypeName(schema Schema) string {
 		sname += "." + string(lt)
 	}
 	return sname
+}
+
+func isValidDefaultBytes(def string) ([]byte, bool) {
+	runes := []rune(def)
+	l := len(runes)
+	b := make([]byte, l)
+	for i := 0; i < l; i++ {
+		if runes[i] < 0 || runes[i] > 255 {
+			return nil, false
+		}
+		b[i] = byte(runes[i])
+	}
+	return b, true
 }

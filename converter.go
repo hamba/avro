@@ -19,13 +19,11 @@ type converter struct {
 // thus, the downstream caller must first check the converter function value.
 func resolveConverter(typ Type) converter {
 	cv := converter{}
-
 	cv.toLong, _ = createLongConverter(typ)
 	cv.toFloat, _ = createFloatConverter(typ)
 	cv.toDouble, _ = createDoubleConverter(typ)
 	cv.toString, _ = createStringConverter(typ)
 	cv.toBytes, _ = createBytesConverter(typ)
-
 	return cv
 }
 

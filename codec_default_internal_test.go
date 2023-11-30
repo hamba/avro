@@ -1,15 +1,35 @@
-package avro_test
+package avro
 
 import (
 	"bytes"
+	"errors"
 	"math"
 	"math/big"
 	"testing"
 
-	"github.com/hamba/avro/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type testEnumTextUnmarshaler int
+
+func (m *testEnumTextUnmarshaler) UnmarshalText(data []byte) error {
+	switch string(data) {
+	case "foo":
+		*m = 0
+		return nil
+	case "bar":
+		*m = 1
+		return nil
+	default:
+		return errors.New("unknown symbol")
+	}
+}
+
+func ConfigTeardown() {
+	// Reset the caches
+	DefaultConfig = Config{}.Freeze()
+}
 
 func TestDecoder_DefaultBool(t *testing.T) {
 
@@ -27,7 +47,7 @@ func TestDecoder_DefaultBool(t *testing.T) {
 	// {"a": "foo"}
 	data := []byte{0x6, 0x66, 0x6f, 0x6f}
 
-	schema := avro.MustParse(`{
+	schema := MustParse(`{
 		"type": "record",
 		"name": "test",
 		"fields" : [
@@ -37,9 +57,9 @@ func TestDecoder_DefaultBool(t *testing.T) {
 	}`)
 
 	// hack: set field action to force decode default behavior
-	avro.SetFieldAction(schema.(*avro.RecordSchema).Fields()[1], avro.FieldSetDefault)
+	schema.(*RecordSchema).Fields()[1].action = FieldSetDefault
 
-	dec := avro.NewDecoderForSchema(schema, bytes.NewReader(data))
+	dec := NewDecoderForSchema(schema, bytes.NewReader(data))
 
 	type TestRecord struct {
 		A string `avro:"a"`
@@ -58,7 +78,7 @@ func TestDecoder_DefaultInt(t *testing.T) {
 
 	data := []byte{0x6, 0x66, 0x6f, 0x6f}
 
-	schema := avro.MustParse(`{
+	schema := MustParse(`{
 		"type": "record",
 		"name": "test",
 		"fields" : [
@@ -67,9 +87,9 @@ func TestDecoder_DefaultInt(t *testing.T) {
 		]
 	}`)
 
-	avro.SetFieldAction(schema.(*avro.RecordSchema).Fields()[1], avro.FieldSetDefault)
+	schema.(*RecordSchema).Fields()[1].action = FieldSetDefault
 
-	dec := avro.NewDecoderForSchema(schema, bytes.NewReader(data))
+	dec := NewDecoderForSchema(schema, bytes.NewReader(data))
 
 	type TestRecord struct {
 		A string `avro:"a"`
@@ -88,7 +108,7 @@ func TestDecoder_DefaultLong(t *testing.T) {
 
 	data := []byte{0x6, 0x66, 0x6f, 0x6f}
 
-	schema := avro.MustParse(`{
+	schema := MustParse(`{
 		"type": "record",
 		"name": "test",
 		"fields" : [
@@ -97,7 +117,7 @@ func TestDecoder_DefaultLong(t *testing.T) {
 		]
 	}`)
 
-	avro.SetFieldAction(schema.(*avro.RecordSchema).Fields()[1], avro.FieldSetDefault)
+	schema.(*RecordSchema).Fields()[1].action = FieldSetDefault
 
 	type TestRecord struct {
 		A string `avro:"a"`
@@ -105,7 +125,7 @@ func TestDecoder_DefaultLong(t *testing.T) {
 	}
 
 	var got TestRecord
-	err := avro.NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
+	err := NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
 
 	require.NoError(t, err)
 	assert.Equal(t, TestRecord{B: 1000, A: "foo"}, got)
@@ -116,7 +136,7 @@ func TestDecoder_DefaultFloat(t *testing.T) {
 
 	data := []byte{0x6, 0x66, 0x6f, 0x6f}
 
-	schema := avro.MustParse(`{
+	schema := MustParse(`{
 		"type": "record",
 		"name": "test",
 		"fields" : [
@@ -125,7 +145,7 @@ func TestDecoder_DefaultFloat(t *testing.T) {
 		]
 	}`)
 
-	avro.SetFieldAction(schema.(*avro.RecordSchema).Fields()[1], avro.FieldSetDefault)
+	schema.(*RecordSchema).Fields()[1].action = FieldSetDefault
 
 	type TestRecord struct {
 		A string  `avro:"a"`
@@ -133,7 +153,7 @@ func TestDecoder_DefaultFloat(t *testing.T) {
 	}
 
 	var got TestRecord
-	err := avro.NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
+	err := NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
 
 	require.NoError(t, err)
 	assert.Equal(t, TestRecord{B: 10.45, A: "foo"}, got)
@@ -144,7 +164,7 @@ func TestDecoder_DefaultDouble(t *testing.T) {
 
 	data := []byte{0x6, 0x66, 0x6f, 0x6f}
 
-	schema := avro.MustParse(`{
+	schema := MustParse(`{
 		"type": "record",
 		"name": "test",
 		"fields" : [
@@ -153,7 +173,7 @@ func TestDecoder_DefaultDouble(t *testing.T) {
 		]
 	}`)
 
-	avro.SetFieldAction(schema.(*avro.RecordSchema).Fields()[1], avro.FieldSetDefault)
+	schema.(*RecordSchema).Fields()[1].action = FieldSetDefault
 
 	type TestRecord struct {
 		A string  `avro:"a"`
@@ -161,7 +181,7 @@ func TestDecoder_DefaultDouble(t *testing.T) {
 	}
 
 	var got TestRecord
-	err := avro.NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
+	err := NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
 
 	require.NoError(t, err)
 	assert.Equal(t, TestRecord{B: 10.45, A: "foo"}, got)
@@ -172,7 +192,7 @@ func TestDecoder_DefaultBytes(t *testing.T) {
 
 	data := []byte{0x6, 0x66, 0x6f, 0x6f}
 
-	schema := avro.MustParse(`{
+	schema := MustParse(`{
 		"type": "record",
 		"name": "test",
 		"fields" : [
@@ -181,7 +201,7 @@ func TestDecoder_DefaultBytes(t *testing.T) {
 		]
 	}`)
 
-	avro.SetFieldAction(schema.(*avro.RecordSchema).Fields()[1], avro.FieldSetDefault)
+	schema.(*RecordSchema).Fields()[1].action = FieldSetDefault
 
 	type TestRecord struct {
 		A string `avro:"a"`
@@ -189,7 +209,7 @@ func TestDecoder_DefaultBytes(t *testing.T) {
 	}
 
 	var got TestRecord
-	err := avro.NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
+	err := NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
 
 	require.NoError(t, err)
 	assert.Equal(t, TestRecord{B: []byte("value"), A: "foo"}, got)
@@ -200,7 +220,7 @@ func TestDecoder_DefaultString(t *testing.T) {
 
 	data := []byte{0x6, 0x66, 0x6f, 0x6f}
 
-	schema := avro.MustParse(`{
+	schema := MustParse(`{
 		"type": "record",
 		"name": "test",
 		"fields" : [
@@ -209,7 +229,7 @@ func TestDecoder_DefaultString(t *testing.T) {
 		]
 	}`)
 
-	avro.SetFieldAction(schema.(*avro.RecordSchema).Fields()[1], avro.FieldSetDefault)
+	schema.(*RecordSchema).Fields()[1].action = FieldSetDefault
 
 	type TestRecord struct {
 		A string `avro:"a"`
@@ -217,7 +237,7 @@ func TestDecoder_DefaultString(t *testing.T) {
 	}
 
 	var got TestRecord
-	err := avro.NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
+	err := NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
 
 	require.NoError(t, err)
 	assert.Equal(t, TestRecord{B: "value", A: "foo"}, got)
@@ -228,7 +248,7 @@ func TestDecoder_DefaultEnum(t *testing.T) {
 
 	data := []byte{0x6, 0x66, 0x6f, 0x6f}
 
-	schema := avro.MustParse(`{
+	schema := MustParse(`{
 		"type": "record",
 		"name": "test",
 		"fields" : [
@@ -245,7 +265,7 @@ func TestDecoder_DefaultEnum(t *testing.T) {
 		]
 	}`)
 
-	avro.SetFieldAction(schema.(*avro.RecordSchema).Fields()[1], avro.FieldSetDefault)
+	schema.(*RecordSchema).Fields()[1].action = FieldSetDefault
 
 	t.Run("simple", func(t *testing.T) {
 		type TestRecord struct {
@@ -254,7 +274,7 @@ func TestDecoder_DefaultEnum(t *testing.T) {
 		}
 
 		var got TestRecord
-		err := avro.NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
+		err := NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
 
 		require.NoError(t, err)
 		assert.Equal(t, TestRecord{B: "bar", A: "foo"}, got)
@@ -268,7 +288,7 @@ func TestDecoder_DefaultEnum(t *testing.T) {
 		}
 
 		var got TestRecord
-		err := avro.NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
+		err := NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
 
 		require.NoError(t, err)
 		assert.Equal(t, TestRecord{B: 1, A: "foo"}, got)
@@ -281,7 +301,7 @@ func TestDecoder_DefaultEnum(t *testing.T) {
 		}
 
 		var got TestRecord
-		err := avro.NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
+		err := NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
 
 		require.NoError(t, err)
 		var v testEnumTextUnmarshaler = 1
@@ -294,13 +314,13 @@ func TestDecoder_DefaultUnion(t *testing.T) {
 
 	data := []byte{0x6, 0x66, 0x6f, 0x6f}
 
-	type TestRecord struct {
-		A string `avro:"a"`
-		B any    `avro:"b"`
-	}
-
 	t.Run("null default", func(t *testing.T) {
-		schema := avro.MustParse(`{
+		type TestRecord struct {
+			A string  `avro:"a"`
+			B *string `avro:"b"`
+		}
+
+		schema := MustParse(`{
 			"type": "record",
 			"name": "test",
 			"fields" : [
@@ -309,17 +329,22 @@ func TestDecoder_DefaultUnion(t *testing.T) {
 			]
 		}`)
 
-		avro.SetFieldAction(schema.(*avro.RecordSchema).Fields()[1], avro.FieldSetDefault)
+		schema.(*RecordSchema).Fields()[1].action = FieldSetDefault
 
 		var got TestRecord
-		err := avro.NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
+		err := NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
 
 		require.NoError(t, err)
 		assert.Equal(t, TestRecord{B: nil, A: "foo"}, got)
 	})
 
 	t.Run("not null default", func(t *testing.T) {
-		schema := avro.MustParse(`{
+		type TestRecord struct {
+			A string `avro:"a"`
+			B any    `avro:"b"`
+		}
+
+		schema := MustParse(`{
 			"type": "record",
 			"name": "test",
 			"fields" : [
@@ -328,13 +353,37 @@ func TestDecoder_DefaultUnion(t *testing.T) {
 			]
 		}`)
 
-		avro.SetFieldAction(schema.(*avro.RecordSchema).Fields()[1], avro.FieldSetDefault)
+		schema.(*RecordSchema).Fields()[1].action = FieldSetDefault
 
 		var got TestRecord
-		err := avro.NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
+		err := NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
 
 		require.NoError(t, err)
 		assert.Equal(t, TestRecord{B: "bar", A: "foo"}, got)
+	})
+
+	t.Run("map receiver", func(t *testing.T) {
+		type TestRecord struct {
+			A string         `avro:"a"`
+			B map[string]any `avro:"b"`
+		}
+
+		schema := MustParse(`{
+			"type": "record",
+			"name": "test",
+			"fields" : [
+				{"name": "a", "type": "string"},
+				{"name": "b", "type": ["string", "long"], "default": "bar"}
+			]
+		}`)
+
+		schema.(*RecordSchema).Fields()[1].action = FieldSetDefault
+
+		var got TestRecord
+		err := NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
+
+		require.NoError(t, err)
+		assert.Equal(t, TestRecord{B: map[string]any{"string": "bar"}, A: "foo"}, got)
 	})
 }
 
@@ -343,7 +392,7 @@ func TestDecoder_DefaultArray(t *testing.T) {
 
 	data := []byte{0x6, 0x66, 0x6f, 0x6f}
 
-	schema := avro.MustParse(`{
+	schema := MustParse(`{
 		"type": "record",
 		"name": "test",
 		"fields" : [
@@ -358,9 +407,9 @@ func TestDecoder_DefaultArray(t *testing.T) {
 		]
 	}`)
 
-	avro.SetFieldAction(schema.(*avro.RecordSchema).Fields()[1], avro.FieldSetDefault)
+	schema.(*RecordSchema).Fields()[1].action = FieldSetDefault
 
-	dec := avro.NewDecoderForSchema(schema, bytes.NewReader(data))
+	dec := NewDecoderForSchema(schema, bytes.NewReader(data))
 
 	type TestRecord struct {
 		A string  `avro:"a"`
@@ -379,7 +428,7 @@ func TestDecoder_DefaultMap(t *testing.T) {
 
 	data := []byte{0x6, 0x66, 0x6f, 0x6f}
 
-	schema := avro.MustParse(`{
+	schema := MustParse(`{
 		"type": "record",
 		"name": "test",
 		"fields" : [
@@ -394,9 +443,9 @@ func TestDecoder_DefaultMap(t *testing.T) {
 		]
 	}`)
 
-	avro.SetFieldAction(schema.(*avro.RecordSchema).Fields()[1], avro.FieldSetDefault)
+	schema.(*RecordSchema).Fields()[1].action = FieldSetDefault
 
-	dec := avro.NewDecoderForSchema(schema, bytes.NewReader(data))
+	dec := NewDecoderForSchema(schema, bytes.NewReader(data))
 
 	type TestRecord struct {
 		A string            `avro:"a"`
@@ -415,7 +464,7 @@ func TestDecoder_DefaultRecord(t *testing.T) {
 
 	data := []byte{0x6, 0x66, 0x6f, 0x6f}
 
-	schema := avro.MustParse(`{
+	schema := MustParse(`{
 		"type": "record",
 		"name": "test",
 		"fields" : [
@@ -435,10 +484,10 @@ func TestDecoder_DefaultRecord(t *testing.T) {
 		]
 	}`)
 
-	avro.SetFieldAction(schema.(*avro.RecordSchema).Fields()[1], avro.FieldSetDefault)
+	schema.(*RecordSchema).Fields()[1].action = FieldSetDefault
 
 	t.Run("struct", func(t *testing.T) {
-		dec := avro.NewDecoderForSchema(schema, bytes.NewReader(data))
+		dec := NewDecoderForSchema(schema, bytes.NewReader(data))
 
 		type subRecord struct {
 			A string `avro:"a"`
@@ -457,7 +506,7 @@ func TestDecoder_DefaultRecord(t *testing.T) {
 	})
 
 	t.Run("map", func(t *testing.T) {
-		dec := avro.NewDecoderForSchema(schema, bytes.NewReader(data))
+		dec := NewDecoderForSchema(schema, bytes.NewReader(data))
 
 		var got map[string]any
 		err := dec.Decode(&got)
@@ -472,7 +521,7 @@ func TestDecoder_DefaultRef(t *testing.T) {
 
 	data := []byte{0x6, 0x66, 0x6f, 0x6f}
 
-	_ = avro.MustParse(`{
+	_ = MustParse(`{
 		"type": "record",
 		"name": "test.embed",
 		"fields" : [
@@ -480,7 +529,7 @@ func TestDecoder_DefaultRef(t *testing.T) {
 		]
 	}`)
 
-	schema := avro.MustParse(`{
+	schema := MustParse(`{
 		"type": "record",
 		"name": "test",
 		"fields" : [
@@ -489,9 +538,9 @@ func TestDecoder_DefaultRef(t *testing.T) {
 		]
 	}`)
 
-	avro.SetFieldAction(schema.(*avro.RecordSchema).Fields()[1], avro.FieldSetDefault)
+	schema.(*RecordSchema).Fields()[1].action = FieldSetDefault
 
-	dec := avro.NewDecoderForSchema(schema, bytes.NewReader(data))
+	dec := NewDecoderForSchema(schema, bytes.NewReader(data))
 
 	var got map[string]any
 	err := dec.Decode(&got)
@@ -506,7 +555,7 @@ func TestDecoder_DefaultFixed(t *testing.T) {
 	data := []byte{0x6, 0x66, 0x6f, 0x6f}
 
 	t.Run("array", func(t *testing.T) {
-		schema := avro.MustParse(`{
+		schema := MustParse(`{
 			"type": "record",
 			"name": "test",
 			"fields" : [
@@ -523,7 +572,7 @@ func TestDecoder_DefaultFixed(t *testing.T) {
 			]
 		}`)
 
-		avro.SetFieldAction(schema.(*avro.RecordSchema).Fields()[1], avro.FieldSetDefault)
+		schema.(*RecordSchema).Fields()[1].action = FieldSetDefault
 
 		type TestRecord struct {
 			A string  `avro:"a"`
@@ -531,14 +580,14 @@ func TestDecoder_DefaultFixed(t *testing.T) {
 		}
 
 		var got TestRecord
-		err := avro.NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
+		err := NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
 
 		require.NoError(t, err)
 		assert.Equal(t, TestRecord{B: [3]byte{'f', 'o', 'o'}, A: "foo"}, got)
 	})
 
 	t.Run("uint64", func(t *testing.T) {
-		schema := avro.MustParse(`{
+		schema := MustParse(`{
 			"type": "record",
 			"name": "test",
 			"fields" : [
@@ -555,7 +604,7 @@ func TestDecoder_DefaultFixed(t *testing.T) {
 			]
 		}`)
 
-		avro.SetFieldAction(schema.(*avro.RecordSchema).Fields()[1], avro.FieldSetDefault)
+		schema.(*RecordSchema).Fields()[1].action = FieldSetDefault
 
 		type TestRecord struct {
 			A string `avro:"a"`
@@ -563,14 +612,14 @@ func TestDecoder_DefaultFixed(t *testing.T) {
 		}
 
 		var got TestRecord
-		err := avro.NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
+		err := NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
 
 		require.NoError(t, err)
 		assert.Equal(t, TestRecord{B: uint64(math.MaxUint64), A: "foo"}, got)
 	})
 
 	t.Run("duration", func(t *testing.T) {
-		schema := avro.MustParse(`{
+		schema := MustParse(`{
 			"type": "record",
 			"name": "test",
 			"fields" : [
@@ -588,15 +637,15 @@ func TestDecoder_DefaultFixed(t *testing.T) {
 			]
 		}`)
 
-		avro.SetFieldAction(schema.(*avro.RecordSchema).Fields()[1], avro.FieldSetDefault)
+		schema.(*RecordSchema).Fields()[1].action = FieldSetDefault
 
 		type TestRecord struct {
-			A string               `avro:"a"`
-			B avro.LogicalDuration `avro:"b"`
+			A string          `avro:"a"`
+			B LogicalDuration `avro:"b"`
 		}
 
 		var got TestRecord
-		err := avro.NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
+		err := NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
 
 		require.NoError(t, err)
 
@@ -607,7 +656,7 @@ func TestDecoder_DefaultFixed(t *testing.T) {
 	})
 
 	t.Run("rat", func(t *testing.T) {
-		schema := avro.MustParse(`{
+		schema := MustParse(`{
 			"type": "record",
 			"name": "test",
 			"fields" : [
@@ -626,7 +675,7 @@ func TestDecoder_DefaultFixed(t *testing.T) {
 				}
 			]
 		}`)
-		avro.SetFieldAction(schema.(*avro.RecordSchema).Fields()[1], avro.FieldSetDefault)
+		schema.(*RecordSchema).Fields()[1].action = FieldSetDefault
 
 		type TestRecord struct {
 			A string  `avro:"a"`
@@ -634,7 +683,7 @@ func TestDecoder_DefaultFixed(t *testing.T) {
 		}
 
 		var got TestRecord
-		err := avro.NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
+		err := NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
 
 		require.NoError(t, err)
 		assert.Equal(t, big.NewRat(1734, 5), &got.B)

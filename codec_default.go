@@ -14,7 +14,7 @@ import (
 func createDefaultDecoder(cfg *frozenConfig, schema Schema, def any, typ reflect2.Type) ValDecoder {
 	if typ.Kind() == reflect.Interface {
 		if schema.Type() != Union && schema.Type() != Null {
-			return &efaceDefaultDecoder{def: def}
+			return &efaceDefaultDecoder{def: def, schema: schema}
 		}
 	}
 
@@ -23,36 +23,30 @@ func createDefaultDecoder(cfg *frozenConfig, schema Schema, def any, typ reflect
 		return &nullDefaultDecoder{
 			typ: typ,
 		}
-
 	case Boolean:
 		return &boolDefaultDecoder{
 			def: def.(bool),
 		}
-
 	case Int:
 		return &intDefaultDecoder{
 			def: def.(int),
 			typ: typ,
 		}
-
 	case Long:
 		return &longDefaultDecoder{
 			def: def.(int64),
 			typ: typ,
 		}
-
 	case Float:
 		return &floatDefaultDecoder{
 			def: def.(float32),
 			typ: typ,
 		}
-
 	case Double:
 		return &doubleDefaultDecoder{
 			def: def.(float64),
 			typ: typ,
 		}
-
 	case String:
 		if typ.Implements(textUnmarshalerType) {
 			return &textDefaultMarshalerCodec{typ, def.(string)}
@@ -63,42 +57,32 @@ func createDefaultDecoder(cfg *frozenConfig, schema Schema, def any, typ reflect
 				&textDefaultMarshalerCodec{typ: ptrType, def: def.(string)},
 			}
 		}
-
 		return &stringDefaultDecoder{
 			def: def.(string),
 		}
-
 	case Bytes:
 		return &bytesDefaultDecoder{
-			def: def.(string),
+			def: def.([]byte),
 			typ: typ,
 		}
-
 	case Fixed:
 		return &fixedDefaultDecoder{
 			fixed: schema.(*FixedSchema),
-			def:   def.(string),
+			def:   def.([]byte),
 			typ:   typ,
 		}
-
 	case Enum:
 		return &enumDefaultDecoder{typ: typ, def: def.(string)}
-
 	case Ref:
 		return createDefaultDecoder(cfg, schema.(*RefSchema).Schema(), def, typ)
-
 	case Record:
 		return defaultDecoderOfRecord(cfg, schema, def, typ)
-
 	case Array:
 		return defaultDecoderOfArray(cfg, schema, def, typ)
-
 	case Map:
 		return defaultDecoderOfMap(cfg, schema, def, typ)
-
 	case Union:
-		return createDefaultDecoder(cfg, schema.(*UnionSchema).Types()[0], def, typ)
-
+		return defaultDecoderOfUnion(schema.(*UnionSchema), def, typ)
 	default:
 		return &errorDecoder{err: fmt.Errorf("avro: schema type %s is unsupported", schema.Type())}
 	}
@@ -123,24 +107,25 @@ func (d textDefaultMarshalerCodec) Decode(ptr unsafe.Pointer, r *Reader) {
 
 	err := unmarshaler.UnmarshalText(b)
 	if err != nil {
-		r.ReportError("textMarshalerCodec", err.Error())
+		r.ReportError("decode default textMarshalerCodec", err.Error())
 	}
 }
 
 type efaceDefaultDecoder struct {
-	def any
+	def    any
+	schema Schema
 }
 
-func (d *efaceDefaultDecoder) Decode(ptr unsafe.Pointer, _ *Reader) {
-	*(*any)(ptr) = d.def
-}
+func (d *efaceDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
+	rPtr, rTyp, err := dynamicReceiver(d.schema, r.cfg.resolver)
+	if err != nil {
+		r.ReportError("decode default", err.Error())
+		return
+	}
 
-type boolDefaultDecoder struct {
-	def bool
-}
+	createDefaultDecoder(r.cfg, d.schema, d.def, rTyp).Decode(rPtr, r)
 
-func (d *boolDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
-	*((*bool)(ptr)) = d.def
+	*(*any)(ptr) = rTyp.UnsafeIndirect(rPtr)
 }
 
 type nullDefaultDecoder struct {
@@ -148,9 +133,15 @@ type nullDefaultDecoder struct {
 }
 
 func (d *nullDefaultDecoder) Decode(ptr unsafe.Pointer, _ *Reader) {
-	if d.typ.IsNullable() {
-		d.typ.UnsafeSet(ptr, d.typ.UnsafeNew())
-	}
+	*((*unsafe.Pointer)(ptr)) = nil
+}
+
+type boolDefaultDecoder struct {
+	def bool
+}
+
+func (d *boolDefaultDecoder) Decode(ptr unsafe.Pointer, _ *Reader) {
+	*((*bool)(ptr)) = d.def
 }
 
 type intDefaultDecoder struct {
@@ -233,12 +224,12 @@ type stringDefaultDecoder struct {
 	def string
 }
 
-func (d *stringDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
+func (d *stringDefaultDecoder) Decode(ptr unsafe.Pointer, _ *Reader) {
 	*((*string)(ptr)) = d.def
 }
 
 type bytesDefaultDecoder struct {
-	def string
+	def []byte
 	typ reflect2.Type
 }
 
@@ -252,17 +243,7 @@ func (d *bytesDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		return
 	}
 
-	runes := []rune(d.def)
-	l := len(runes)
-	b := make([]byte, l)
-	for i := 0; i < l; i++ {
-		if runes[i] < 0 || runes[i] > 255 {
-			r.ReportError("decode default", "invalid default")
-			return
-		}
-		b[i] = uint8(runes[i])
-	}
-	d.typ.(*reflect2.UnsafeSliceType).UnsafeSet(ptr, reflect2.PtrOf(b))
+	d.typ.(*reflect2.UnsafeSliceType).UnsafeSet(ptr, reflect2.PtrOf(d.def))
 }
 
 func defaultDecoderOfRecord(cfg *frozenConfig, schema Schema, def any, typ reflect2.Type) ValDecoder {
@@ -321,7 +302,7 @@ func (d *enumDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		unmarshaler := (obj).(encoding.TextUnmarshaler)
 		err := unmarshaler.UnmarshalText([]byte(def))
 		if err != nil {
-			r.ReportError("textMarshalerCodec", err.Error())
+			r.ReportError("decode default textMarshalerCodec", err.Error())
 		}
 	}
 
@@ -365,7 +346,7 @@ func (d *sliceDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 	d.typ.UnsafeGrow(ptr, size)
 	for i := 0; i < size; i++ {
 		elemPtr := d.typ.UnsafeGetIndex(ptr, i)
-		d.decoder(d.def[i]).Decode(elemPtr, nil)
+		d.decoder(d.def[i]).Decode(elemPtr, r)
 	}
 }
 
@@ -397,29 +378,19 @@ func (d *mapDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		key := k
 		keyPtr := reflect2.PtrOf(&key)
 		elemPtr := d.typ.UnsafeNew()
-		d.decoder(v).Decode(elemPtr, nil)
+		d.decoder(v).Decode(elemPtr, r)
 		d.typ.UnsafeSetIndex(ptr, keyPtr, elemPtr)
 	}
 }
 
 type fixedDefaultDecoder struct {
 	typ   reflect2.Type
-	def   string
+	def   []byte
 	fixed *FixedSchema
 }
 
 func (d *fixedDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
-	runes := []rune(d.def)
-	l := len(runes)
-	b := make([]byte, l)
-	for i := 0; i < l; i++ {
-		if runes[i] < 0 || runes[i] > 255 {
-			r.ReportError("decode default", "invalid default")
-			return
-		}
-		b[i] = uint8(runes[i])
-	}
-
+	l := len(d.def)
 	switch d.typ.Kind() {
 	case reflect.Array:
 		arrayType := d.typ.(reflect2.ArrayType)
@@ -432,7 +403,7 @@ func (d *fixedDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 			return
 		}
 		for i := 0; i < arrayType.Len(); i++ {
-			arrayType.UnsafeSetIndex(ptr, i, reflect2.PtrOf(b[i]))
+			arrayType.UnsafeSetIndex(ptr, i, reflect2.PtrOf(d.def[i]))
 		}
 
 	case reflect.Uint64:
@@ -444,7 +415,7 @@ func (d *fixedDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 			r.ReportError("decode default", "invalid default")
 			return
 		}
-		*(*uint64)(ptr) = binary.BigEndian.Uint64(b)
+		*(*uint64)(ptr) = binary.BigEndian.Uint64(d.def)
 
 	case reflect.Struct:
 		ls := d.fixed.Logical()
@@ -458,7 +429,7 @@ func (d *fixedDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 				r.ReportError("decode default", "invalid default")
 				return
 			}
-			*((*LogicalDuration)(ptr)) = durationFromBytes(b)
+			*((*LogicalDuration)(ptr)) = durationFromBytes(d.def)
 
 		case typ1.ConvertibleTo(ratType) && ls.Type() == Decimal:
 			dec := ls.(*DecimalLogicalSchema)
@@ -466,7 +437,7 @@ func (d *fixedDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 				r.ReportError("decode default", "invalid default")
 				return
 			}
-			*((*big.Rat)(ptr)) = *ratFromBytes(b, dec.Scale())
+			*((*big.Rat)(ptr)) = *ratFromBytes(d.def, dec.Scale())
 		default:
 			r.ReportError("decode default", "unsupported type")
 		}
@@ -484,4 +455,68 @@ func durationFromBytes(b []byte) LogicalDuration {
 	duration.Milliseconds = binary.LittleEndian.Uint32(b[8:12])
 
 	return duration
+}
+
+func defaultDecoderOfUnion(schema *UnionSchema, def any, typ reflect2.Type) ValDecoder {
+	return &unionDefaultDecoder{
+		typ:   typ,
+		def:   def,
+		union: schema,
+	}
+}
+
+type unionDefaultDecoder struct {
+	typ   reflect2.Type
+	def   any
+	union *UnionSchema
+}
+
+func (d *unionDefaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
+	switch d.typ.Kind() {
+	case reflect.Map:
+		if d.typ.(reflect2.MapType).Key().Kind() != reflect.String ||
+			d.typ.(reflect2.MapType).Elem().Kind() != reflect.Interface {
+			break
+		}
+		schema := d.union.Types()[0]
+		if schema.Type() == Null {
+			return
+		}
+
+		mapType := d.typ.(*reflect2.UnsafeMapType)
+		if mapType.UnsafeIsNil(ptr) {
+			mapType.UnsafeSet(ptr, mapType.UnsafeMakeMap(0))
+		}
+
+		key := schemaTypeName(schema)
+		keyPtr := reflect2.PtrOf(key)
+		elemPtr := mapType.Elem().UnsafeNew()
+
+		decoder := createDefaultDecoder(r.cfg, d.union.Types()[0], d.def, mapType.Elem())
+		decoder.Decode(elemPtr, r)
+
+		mapType.UnsafeSetIndex(ptr, keyPtr, elemPtr)
+
+	case reflect.Ptr:
+		if !d.union.Nullable() {
+			break
+		}
+		if d.union.Types()[0].Type() == Null {
+			*((*unsafe.Pointer)(ptr)) = nil
+			return
+		}
+
+		decoder := createDefaultDecoder(r.cfg, d.union.Types()[0], d.def, d.typ.(*reflect2.UnsafePtrType).Elem())
+		if *((*unsafe.Pointer)(ptr)) == nil {
+			newPtr := d.typ.UnsafeNew()
+			decoder.Decode(newPtr, r)
+			*((*unsafe.Pointer)(ptr)) = newPtr
+			return
+		}
+		decoder.Decode(*((*unsafe.Pointer)(ptr)), r)
+
+	case reflect.Interface:
+		decoder := createDefaultDecoder(r.cfg, d.union.Types()[0], d.def, d.typ)
+		decoder.Decode(ptr, r)
+	}
 }

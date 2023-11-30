@@ -294,7 +294,17 @@ func (d *unionResolvedDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		// We cannot resolve this, set it to the map type
 		name := schemaTypeName(schema)
 		obj := map[string]any{}
-		obj[name] = r.ReadNext(schema)
+
+		rPtr, rTyp, err := dynamicReceiver(schema, r.cfg.resolver)
+		if err != nil {
+			r.ReportError("Read", err.Error())
+			return
+		}
+		decoderOfType(r.cfg, schema, rTyp).Decode(rPtr, r)
+
+		obj[name] = rTyp.UnsafeIndirect(rPtr)
+
+		// obj[name] = r.ReadNext(schema)
 
 		*pObj = obj
 		return

@@ -44,7 +44,8 @@ func (p *readerPromoter) ReadFloat() float32 {
 
 func (p *readerPromoter) ReadDouble() float64 {
 	if p.toDouble != nil {
-		return p.toDouble(p.r)
+		v := p.toDouble(p.r)
+		return v
 	}
 
 	return p.r.ReadDouble()
