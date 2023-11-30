@@ -289,12 +289,6 @@ func (c *SchemaCompatibility) Resolve(reader, writer Schema) (Schema, error) {
 
 func (c *SchemaCompatibility) resolve(reader, writer Schema) (Schema, error) {
 	if writer.Type() != reader.Type() {
-		if isPromotable(writer.Type()) {
-			r := NewPrimitiveSchema(reader.Type(), reader.(*PrimitiveSchema).Logical())
-			r.actual = writer.Type()
-			return r, nil
-		}
-
 		if reader.Type() == Union {
 			for _, schema := range reader.(*UnionSchema).Types() {
 				sch, err := c.Resolve(schema, writer)
@@ -318,6 +312,12 @@ func (c *SchemaCompatibility) resolve(reader, writer Schema) (Schema, error) {
 				schemas = append(schemas, sch)
 			}
 			return NewUnionSchema(schemas)
+		}
+
+		if isPromotable(writer.Type()) {
+			r := NewPrimitiveSchema(reader.Type(), reader.(*PrimitiveSchema).Logical())
+			r.actual = writer.Type()
+			return r, nil
 		}
 	}
 

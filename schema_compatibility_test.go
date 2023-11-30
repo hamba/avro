@@ -1,9 +1,8 @@
 package avro_test
 
 import (
-	"log"
+	"math/big"
 	"testing"
-	"time"
 
 	"github.com/hamba/avro/v2"
 	"github.com/stretchr/testify/assert"
@@ -278,95 +277,341 @@ func TestSchemaCompatibility_CompatibleUsesCacheWithError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestSchemaCompatibility_Resolve(t *testing.T) {
-	sch1 := avro.MustParse(`{
-		"name": "A",
-		"type": "record",
-		"fields": [{
-			"name": "c",
-			"type": "long"
-		},{
-			"name": "a",
-			"type": "int"
+func TestSchemaCompatibility_ResolveV2(t *testing.T) {
+	tests := []struct {
+		name   string
+		reader string
+		writer string
+		value  any
+		want   any
+	}{
+		{
+			name:   "Int Promote Long",
+			reader: `"long"`,
+			writer: `"int"`,
+			value:  10,
+			want:   int64(10),
 		},
 		{
-			"name": "k",
-			"type": "string"
-		}]
-	}`)
-
-	type A1 struct {
-		A int32  `avro:"a"`
-		C int32  `avro:"c"`
-		K string `avro:"k"`
-	}
-
-	a1 := A1{
-		A: 10,
-		C: 1000000,
-		K: "K value",
-	}
-
-	b, err := avro.Marshal(sch1, a1)
-	if err != nil {
-		t.Fatalf("marshal error%v", err)
-	}
-
-	sch2 := avro.MustParse(`{
-		"name": "A",
-		"type": "record",
-		"fields": [
-			{
-				"name": "k",
-				"type": "bytes"
-			},
-			{
-				"name": "b",
-				"type": "string",
-				"default": "boo"
-			},{
-				"name": "aa",
-				"aliases": ["a"],
-				"type": {
-					"type": "long",
-					"logicalType":"time-micros"
-				}
-			},{
-				"name": "d",
-				"type": {
-					"type": "array", "items": "int"
+			name:   "Int Promote Float",
+			reader: `"float"`,
+			writer: `"int"`,
+			value:  10,
+			want:   float32(10),
+		},
+		{
+			name:   "Int Promote Double",
+			reader: `"double"`,
+			writer: `"int"`,
+			value:  10,
+			want:   float64(10),
+		},
+		{
+			name:   "Long Promote Float",
+			reader: `"float"`,
+			writer: `"long"`,
+			value:  int64(10),
+			want:   float32(10),
+		},
+		{
+			name:   "Long Promote Double",
+			reader: `"double"`,
+			writer: `"long"`,
+			value:  int64(10),
+			want:   float64(10),
+		},
+		{
+			name:   "Float Promote Double",
+			reader: `"double"`,
+			writer: `"float"`,
+			value:  float32(10.5),
+			want:   float64(10.5),
+		},
+		{
+			name:   "String Promote Bytes",
+			reader: `"bytes"`,
+			writer: `"string"`,
+			value:  "foo",
+			want:   []byte("foo"),
+		},
+		{
+			name:   "Bytes Promote String",
+			reader: `"string"`,
+			writer: `"bytes"`,
+			value:  []byte("foo"),
+			want:   "foo",
+		},
+		{
+			name:   "Union Match",
+			reader: `["int", "long", "string"]`,
+			writer: `["string", "int", "long"]`,
+			value:  "foo",
+			want:   "foo",
+		}, {
+			name:   "Union Writer Missing Schema",
+			reader: `["int", "long", "string"]`,
+			writer: `["string", "int"]`,
+			value:  "foo",
+			want:   "foo",
+		},
+		{
+			name:   "Union Writer Not Union",
+			reader: `["int", "long", "string"]`,
+			writer: `"int"`,
+			value:  10,
+			want:   10,
+		},
+		{
+			name:   "Union Reader Not Union",
+			reader: `"int"`,
+			writer: `["int"]`,
+			value:  10,
+			want:   10,
+		},
+		{
+			name:   "Record Reader Field Missing",
+			reader: `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "int"}]}`,
+			writer: `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "b", "type": "string"}, {"name": "a", "type": "int"}]}`,
+			value:  map[string]any{"a": 10, "b": "foo"},
+			want:   map[string]any{"a": 10},
+		},
+		{
+			name:   "Record Writer Field Missing With Default",
+			reader: `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "int"}, {"name": "b", "type": "string", "default": "test"}]}`,
+			writer: `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "int"}]}`,
+			value:  map[string]any{"a": 10},
+			want:   map[string]any{"a": 10, "b": "test"},
+		},
+		{
+			name:   "Record Reader Field With Alias",
+			reader: `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "aa", "type": "int", "aliases": ["a"]}]}`,
+			writer: `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "int"}]}`,
+			value:  map[string]any{"a": 10},
+			want:   map[string]any{"aa": 10},
+		},
+		{
+			name:   "Record Reader Field With Alias And Promotion",
+			reader: `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "aa", "type": "double", "aliases": ["a"]}]}`,
+			writer: `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "int"}]}`,
+			value:  map[string]any{"a": 10},
+			want:   map[string]any{"aa": float64(10)},
+		},
+		{
+			name:   "Record Writer Field Missing With Bytes Default",
+			reader: `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "int"}, {"name": "b", "type": "bytes", "default":"\u0066\u006f\u006f"}]}`,
+			writer: `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "int"}]}`,
+			value:  map[string]any{"a": 10},
+			want:   map[string]any{"a": 10, "b": []byte("foo")},
+		},
+		{
+			name:   "Record Writer Field Missing With Bytes Default",
+			reader: `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "int"}, {"name": "b", "type": "bytes", "default":"\u0066\u006f\u006f"}]}`,
+			writer: `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "int"}]}`,
+			value:  map[string]any{"a": 10},
+			want:   map[string]any{"a": 10, "b": []byte("foo")},
+		},
+		{
+			name: "Record Writer Field Missing With Record Default",
+			reader: `{
+						"type":"record", "name":"test", "namespace": "org.hamba.avro", 
+						"fields":[
+							{"name": "a", "type": "int"},
+							{
+								"name": "b",
+								"type": {
+									"type": "record",
+									"name": "test.record",
+									"fields" : [
+										{"name": "a", "type": "string"},
+										{"name": "b", "type": "string"}
+									]
+								},
+								"default":{"a":"foo", "b": "bar"}
+							}
+						]
+					}`,
+			writer: `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "int"}]}`,
+			value:  map[string]any{"a": 10},
+			want:   map[string]any{"a": 10, "b": map[string]any{"a": "foo", "b": "bar"}},
+		},
+		{
+			name: "Record Writer Field Missing With Map Default",
+			reader: `{
+						"type":"record", "name":"test", "namespace": "org.hamba.avro", 
+						"fields":[
+							{"name": "a", "type": "int"},
+							{
+								"name": "b",
+								"type": {
+									"type": "map", "values": "string"
+								},
+								"default":{"foo":"bar"}
+							}
+						]
+					}`,
+			writer: `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "int"}]}`,
+			value:  map[string]any{"a": 10},
+			want:   map[string]any{"a": 10, "b": map[string]any{"foo": "bar"}},
+		},
+		{
+			name: "Record Writer Field Missing With Array Default",
+			reader: `{
+						"type":"record", "name":"test", "namespace": "org.hamba.avro", 
+						"fields":[
+							{"name": "a", "type": "int"},
+							{
+								"name": "b",
+								"type": {
+									"type": "array", "items": "int"
+								},
+								"default":[1, 2, 3, 4]
+							}
+						]
+					}`,
+			writer: `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "int"}]}`,
+			value:  map[string]any{"a": 10},
+			want:   map[string]any{"a": 10, "b": []any{1, 2, 3, 4}},
+		},
+		{
+			name: "Record Writer Field Missing With Union Null Default",
+			reader: `{
+						"type":"record", "name":"test", "namespace": "org.hamba.avro", 
+						"fields":[
+							{"name": "a", "type": "int"},
+							{
+								"name": "b",
+								"type":["null", "long"],
+								"default": null
+							}
+						]
+					}`,
+			writer: `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "int"}]}`,
+			value:  map[string]any{"a": 10},
+			want:   map[string]any{"a": 10, "b": nil},
+		},
+		{
+			name: "Record Writer Field Missing With Union Non-null Default",
+			reader: `{
+						"type":"record", "name":"test", "namespace": "org.hamba.avro", 
+						"fields":[
+							{"name": "a", "type": "int"},
+							{
+								"name": "b",
+								"type":["string", "long"],
+								"default": "bar"
+							}
+						]
+					}`,
+			writer: `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "int"}]}`,
+			value:  map[string]any{"a": 10},
+			want:   map[string]any{"a": 10, "b": "bar"},
+		},
+		{
+			name: "Record Writer Field Missing With Fixed Duration Default",
+			reader: `{
+						"type":"record", "name":"test", "namespace": "org.hamba.avro", 
+						"fields":[
+							{"name": "a", "type": "int"},
+							{
+								"name": "b",
+								"type": {
+									"type": "fixed",
+									"name": "test.fixed",
+									"logicalType":"duration",
+									"size":12
+								}, 
+								"default": "\u000c\u0000\u0000\u0000\u0022\u0000\u0000\u0000\u0052\u00aa\u0008\u0000"
+							}
+						]
+					}`,
+			writer: `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "int"}]}`,
+			value:  map[string]any{"a": 10},
+			want: map[string]any{
+				"a": 10,
+				"b": avro.LogicalDuration{
+					Months:       uint32(12),
+					Days:         uint32(34),
+					Milliseconds: uint32(567890),
 				},
-				"default":[1, 2, 3, 4]
-			},{
-				"name": "g",
-				"type": ["null", "string"],
-				"default": null
+			},
+		},
+		{
+			name: "Record Writer Field Missing With Fixed Logical Decimal Default",
+			reader: `{
+						"type":"record", "name":"test", "namespace": "org.hamba.avro", 
+						"fields":[
+							{"name": "a", "type": "int"},
+							{
+								"name": "b",
+								"type": {
+									"type": "fixed",
+									"name": "test.fixed",
+									"size": 6,
+									"logicalType":"decimal",
+									"precision":4,
+									"scale":2
+								},
+								"default": "\u0000\u0000\u0000\u0000\u0087\u0078"
+							}
+						]
+					}`,
+			writer: `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "int"}]}`,
+			value:  map[string]any{"a": 10},
+			want: map[string]any{
+				"a": 10,
+				"b": *big.NewRat(1734, 5),
+			},
+		},
+		{
+			name: "Record Writer Field Missing With Enum Duration Default",
+			reader: `{
+						"type":"record", "name":"test", "namespace": "org.hamba.avro", 
+						"fields":[
+							{"name": "a", "type": "int"},
+							{
+								"name": "b",
+								"type": {
+									"type": "enum",
+									"name": "test.enum",
+									"symbols": ["foo", "bar"]
+								},
+								"default": "bar"
+							}
+						]
+					}`,
+			writer: `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "int"}]}`,
+			value:  map[string]any{"a": 10},
+			want: map[string]any{
+				"a": 10,
+				"b": "bar",
+			},
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			r := avro.MustParse(test.reader)
+			w := avro.MustParse(test.writer)
+			sc := avro.NewSchemaCompatibility()
+
+			b, err := avro.Marshal(w, test.value)
+			if err != nil {
+				t.Fatalf("marshal error%v", err)
 			}
-		]
-	}`)
 
-	sc := avro.NewSchemaCompatibility()
+			sch, err := sc.Resolve(r, w)
+			if err != nil {
+				t.Fatalf("resolve error %v", err)
+			}
 
-	// resolve composite schema
-	sch, err := sc.Resolve(sch2, sch1)
-	if err != nil {
-		t.Fatalf("err: %v", err)
+			var result any
+			err = avro.Unmarshal(sch, b, &result)
+			if err != nil {
+				t.Fatalf("unmarshal error %v", err)
+			}
+
+			assert.Equal(t, test.want, result)
+		})
 	}
-
-	type A2 struct {
-		A time.Duration `avro:"aa"`
-		B string        `avro:"b"`
-		D []int32       `avro:"d"`
-		K []byte        `avro:"k"`
-		G *string       `avro:"g"`
-	}
-
-	a2 := A2{}
-
-	err = avro.Unmarshal(sch, b, &a2)
-	if err != nil {
-		t.Fatalf("unmarshal error %v", err)
-	}
-
-	log.Printf("result: %+v", a2)
 }
