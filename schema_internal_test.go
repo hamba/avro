@@ -195,11 +195,11 @@ func TestIsValidDefault(t *testing.T) {
 		{
 			name: "Fixed",
 			schemaFn: func() Schema {
-				s, _ := NewFixedSchema("foo", "", 1, nil)
+				s, _ := NewFixedSchema("foo", "", 4, nil)
 				return s
 			},
 			def:    "test",
-			want:   []byte("test"),
+			want:   [4]byte{'t', 'e', 's', 't'},
 			wantOk: true,
 		},
 		{

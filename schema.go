@@ -196,6 +196,9 @@ type NamedSchema interface {
 
 	// FullName returns the full qualified name of a schema.
 	FullName() string
+
+	// Aliases returns the full qualified aliases of a schema.
+	Aliases() []string
 }
 
 // LogicalTypeSchema represents a schema that can contain a logical type.
@@ -1431,6 +1434,9 @@ func isValidDefault(schema Schema, def any) (any, bool) {
 		// where Unicode code points 0-255 are mapped to unsigned 8-bit byte values 0-255.
 		if d, ok := def.(string); ok {
 			if b, ok := isValidDefaultBytes(d); ok {
+				if schema.Type() == Fixed {
+					return byteSliceToArray(b, schema.(*FixedSchema).Size()), true
+				}
 				return b, true
 			}
 		}

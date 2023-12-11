@@ -177,6 +177,11 @@ func (c *SchemaCompatibility) match(reader, writer Schema) error {
 
 func (c *SchemaCompatibility) checkSchemaName(reader, writer NamedSchema) error {
 	if reader.FullName() != writer.FullName() {
+		for _, alias := range reader.Aliases() {
+			if alias == writer.FullName() {
+				return nil
+			}
+		}
 		return fmt.Errorf("reader schema %s and writer schema %s  names do not match", reader.FullName(), writer.FullName())
 	}
 
@@ -409,5 +414,5 @@ func (c *SchemaCompatibility) resolveRecord(reader, writer Schema) (Schema, erro
 		fields = append(fields, &f)
 	}
 
-	return NewRecordSchema(r.Name(), r.Namespace(), fields)
+	return NewRecordSchema(r.Name(), r.Namespace(), fields, WithAliases(r.Aliases()))
 }
