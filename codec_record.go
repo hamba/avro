@@ -1,6 +1,7 @@
 package avro
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -58,6 +59,12 @@ func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 	structDesc := describeStruct(cfg.getTagKey(), typ)
 
 	fields := make([]*structFieldDecoder, 0, len(rec.Fields()))
+
+	// TBD figure out how to cache record defaults binary
+	buf := bytes.NewBuffer([]byte{})
+	defW := NewWriter(buf, 512, WithWriterConfig(cfg))
+	defR := NewReader(buf, 512, WithReaderConfig(cfg))
+
 	for _, field := range rec.Fields() {
 		if field.action == FieldDrain {
 			fields = append(fields, &structFieldDecoder{
@@ -88,11 +95,7 @@ func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 			if field.hasDef {
 				fields = append(fields, &structFieldDecoder{
 					field:   sf.Field,
-					decoder: createDefaultDecoder(cfg, field.Type(), field.def, sf.Field[len(sf.Field)-1].Type()),
-				})
-			} else {
-				fields = append(fields, &structFieldDecoder{
-					decoder: createSkipDecoder(field.Type()),
+					decoder: createDefaultDecoder(cfg, field.Type(), field.def, sf.Field[len(sf.Field)-1].Type(), defW, defR),
 				})
 			}
 
@@ -104,6 +107,10 @@ func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 			field:   sf.Field,
 			decoder: dec,
 		})
+	}
+
+	if err := defW.Flush(); err != nil {
+		return &errorDecoder{err: fmt.Errorf("decode default: %w", err)}
 	}
 
 	return &structDecoder{typ: typ, fields: fields}
@@ -257,6 +264,10 @@ func decoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 	rec := schema.(*RecordSchema)
 	mapType := typ.(*reflect2.UnsafeMapType)
 
+	buf := bytes.NewBuffer([]byte{})
+	defW := NewWriter(buf, 512, WithWriterConfig(cfg))
+	defR := NewReader(buf, 512, WithReaderConfig(cfg))
+
 	fields := make([]recordMapDecoderField, len(rec.Fields()))
 	for i, field := range rec.Fields() {
 		if field.action == FieldDrain {
@@ -272,7 +283,7 @@ func decoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 			if field.hasDef {
 				fields[i] = recordMapDecoderField{
 					name:    field.Name(),
-					decoder: createDefaultDecoder(cfg, field.Type(), field.def, mapType.Elem()),
+					decoder: createDefaultDecoder(cfg, field.Type(), field.def, mapType.Elem(), defW, defR),
 				}
 			}
 
@@ -283,6 +294,10 @@ func decoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 			name:    field.Name(),
 			decoder: decoderOfType(cfg, field.Type(), mapType.Elem()),
 		}
+	}
+
+	if err := defW.Flush(); err != nil {
+		return &errorDecoder{err: fmt.Errorf("decode default: %w", err)}
 	}
 
 	return &recordMapDecoder{
