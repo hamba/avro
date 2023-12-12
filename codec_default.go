@@ -10,17 +10,10 @@ import (
 func createDefaultDecoder(cfg *frozenConfig, field *Field, typ reflect2.Type) ValDecoder {
 	fn := func(def any) ([]byte, error) {
 		defaultType := reflect2.TypeOf(def)
-		var defaultEncoder ValEncoder
-		// tmp workaround: codec_union failed to resolve name of struct{} typ
-		if def == nullDefault {
-			defaultEncoder = &nullCodec{}
-		} else {
-			defaultEncoder = encoderOfType(cfg, field.Type(), defaultType)
-		}
+		defaultEncoder := encoderOfType(cfg, field.Type(), defaultType)
 		if defaultType.LikePtr() {
 			defaultEncoder = &onePtrEncoder{defaultEncoder}
 		}
-
 		w := cfg.borrowWriter()
 		defaultEncoder.Encode(reflect2.PtrOf(def), w)
 		if w.Error != nil {
@@ -29,7 +22,6 @@ func createDefaultDecoder(cfg *frozenConfig, field *Field, typ reflect2.Type) Va
 		if err := w.Flush(); err != nil {
 			return nil, err
 		}
-
 		return w.Buffer(), nil
 	}
 

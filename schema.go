@@ -17,7 +17,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
-var nullDefault = struct{}{}
+var nullDefault null = struct{}{}
 
 var (
 	schemaReserved = []string{
