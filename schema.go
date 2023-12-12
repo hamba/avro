@@ -646,7 +646,12 @@ type Field struct {
 	hasDef  bool
 	def     any
 	order   Order
-	action  Action
+
+	// action mainly used when decoding data that lack the field for schema evolution purposes.
+	action Action
+	// encodedDef mainly used when decoding data that lack the field for schema evolution purposes.
+	// Its value remains empty unless the field's encodeDefault function is called.
+	encodedDef []byte
 }
 
 type noDef struct{}
@@ -735,6 +740,25 @@ func (f *Field) Default() any {
 	return f.def
 }
 
+func (f *Field) encodeDefault(encode func(any) ([]byte, error)) ([]byte, error) {
+	if f.encodedDef != nil {
+		return f.encodedDef, nil
+	}
+	if !f.hasDef {
+		return nil, fmt.Errorf("avro: '%s' field must have a non-empty default value", f.name)
+	}
+	if encode == nil {
+		return nil, fmt.Errorf("avro: failed to encode '%s' default value", f.name)
+	}
+	b, err := encode(f.def)
+	if err != nil {
+		return nil, err
+	}
+	f.encodedDef = b
+
+	return f.encodedDef, nil
+}
+
 // Doc returns the documentation of a field.
 func (f *Field) Doc() string {
 	return f.doc
@@ -818,7 +842,7 @@ func NewEnumSchema(name, namespace string, symbols []string, opts ...SchemaOptio
 	}
 	for _, sym := range symbols {
 		if err = validateName(sym); err != nil {
-			return nil, fmt.Errorf("avro: invalid symnol %q", sym)
+			return nil, fmt.Errorf("avro: invalid symbol %q", sym)
 		}
 	}
 
