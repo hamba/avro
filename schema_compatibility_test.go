@@ -487,30 +487,32 @@ func TestSchemaCompatibility_Resolve(t *testing.T) {
 			value:  map[string]any{"a": 10},
 			want:   map[string]any{"a": 10, "b": map[string]any{"a": "foo", "b": "bar"}},
 		},
-		// {
-		// 	name: "Record Writer Field Missing With Record Default 2",
-		// 	reader: `{
-		// 				"type":"record", "name":"test", "namespace": "org.hamba.avro",
-		// 				"fields":[
-		// 					{"name": "a", "type": "int"},
-		// 					{
-		// 						"name": "b",
-		// 						"type": {
-		// 							"type": "record",
-		// 							"name": "test.record",
-		// 							"fields" : [
-		// 								{"name": "a", "type": "string"},
-		// 								{"name": "b", "type": "string"}
-		// 							]
-		// 						},
-		// 						"default":{"a":"foo 2", "b": "bar 2"}
-		// 					}
-		// 				]
-		// 			}`,
-		// 	writer: `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "int"}]}`,
-		// 	value:  map[string]any{"a": 10},
-		// 	want:   map[string]any{"a": 10, "b": map[string]any{"a": "foo 2", "b": "bar 2"}},
-		// },
+		{
+			// assert that we are not mistakenly using the wrong cached decoder.
+			// decoder cache must be aware of fields defaults.
+			name: "Record Writer Field Missing With Record Default 2",
+			reader: `{
+						"type":"record", "name":"test", "namespace": "org.hamba.avro",
+						"fields":[
+							{"name": "a", "type": "int"},
+							{
+								"name": "b",
+								"type": {
+									"type": "record",
+									"name": "test.record",
+									"fields" : [
+										{"name": "a", "type": "string"},
+										{"name": "b", "type": "string"}
+									]
+								},
+								"default":{"a":"foo 2", "b": "bar 2"}
+							}
+						]
+					}`,
+			writer: `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "int"}]}`,
+			value:  map[string]any{"a": 10},
+			want:   map[string]any{"a": 10, "b": map[string]any{"a": "foo 2", "b": "bar 2"}},
+		},
 		{
 			name: "Record Writer Field Missing With Map Default",
 			reader: `{

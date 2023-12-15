@@ -315,6 +315,32 @@ func (f *fingerprinter) FingerprintUsing(typ FingerprintType, stringer fmt.Strin
 	return fingerprint, nil
 }
 
+// cacheFingerprintOf returns a special fingerprint mainly used by decoders cache.
+func cacheFingerprintOf(schema Schema) [32]byte {
+	if s, ok := schema.(interface{ CacheFingerprint() [32]byte }); ok {
+		return s.CacheFingerprint()
+	}
+	return schema.Fingerprint()
+}
+
+type cacheFingerprinter struct {
+	key atomic.Value // [32]byte
+}
+
+func (sf *cacheFingerprinter) fingerprint(data []any) [32]byte {
+	if v := sf.key.Load(); v != nil {
+		return v.([32]byte)
+	}
+
+	b, err := jsoniter.Marshal(data)
+	if err != nil {
+		panic("cache fingerprint: couldn't json marshal receipt data: " + err.Error())
+	}
+	key := sha256.Sum256(b)
+	sf.key.Store(key)
+	return key
+}
+
 type properties struct {
 	props map[string]any
 }
@@ -415,6 +441,7 @@ func WithProps(props map[string]any) SchemaOption {
 type PrimitiveSchema struct {
 	properties
 	fingerprinter
+	cacheFingerprinter
 
 	typ     Type
 	logical LogicalSchema
@@ -482,27 +509,23 @@ func (s *PrimitiveSchema) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// Temporary HACK to allow testing schema resolution logic...
-// a better solution would be to extend decoder cache key.
-type primitiveSchemaFingerprint struct {
-	s *PrimitiveSchema
-}
-
-func (sfp *primitiveSchemaFingerprint) String() string {
-	if sfp.s.actual == "" {
-		return sfp.s.String()
-	}
-	return sfp.s.String() + ":" + string(sfp.s.actual)
-}
-
 // Fingerprint returns the SHA256 fingerprint of the schema.
 func (s *PrimitiveSchema) Fingerprint() [32]byte {
-	return s.fingerprinter.Fingerprint(&primitiveSchemaFingerprint{s: s})
+	return s.fingerprinter.Fingerprint(s)
 }
 
 // FingerprintUsing returns the fingerprint of the schema using the given algorithm or an error.
 func (s *PrimitiveSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
 	return s.fingerprinter.FingerprintUsing(typ, s)
+}
+
+// CacheFingerprint returns a special fingerprint of the schema for caching purposes.
+func (s *PrimitiveSchema) CacheFingerprint() [32]byte {
+	data := []any{s.Fingerprint()}
+	if s.actual != "" {
+		data = append(data, s.actual)
+	}
+	return s.cacheFingerprinter.fingerprint(data)
 }
 
 // Actual returns the actual type of the schema.
@@ -516,7 +539,7 @@ type RecordSchema struct {
 	name
 	properties
 	fingerprinter
-
+	cacheFingerprinter
 	isError bool
 	fields  []*Field
 	doc     string
@@ -633,6 +656,17 @@ func (s *RecordSchema) Fingerprint() [32]byte {
 // FingerprintUsing returns the fingerprint of the schema using the given algorithm or an error.
 func (s *RecordSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
 	return s.fingerprinter.FingerprintUsing(typ, s)
+}
+
+// CacheFingerprint returns a special fingerprint of the schema for caching purposes.
+func (s *RecordSchema) CacheFingerprint() [32]byte {
+	data := []any{s.Fingerprint()}
+	for _, field := range s.fields {
+		if field.Default() != nil {
+			data = append(data, field.Default())
+		}
+	}
+	return s.cacheFingerprinter.fingerprint(data)
 }
 
 // Field is an Avro record type field.
