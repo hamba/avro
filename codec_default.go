@@ -19,9 +19,6 @@ func createDefaultDecoder(cfg *frozenConfig, field *Field, typ reflect2.Type) Va
 		if w.Error != nil {
 			return nil, w.Error
 		}
-		if err := w.Flush(); err != nil {
-			return nil, err
-		}
 		return w.Buffer(), nil
 	}
 

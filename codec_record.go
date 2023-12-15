@@ -91,9 +91,9 @@ func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 					field:   sf.Field,
 					decoder: createDefaultDecoder(cfg, field, sf.Field[len(sf.Field)-1].Type()),
 				})
-			}
 
-			continue
+				continue
+			}
 		}
 
 		dec := decoderOfType(cfg, field.Type(), sf.Field[len(sf.Field)-1].Type())
@@ -271,9 +271,8 @@ func decoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 					name:    field.Name(),
 					decoder: createDefaultDecoder(cfg, field, mapType.Elem()),
 				}
+				continue
 			}
-
-			continue
 		}
 
 		fields[i] = recordMapDecoderField{

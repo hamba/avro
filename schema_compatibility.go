@@ -177,11 +177,14 @@ func (c *SchemaCompatibility) match(reader, writer Schema) error {
 
 func (c *SchemaCompatibility) checkSchemaName(reader, writer NamedSchema) error {
 	if reader.FullName() != writer.FullName() {
-		for _, alias := range reader.Aliases() {
-			if alias == writer.FullName() {
-				return nil
-			}
+		if c.contains(reader.Aliases(), writer.FullName()) {
+			return nil
 		}
+		// for _, alias := range reader.Aliases() {
+		// 	if alias == writer.FullName() {
+		// 		return nil
+		// 	}
+		// }
 		return fmt.Errorf("reader schema %s and writer schema %s  names do not match", reader.FullName(), writer.FullName())
 	}
 
@@ -255,17 +258,13 @@ func (c *SchemaCompatibility) getField(a []*Field, f *Field, optFns ...func(*get
 			return field, true
 		}
 		if opt.fieldAlias {
-			for _, alias := range f.Aliases() {
-				if field.Name() == alias {
-					return field, true
-				}
+			if c.contains(f.Aliases(), field.Name()) {
+				return field, true
 			}
 		}
 		if opt.elemAlias {
-			for _, alias := range field.Aliases() {
-				if f.Name() == alias {
-					return field, true
-				}
+			if c.contains(field.Aliases(), f.Name()) {
+				return field, true
 			}
 		}
 	}
@@ -300,7 +299,6 @@ func (c *SchemaCompatibility) resolve(reader, writer Schema) (Schema, error) {
 				if err != nil {
 					continue
 				}
-
 				return sch, nil
 			}
 
@@ -324,6 +322,8 @@ func (c *SchemaCompatibility) resolve(reader, writer Schema) (Schema, error) {
 			r.actual = writer.Type()
 			return r, nil
 		}
+
+		return nil, fmt.Errorf("failed to resolve composite schema for %s and %s", reader.Type(), writer.Type())
 	}
 
 	if isNative(writer.Type()) {
@@ -351,7 +351,7 @@ func (c *SchemaCompatibility) resolve(reader, writer Schema) (Schema, error) {
 	}
 
 	if writer.Type() == Array {
-		schema, err := c.Resolve(reader.(*ArraySchema).Items(), writer.(*ArraySchema).Items())
+		schema, err := c.resolve(reader.(*ArraySchema).Items(), writer.(*ArraySchema).Items())
 		if err != nil {
 			return nil, err
 		}
@@ -359,7 +359,7 @@ func (c *SchemaCompatibility) resolve(reader, writer Schema) (Schema, error) {
 	}
 
 	if writer.Type() == Map {
-		schema, err := c.Resolve(reader.(*MapSchema).Values(), writer.(*MapSchema).Values())
+		schema, err := c.resolve(reader.(*MapSchema).Values(), writer.(*MapSchema).Values())
 		if err != nil {
 			return nil, err
 		}
@@ -378,40 +378,38 @@ func (c *SchemaCompatibility) resolveRecord(reader, writer Schema) (Schema, erro
 	r := reader.(*RecordSchema)
 
 	fields := make([]*Field, 0)
-	founds := make(map[string]struct{})
+	seen := make(map[string]struct{})
 
 	for _, field := range w.Fields() {
-		if field == nil {
-			continue
-		}
-		f := *field
+		f, _ := NewField(field.Name(), field.Type(), WithAliases(field.aliases), WithOrder(field.order))
+		f.def = field.def
+		f.hasDef = field.hasDef
 		rf, ok := c.getField(r.Fields(), field, func(gfo *getFieldOptions) {
 			gfo.elemAlias = true
 		})
 		if !ok {
 			f.action = FieldDrain
-			fields = append(fields, &f)
+			fields = append(fields, f)
 			continue
 		}
-		ft, err := c.Resolve(rf.Type(), field.Type())
+		ft, err := c.resolve(rf.Type(), f.Type())
 		if err != nil {
 			return nil, err
 		}
 		rf.typ = ft
 		fields = append(fields, rf)
-		founds[rf.Name()] = struct{}{}
+		seen[rf.Name()] = struct{}{}
 	}
 
 	for _, field := range r.Fields() {
-		if field == nil {
+		if _, ok := seen[field.Name()]; ok {
 			continue
 		}
-		if _, ok := founds[field.Name()]; ok {
-			continue
-		}
-		f := *field
+		f, _ := NewField(field.Name(), field.Type(), WithAliases(field.aliases), WithOrder(field.order))
+		f.def = field.def
+		f.hasDef = field.hasDef
 		f.action = FieldSetDefault
-		fields = append(fields, &f)
+		fields = append(fields, f)
 	}
 
 	return NewRecordSchema(r.Name(), r.Namespace(), fields, WithAliases(r.Aliases()))

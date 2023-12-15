@@ -295,15 +295,7 @@ func (d *unionResolvedDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		name := schemaTypeName(schema)
 		obj := map[string]any{}
 
-		rPtr, rTyp, err := dynamicReceiver(schema, r.cfg.resolver)
-		if err != nil {
-			r.ReportError("Read", err.Error())
-			return
-		}
-		decoderOfType(r.cfg, schema, rTyp).Decode(rPtr, r)
-
-		obj[name] = rTyp.UnsafeIndirect(rPtr)
-
+		obj[name] = genericDecode(schema, r)
 		// obj[name] = r.ReadNext(schema)
 
 		*pObj = obj

@@ -277,7 +277,7 @@ func TestSchemaCompatibility_CompatibleUsesCacheWithError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestSchemaCompatibility_ResolveV2(t *testing.T) {
+func TestSchemaCompatibility_Resolve(t *testing.T) {
 	tests := []struct {
 		name   string
 		reader string
@@ -342,6 +342,52 @@ func TestSchemaCompatibility_ResolveV2(t *testing.T) {
 			want:   "foo",
 		},
 		{
+			name:   "Array With Items Promotion",
+			reader: `{"type":"array", "items": "long"}`,
+			writer: `{"type":"array", "items": "int"}`,
+			value:  []any{int32(10), int32(15)},
+			want:   []any{int64(10), int64(15)},
+		},
+		{
+			name:   "Map With Items Promotion",
+			reader: `{"type":"map", "values": "bytes"}`,
+			writer: `{"type":"map", "values": "string"}`,
+			value:  map[string]any{"foo": "bar"},
+			want:   map[string]any{"foo": []byte("bar")},
+		},
+		{
+			name: "Enum With Alias",
+			reader: `{
+				"type": "enum",
+				"name": "test.enum2",
+				"aliases": ["test.enum"],
+				"symbols": ["foo", "bar"]
+			}`,
+			writer: `{
+				"type": "enum",
+				"name": "test.enum",
+				"symbols": ["foo", "bar"]
+			}`,
+			value: "foo",
+			want:  "foo",
+		},
+		{
+			name: "Fixed With Alias",
+			reader: `{
+				"type": "fixed",
+				"name": "test.fixed2",
+				"aliases": ["test.fixed"],
+				"size": 3
+			}`,
+			writer: `{
+				"type": "fixed",
+				"name": "test.fixed",
+				"size": 3
+			}`,
+			value: [3]byte{'f', 'o', 'o'},
+			want:  [3]byte{'f', 'o', 'o'},
+		},
+		{
 			name:   "Union Match",
 			reader: `["int", "long", "string"]`,
 			writer: `["string", "int", "long"]`,
@@ -367,6 +413,13 @@ func TestSchemaCompatibility_ResolveV2(t *testing.T) {
 			writer: `["int"]`,
 			value:  10,
 			want:   10,
+		},
+		{
+			name:   "Record Reader With Alias",
+			reader: `{"type":"record", "name":"test2", "aliases": ["test"], "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "int"}]}`,
+			writer: `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "int"}]}`,
+			value:  map[string]any{"a": 10},
+			want:   map[string]any{"a": 10},
 		},
 		{
 			name:   "Record Reader Field Missing",
@@ -434,6 +487,30 @@ func TestSchemaCompatibility_ResolveV2(t *testing.T) {
 			value:  map[string]any{"a": 10},
 			want:   map[string]any{"a": 10, "b": map[string]any{"a": "foo", "b": "bar"}},
 		},
+		// {
+		// 	name: "Record Writer Field Missing With Record Default 2",
+		// 	reader: `{
+		// 				"type":"record", "name":"test", "namespace": "org.hamba.avro",
+		// 				"fields":[
+		// 					{"name": "a", "type": "int"},
+		// 					{
+		// 						"name": "b",
+		// 						"type": {
+		// 							"type": "record",
+		// 							"name": "test.record",
+		// 							"fields" : [
+		// 								{"name": "a", "type": "string"},
+		// 								{"name": "b", "type": "string"}
+		// 							]
+		// 						},
+		// 						"default":{"a":"foo 2", "b": "bar 2"}
+		// 					}
+		// 				]
+		// 			}`,
+		// 	writer: `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "int"}]}`,
+		// 	value:  map[string]any{"a": 10},
+		// 	want:   map[string]any{"a": 10, "b": map[string]any{"a": "foo 2", "b": "bar 2"}},
+		// },
 		{
 			name: "Record Writer Field Missing With Map Default",
 			reader: `{

@@ -31,8 +31,33 @@ func ConfigTeardown() {
 	DefaultConfig = Config{}.Freeze()
 }
 
-func TestDecoder_DefaultBool(t *testing.T) {
+func TestDecoder_InvalidDefault(t *testing.T) {
+	defer ConfigTeardown()
 
+	data := []byte{0x6, 0x66, 0x6f, 0x6f}
+
+	schema := MustParse(`{
+		"type": "record",
+		"name": "test",
+		"fields" : [
+			{"name": "a", "type": "string"},
+			{"name": "b", "type": "boolean", "default": true}
+		]
+	}`)
+
+	schema.(*RecordSchema).Fields()[1].action = FieldSetDefault
+	// alter default value to force encoding failure
+	schema.(*RecordSchema).fields[1].def = "invalid value"
+
+	dec := NewDecoderForSchema(schema, bytes.NewReader(data))
+
+	var got map[string]any
+	err := dec.Decode(&got)
+
+	require.Error(t, err)
+}
+
+func TestDecoder_DefaultBool(t *testing.T) {
 	defer ConfigTeardown()
 
 	// write schema

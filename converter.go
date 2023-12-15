@@ -72,7 +72,7 @@ func createStringConverter(typ Type) (func(*Reader) string, error) {
 		return func(r *Reader) string {
 			b := r.ReadBytes()
 			// TBD: update go.mod version to go 1.20 minimum
-			// runtime.KeepAlive(b) // TBD: I guess this line is required?
+			// runtime.KeepAlive(b)
 			// return unsafe.String(unsafe.SliceData(b), len(b))
 			return string(b)
 		}, nil
