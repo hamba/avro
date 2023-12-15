@@ -66,7 +66,6 @@ func (w *Writer) WriteVal(schema Schema, val any) {
 
 func (c *frozenConfig) DecoderOf(schema Schema, typ reflect2.Type) ValDecoder {
 	rtype := typ.RType()
-
 	key := cacheFingerprintOf(schema)
 	decoder := c.getDecoderFromCache(key, rtype)
 	if decoder != nil {

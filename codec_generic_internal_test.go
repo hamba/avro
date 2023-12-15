@@ -203,10 +203,19 @@ func TestGenericDecode(t *testing.T) {
 			schema := MustParse(test.schema)
 			r := NewReader(bytes.NewReader(test.data), 10)
 
-			got := r.ReadNext(schema)
+			got := genericDecode(schema, r)
 
 			test.wantErr(t, r.Error)
 			assert.Equal(t, test.want, got)
 		})
 	}
+}
+
+func TestReader_UnsupportedType(t *testing.T) {
+	schema := NewPrimitiveSchema(Type("test"), nil)
+	r := NewReader(bytes.NewReader([]byte{0x01}), 10)
+
+	_ = genericDecode(schema, r)
+
+	assert.Error(t, r.Error)
 }

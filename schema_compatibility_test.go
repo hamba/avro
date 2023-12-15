@@ -638,7 +638,7 @@ func TestSchemaCompatibility_Resolve(t *testing.T) {
 			value:  map[string]any{"a": 10},
 			want: map[string]any{
 				"a": 10,
-				"b": *big.NewRat(1734, 5),
+				"b": big.NewRat(1734, 5),
 			},
 		},
 		{
@@ -665,6 +665,43 @@ func TestSchemaCompatibility_Resolve(t *testing.T) {
 				"b": "bar",
 			},
 		},
+		{
+			name: "Record Writer Field Missing With Ref Default",
+			reader: `{
+				"type": "record",
+				"name": "parent",
+				"namespace": "org.hamba.avro",
+				"fields": [{
+						"name": "a",
+						"type": "int"
+					},
+					{
+						"name": "b",
+						"type": {
+							"type": "record",
+							"name": "test",
+							"fields": [{
+								"name": "a",
+								"type": "long"
+							}]
+						},
+						"default": {"a": 10}
+					},
+					{
+						"name": "c",
+						"type": "test",
+						"default": {"a": 20}
+					}
+				]
+			}`,
+			writer: `{"type":"record", "name":"parent", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "int"}]}`,
+			value:  map[string]any{"a": 10},
+			want: map[string]any{
+				"a": 10,
+				"b": map[string]any{"a": int64(10)},
+				"c": map[string]any{"a": int64(20)},
+			},
+		},
 	}
 
 	for _, test := range tests {
@@ -675,20 +712,14 @@ func TestSchemaCompatibility_Resolve(t *testing.T) {
 			sc := avro.NewSchemaCompatibility()
 
 			b, err := avro.Marshal(w, test.value)
-			if err != nil {
-				t.Fatalf("marshal error%v", err)
-			}
+			assert.NoError(t, err)
 
 			sch, err := sc.Resolve(r, w)
-			if err != nil {
-				t.Fatalf("resolve error %v", err)
-			}
+			assert.NoError(t, err)
 
 			var result any
 			err = avro.Unmarshal(sch, b, &result)
-			if err != nil {
-				t.Fatalf("unmarshal error %v", err)
-			}
+			assert.NoError(t, err)
 
 			assert.Equal(t, test.want, result)
 		})

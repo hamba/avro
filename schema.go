@@ -528,12 +528,6 @@ func (s *PrimitiveSchema) CacheFingerprint() [32]byte {
 	return s.cacheFingerprinter.fingerprint(data)
 }
 
-// Actual returns the actual type of the schema.
-// This field is only presents during write-read schema resolution.
-func (s *PrimitiveSchema) Actual() Type {
-	return s.actual
-}
-
 // RecordSchema is an Avro record type schema.
 type RecordSchema struct {
 	name
@@ -741,11 +735,6 @@ func NewField(name string, typ Schema, opts ...SchemaOption) (*Field, error) {
 // Name returns the name of a field.
 func (f *Field) Name() string {
 	return f.name
-}
-
-// Action returns the action of a field.
-func (f *Field) Action() Action {
-	return f.action
 }
 
 // Aliases return the field aliases.

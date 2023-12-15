@@ -16,8 +16,21 @@ func genericDecode(schema Schema, r *Reader) any {
 		return nil
 	}
 	decoderOfType(r.cfg, schema, rTyp).Decode(rPtr, r)
+	if r.Error != nil {
+		return nil
+	}
+	obj := rTyp.UnsafeIndirect(rPtr)
+	if reflect2.IsNil(obj) {
+		return nil
+	}
 
-	return rTyp.UnsafeIndirect(rPtr)
+	// seems generic reader is not compatible with codec
+	if rTyp.Type1() == ratType {
+		dec := obj.(big.Rat)
+		return &dec
+	}
+
+	return obj
 }
 
 func genericReceiver(schema Schema) (unsafe.Pointer, reflect2.Type, error) {
