@@ -1,6 +1,7 @@
 package avro
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -382,4 +383,201 @@ func TestSchema_FingerprintUsingCaches(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, want, value)
 	assert.Equal(t, want, got)
+}
+
+func TestSchema_IsPromotable(t *testing.T) {
+	tests := []struct {
+		typ    Type
+		wantOk bool
+	}{
+		{
+			typ:    Int,
+			wantOk: true,
+		},
+		{
+			typ:    Long,
+			wantOk: true,
+		},
+		{
+			typ:    Float,
+			wantOk: true,
+		},
+		{
+			typ:    String,
+			wantOk: true,
+		},
+		{
+			typ:    Bytes,
+			wantOk: true,
+		},
+		{
+			typ:    Double,
+			wantOk: false,
+		},
+		{
+			typ:    Boolean,
+			wantOk: false,
+		},
+		{
+			typ:    Null,
+			wantOk: false,
+		},
+	}
+
+	for i, test := range tests {
+		test := test
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			ok := isPromotable(test.typ)
+			assert.Equal(t, test.wantOk, ok)
+		})
+	}
+}
+
+func TestSchema_IsNative(t *testing.T) {
+	tests := []struct {
+		typ    Type
+		wantOk bool
+	}{
+		{
+			typ:    Null,
+			wantOk: true,
+		},
+		{
+			typ:    Boolean,
+			wantOk: true,
+		},
+		{
+			typ:    Int,
+			wantOk: true,
+		},
+		{
+			typ:    Long,
+			wantOk: true,
+		},
+
+		{
+			typ:    Float,
+			wantOk: true,
+		},
+		{
+			typ:    Double,
+			wantOk: true,
+		},
+
+		{
+			typ:    Bytes,
+			wantOk: true,
+		},
+		{
+			typ:    String,
+			wantOk: true,
+		},
+		{
+			typ:    Record,
+			wantOk: false,
+		},
+		{
+			typ:    Array,
+			wantOk: false,
+		},
+		{
+			typ:    Map,
+			wantOk: false,
+		},
+		{
+			typ:    Fixed,
+			wantOk: false,
+		},
+		{
+			typ:    Enum,
+			wantOk: false,
+		},
+		{
+			typ:    Union,
+			wantOk: false,
+		},
+	}
+
+	for i, test := range tests {
+		test := test
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			ok := isNative(test.typ)
+			assert.Equal(t, test.wantOk, ok)
+		})
+	}
+}
+
+func TestSchema_FieldEncodeDefault(t *testing.T) {
+	schema := MustParse(`{
+		"type": "record",
+		"name": "test",
+		"fields" : [
+			{"name": "a", "type": "string", "default": "bar"},
+			{"name": "b", "type": "boolean"}
+		]
+	}`).(*RecordSchema)
+
+	fooEncoder := func(a any) ([]byte, error) {
+		return []byte("foo"), nil
+	}
+	barEncoder := func(a any) ([]byte, error) {
+		return []byte("bar"), nil
+	}
+
+	assert.Equal(t, nil, schema.fields[0].encodedDef.Load())
+
+	_, err := schema.fields[0].encodeDefault(nil)
+	assert.Error(t, err)
+
+	_, err = schema.fields[1].encodeDefault(fooEncoder)
+	assert.Error(t, err)
+
+	def, err := schema.fields[0].encodeDefault(fooEncoder)
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("foo"), def)
+
+	def, err = schema.fields[0].encodeDefault(barEncoder)
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("foo"), def)
+}
+
+func TestSchema_CacheFingerprint(t *testing.T) {
+	t.Run("invalid", func(t *testing.T) {
+		cacheFingerprint := cacheFingerprinter{}
+		assert.Panics(t, func() {
+			cacheFingerprint.fingerprint([]any{func() {}})
+		})
+	})
+
+	t.Run("promoted", func(t *testing.T) {
+		schema := NewPrimitiveSchema(Long, nil)
+		assert.Equal(t, schema.Fingerprint(), schema.CacheFingerprint())
+
+		schema = NewPrimitiveSchema(Long, nil)
+		schema.actual = Int
+		assert.NotEqual(t, schema.Fingerprint(), schema.CacheFingerprint())
+	})
+
+	t.Run("record", func(t *testing.T) {
+		schema1 := MustParse(`{
+			"type": "record",
+			"name": "test",
+			"fields" : [
+				{"name": "a", "type": "string"},
+				{"name": "b", "type": "boolean"}
+			]
+		}`).(*RecordSchema)
+
+		schema2 := MustParse(`{
+			"type": "record",
+			"name": "test2",
+			"fields" : [
+				{"name": "a", "type": "string", "default": "bar"},
+				{"name": "b", "type": "boolean", "default": false}
+			]
+		}`).(*RecordSchema)
+
+		assert.Equal(t, schema1.Fingerprint(), schema1.CacheFingerprint())
+		assert.NotEqual(t, schema1.CacheFingerprint(), schema2.CacheFingerprint())
+	})
 }

@@ -521,11 +521,11 @@ func (s *PrimitiveSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) 
 
 // CacheFingerprint returns a special fingerprint of the schema for caching purposes.
 func (s *PrimitiveSchema) CacheFingerprint() [32]byte {
-	data := []any{s.Fingerprint()}
-	if s.actual != "" {
-		data = append(data, s.actual)
+	if s.actual == "" {
+		return s.Fingerprint()
 	}
-	return s.cacheFingerprinter.fingerprint(data)
+
+	return s.cacheFingerprinter.fingerprint([]any{s.Fingerprint(), s.actual})
 }
 
 // RecordSchema is an Avro record type schema.
@@ -654,12 +654,17 @@ func (s *RecordSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
 
 // CacheFingerprint returns a special fingerprint of the schema for caching purposes.
 func (s *RecordSchema) CacheFingerprint() [32]byte {
-	data := []any{s.Fingerprint()}
+	data := make([]any, 0)
 	for _, field := range s.fields {
 		if field.Default() != nil {
 			data = append(data, field.Default())
 		}
 	}
+	if len(data) == 0 {
+		return s.Fingerprint()
+	}
+
+	data = append(data, s.Fingerprint())
 	return s.cacheFingerprinter.fingerprint(data)
 }
 
@@ -679,7 +684,7 @@ type Field struct {
 	action Action
 	// encodedDef mainly used when decoding data that lack the field for schema evolution purposes.
 	// Its value remains empty unless the field's encodeDefault function is called.
-	encodedDef []byte
+	encodedDef atomic.Value
 }
 
 type noDef struct{}
@@ -764,8 +769,8 @@ func (f *Field) Default() any {
 }
 
 func (f *Field) encodeDefault(encode func(any) ([]byte, error)) ([]byte, error) {
-	if f.encodedDef != nil {
-		return f.encodedDef, nil
+	if v := f.encodedDef.Load(); v != nil {
+		return v.([]byte), nil
 	}
 	if !f.hasDef {
 		return nil, fmt.Errorf("avro: '%s' field must have a non-empty default value", f.name)
@@ -777,9 +782,9 @@ func (f *Field) encodeDefault(encode func(any) ([]byte, error)) ([]byte, error) 
 	if err != nil {
 		return nil, err
 	}
-	f.encodedDef = b
+	f.encodedDef.Store(b)
 
-	return f.encodedDef, nil
+	return b, nil
 }
 
 // Doc returns the documentation of a field.

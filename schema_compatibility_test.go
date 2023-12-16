@@ -3,6 +3,7 @@ package avro_test
 import (
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/hamba/avro/v2"
 	"github.com/stretchr/testify/assert"
@@ -293,6 +294,27 @@ func TestSchemaCompatibility_Resolve(t *testing.T) {
 			want:   int64(10),
 		},
 		{
+			name:   "Int Promote Long Time millis",
+			reader: `{"type":"long","logicalType":"timestamp-millis"}`,
+			writer: `"int"`,
+			value:  5000,
+			want:   time.UnixMilli(5000).UTC(),
+		},
+		{
+			name:   "Int Promote Long Time micros",
+			reader: `{"type":"long","logicalType":"timestamp-micros"}`,
+			writer: `"int"`,
+			value:  5000,
+			want:   time.UnixMicro(5000).UTC(),
+		},
+		{
+			name:   "Int Promote Long Time micros",
+			reader: `{"type":"long","logicalType":"time-micros"}`,
+			writer: `"int"`,
+			value:  5000,
+			want:   5000 * time.Microsecond,
+		},
+		{
 			name:   "Int Promote Float",
 			reader: `"float"`,
 			writer: `"int"`,
@@ -333,6 +355,16 @@ func TestSchemaCompatibility_Resolve(t *testing.T) {
 			writer: `"string"`,
 			value:  "foo",
 			want:   []byte("foo"),
+		},
+		{
+			// I'm not sure about this edge cases;
+			// I took the reverse path and tried to find a Decimal that can be encoded to
+			// a binary that is a valid UTF-8 sequence.
+			name:   "String Promote Bytes With Logical Decimal",
+			reader: `{"type":"bytes","logicalType":"decimal","precision":4,"scale":2}`,
+			writer: `"string"`,
+			value:  "d",
+			want:   big.NewRat(1, 1),
 		},
 		{
 			name:   "Bytes Promote String",
@@ -671,35 +703,49 @@ func TestSchemaCompatibility_Resolve(t *testing.T) {
 				"type": "record",
 				"name": "parent",
 				"namespace": "org.hamba.avro",
-				"fields": [{
-						"name": "a",
-						"type": "int"
-					},
+				"fields": [
 					{
-						"name": "b",
+						"name": "a",
 						"type": {
 							"type": "record",
-							"name": "test",
+							"name": "embed",
+							"namespace": "org.hamba.avro",
 							"fields": [{
 								"name": "a",
 								"type": "long"
 							}]
-						},
-						"default": {"a": 10}
+						}
 					},
 					{
-						"name": "c",
-						"type": "test",
+						"name": "b",
+						"type": "embed",
 						"default": {"a": 20}
 					}
 				]
 			}`,
-			writer: `{"type":"record", "name":"parent", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "int"}]}`,
-			value:  map[string]any{"a": 10},
+			writer: `{
+				"type": "record",
+				"name": "parent",
+				"namespace": "org.hamba.avro",
+				"fields": [
+					{
+						"name": "a",
+						"type": {
+							"type": "record",
+							"name": "embed",
+							"namespace": "org.hamba.avro",
+							"fields": [{
+								"name": "a",
+								"type": "long"
+							}]
+						}
+					}
+				]
+			}`,
+			value: map[string]any{"a": map[string]any{"a": int64(10)}},
 			want: map[string]any{
-				"a": 10,
-				"b": map[string]any{"a": int64(10)},
-				"c": map[string]any{"a": int64(20)},
+				"a": map[string]any{"a": int64(10)},
+				"b": map[string]any{"a": int64(20)},
 			},
 		},
 	}
@@ -724,4 +770,40 @@ func TestSchemaCompatibility_Resolve(t *testing.T) {
 			assert.Equal(t, test.want, result)
 		})
 	}
+}
+
+func TestSchemaCompatibility_ResolveWithRefs(t *testing.T) {
+	sch1 := avro.MustParse(`{
+		"type": "record",
+		"name": "test",
+		"fields" : [
+			{"name": "a", "type": "string"}
+		]
+	}`)
+	sch2 := avro.MustParse(`{
+		"type": "record",
+		"name": "test",
+		"fields" : [
+			{"name": "a", "type": "bytes"}
+		]
+	}`)
+
+	r := avro.NewRefSchema(sch1.(*avro.RecordSchema))
+	w := avro.NewRefSchema(sch2.(*avro.RecordSchema))
+
+	sc := avro.NewSchemaCompatibility()
+
+	value := map[string]any{"a": []byte("foo")}
+	b, err := avro.Marshal(w, value)
+	assert.NoError(t, err)
+
+	sch, err := sc.Resolve(r, w)
+	assert.NoError(t, err)
+
+	var result any
+	err = avro.Unmarshal(sch, b, &result)
+	assert.NoError(t, err)
+
+	want := map[string]any{"a": "foo"}
+	assert.Equal(t, want, result)
 }

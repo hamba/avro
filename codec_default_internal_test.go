@@ -57,6 +57,45 @@ func TestDecoder_InvalidDefault(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestDecoder_DrainField(t *testing.T) {
+	defer ConfigTeardown()
+
+	// write schema
+	// `{
+	// // 	"type": "record",
+	// // 	"name": "test",
+	// // 	"fields" : [
+	// // 		{"name": "a", "type": "string"}
+	// // 	]
+	// // }`
+
+	// {"a": "foo"}
+	data := []byte{0x6, 0x66, 0x6f, 0x6f}
+
+	schema := MustParse(`{
+		"type": "record",
+		"name": "test",
+		"fields" : [
+			{"name": "a", "type": "string"},
+			{"name": "b", "type": "float", "default": 10.45}
+		]
+	}`)
+
+	schema.(*RecordSchema).Fields()[0].action = FieldDrain
+	schema.(*RecordSchema).Fields()[1].action = FieldSetDefault
+
+	type TestRecord struct {
+		A string  `avro:"a"`
+		B float32 `avro:"b"`
+	}
+
+	var got TestRecord
+	err := NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
+
+	require.NoError(t, err)
+	assert.Equal(t, TestRecord{B: 10.45, A: ""}, got)
+}
+
 func TestDecoder_DefaultBool(t *testing.T) {
 	defer ConfigTeardown()
 
@@ -714,5 +753,4 @@ func TestDecoder_DefaultFixed(t *testing.T) {
 		assert.Equal(t, big.NewRat(1734, 5), &got.B)
 		assert.Equal(t, "foo", got.A)
 	})
-
 }

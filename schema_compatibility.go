@@ -180,11 +180,6 @@ func (c *SchemaCompatibility) checkSchemaName(reader, writer NamedSchema) error 
 		if c.contains(reader.Aliases(), writer.FullName()) {
 			return nil
 		}
-		// for _, alias := range reader.Aliases() {
-		// 	if alias == writer.FullName() {
-		// 		return nil
-		// 	}
-		// }
 		return fmt.Errorf("reader schema %s and writer schema %s  names do not match", reader.FullName(), writer.FullName())
 	}
 
@@ -248,9 +243,6 @@ type getFieldOptions struct {
 func (c *SchemaCompatibility) getField(a []*Field, f *Field, optFns ...func(*getFieldOptions)) (*Field, bool) {
 	opt := getFieldOptions{}
 	for _, fn := range optFns {
-		if fn == nil {
-			continue
-		}
 		fn(&opt)
 	}
 	for _, field := range a {
@@ -277,13 +269,6 @@ func (c *SchemaCompatibility) getField(a []*Field, f *Field, optFns ...func(*get
 //
 // It fails if the writer and reader schemas are not compatible.
 func (c *SchemaCompatibility) Resolve(reader, writer Schema) (Schema, error) {
-	if reader.Type() == Ref {
-		reader = reader.(*RefSchema).Schema()
-	}
-	if writer.Type() == Ref {
-		writer = writer.(*RefSchema).Schema()
-	}
-
 	if err := c.compatible(reader, writer); err != nil {
 		return nil, err
 	}
@@ -291,7 +276,15 @@ func (c *SchemaCompatibility) Resolve(reader, writer Schema) (Schema, error) {
 	return c.resolve(reader, writer)
 }
 
+// resolve requires the reader's schema to be already compatible with the writer's.
 func (c *SchemaCompatibility) resolve(reader, writer Schema) (Schema, error) {
+	if reader.Type() == Ref {
+		reader = reader.(*RefSchema).Schema()
+	}
+	if writer.Type() == Ref {
+		writer = writer.(*RefSchema).Schema()
+	}
+
 	if writer.Type() != reader.Type() {
 		if reader.Type() == Union {
 			for _, schema := range reader.(*UnionSchema).Types() {
