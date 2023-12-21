@@ -1,9 +1,13 @@
 package avro
 
 import (
+	"encoding/binary"
 	"errors"
+	"github.com/hamba/avro/v2/internal/mmhash"
+	"golang.org/x/sync/singleflight"
 	"io"
 	"sync"
+	"unsafe"
 
 	"github.com/modern-go/reflect2"
 )
@@ -80,6 +84,13 @@ func (c Config) Freeze() API {
 		},
 	}
 
+	api.processingGroup = new(singleflight.Group)
+	api.processingGroupKeys = &sync.Pool{
+		New: func() any {
+			return make([]byte, 64)
+		},
+	}
+
 	return api
 }
 
@@ -116,6 +127,9 @@ type frozenConfig struct {
 
 	processingDecoderCache sync.Map // map[cacheKey]ValDecoder
 	processingEncoderCache sync.Map // map[cacheKey]ValEncoder
+
+	processingGroup     *singleflight.Group
+	processingGroupKeys *sync.Pool
 
 	readerPool *sync.Pool
 	writerPool *sync.Pool
@@ -280,6 +294,42 @@ func (c *frozenConfig) getProcessingEncoderFromCache(fingerprint [32]byte, rtype
 		return enc.(ValEncoder)
 	}
 	return nil
+}
+
+func (c *frozenConfig) borrowProcessEncoderGroupKey(schema Schema, typ reflect2.Type) (key []byte) {
+	key = c.processingGroupKeys.Get().([]byte)
+	fingerprint := schema.Fingerprint()
+	copy(key[:32], fingerprint[:])
+	binary.LittleEndian.PutUint64(key[32:], uint64(typ.RType()))
+	ref, isRef := schema.(*RefSchema)
+	if isRef {
+		binary.LittleEndian.PutUint64(key[40:], mmhash.Sum64(reflect2.UnsafeCastString(ref.String())))
+	} else {
+		binary.LittleEndian.PutUint64(key[40:], uint64(0))
+	}
+	copy(key[:48], []byte{1})
+	return
+}
+
+func (c *frozenConfig) borrowProcessDecoderGroupKey(schema Schema, typ reflect2.Type) (key []byte) {
+	key = c.processingGroupKeys.Get().([]byte)
+	fingerprint := schema.Fingerprint()
+	copy(key[:32], fingerprint[:])
+	binary.LittleEndian.PutUint64(key[32:], uint64(typ.RType()))
+	ref, isRef := schema.(*RefSchema)
+	if isRef {
+		binary.LittleEndian.PutUint64(key[40:], mmhash.Sum64(reflect2.UnsafeCastString(ref.String())))
+	} else {
+		binary.LittleEndian.PutUint64(key[40:], uint64(0))
+	}
+	copy(key[:48], []byte{2})
+	return
+}
+
+func (c *frozenConfig) returnProcessGroupKey(key []byte) {
+	c.processingGroup.Forget(*(*string)(unsafe.Pointer(&key)))
+	c.processingGroupKeys.Put(key)
+	return
 }
 
 func (c *frozenConfig) getTagKey() string {

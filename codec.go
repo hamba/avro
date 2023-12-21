@@ -64,16 +64,21 @@ func (w *Writer) WriteVal(schema Schema, val any) {
 }
 
 func (c *frozenConfig) DecoderOf(schema Schema, typ reflect2.Type) ValDecoder {
-	rtype := typ.RType()
-	decoder := c.getDecoderFromCache(schema.Fingerprint(), rtype)
-	if decoder != nil {
-		return decoder
-	}
+	processKey := c.borrowProcessDecoderGroupKey(schema, typ)
+	v, _, _ := c.processingGroup.Do(*(*string)(unsafe.Pointer(&processKey)), func() (interface{}, error) {
+		rtype := typ.RType()
+		decoder := c.getDecoderFromCache(schema.Fingerprint(), rtype)
+		if decoder != nil {
+			return decoder, nil
+		}
 
-	ptrType := typ.(*reflect2.UnsafePtrType)
-	decoder = decoderOfType(c, schema, ptrType.Elem())
-	c.addDecoderToCache(schema.Fingerprint(), rtype, decoder)
-	return decoder
+		ptrType := typ.(*reflect2.UnsafePtrType)
+		decoder = decoderOfType(c, schema, ptrType.Elem())
+		c.addDecoderToCache(schema.Fingerprint(), rtype, decoder)
+		return decoder, nil
+	})
+
+	return v.(ValDecoder)
 }
 
 func decoderOfType(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
@@ -120,22 +125,27 @@ func decoderOfType(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecod
 }
 
 func (c *frozenConfig) EncoderOf(schema Schema, typ reflect2.Type) ValEncoder {
-	if typ == nil {
-		typ = reflect2.TypeOf((*null)(nil))
-	}
+	processKey := c.borrowProcessEncoderGroupKey(schema, typ)
+	v, _, _ := c.processingGroup.Do(*(*string)(unsafe.Pointer(&processKey)), func() (interface{}, error) {
+		if typ == nil {
+			typ = reflect2.TypeOf((*null)(nil))
+		}
 
-	rtype := typ.RType()
-	encoder := c.getEncoderFromCache(schema.Fingerprint(), rtype)
-	if encoder != nil {
-		return encoder
-	}
+		rtype := typ.RType()
+		encoder := c.getEncoderFromCache(schema.Fingerprint(), rtype)
+		if encoder != nil {
+			return encoder, nil
+		}
 
-	encoder = encoderOfType(c, schema, typ)
-	if typ.LikePtr() {
-		encoder = &onePtrEncoder{encoder}
-	}
-	c.addEncoderToCache(schema.Fingerprint(), rtype, encoder)
-	return encoder
+		encoder = encoderOfType(c, schema, typ)
+		if typ.LikePtr() {
+			encoder = &onePtrEncoder{encoder}
+		}
+		c.addEncoderToCache(schema.Fingerprint(), rtype, encoder)
+		return encoder, nil
+	})
+	c.returnProcessGroupKey(processKey)
+	return v.(ValEncoder)
 }
 
 type onePtrEncoder struct {
