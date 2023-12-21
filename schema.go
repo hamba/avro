@@ -657,7 +657,7 @@ func (s *RecordSchema) CacheFingerprint() [32]byte {
 	data := make([]any, 0)
 	for _, field := range s.fields {
 		if field.Default() != nil {
-			data = append(data, field.Default())
+			data = append(data, field.Name(), field.Default())
 		}
 	}
 	if len(data) == 0 {
