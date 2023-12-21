@@ -85,11 +85,7 @@ func (c Config) Freeze() API {
 	}
 
 	api.processingGroup = new(singleflight.Group)
-	api.processingGroupKeys = &sync.Pool{
-		New: func() any {
-			return make([]byte, 64)
-		},
-	}
+	api.processingGroupKeys = &sync.Pool{}
 
 	return api
 }
@@ -297,7 +293,12 @@ func (c *frozenConfig) getProcessingEncoderFromCache(fingerprint [32]byte, rtype
 }
 
 func (c *frozenConfig) borrowProcessEncoderGroupKey(schema Schema, typ reflect2.Type) (key []byte) {
-	key = c.processingGroupKeys.Get().([]byte)
+	k := c.processingGroupKeys.Get()
+	if k != nil {
+		key = k.([]byte)
+	} else {
+		key = make([]byte, 64)
+	}
 	fingerprint := schema.Fingerprint()
 	copy(key[:32], fingerprint[:])
 	binary.LittleEndian.PutUint64(key[32:], uint64(typ.RType()))
@@ -312,7 +313,12 @@ func (c *frozenConfig) borrowProcessEncoderGroupKey(schema Schema, typ reflect2.
 }
 
 func (c *frozenConfig) borrowProcessDecoderGroupKey(schema Schema, typ reflect2.Type) (key []byte) {
-	key = c.processingGroupKeys.Get().([]byte)
+	k := c.processingGroupKeys.Get()
+	if k != nil {
+		key = k.([]byte)
+	} else {
+		key = make([]byte, 64)
+	}
 	fingerprint := schema.Fingerprint()
 	copy(key[:32], fingerprint[:])
 	binary.LittleEndian.PutUint64(key[32:], uint64(typ.RType()))
@@ -328,8 +334,7 @@ func (c *frozenConfig) borrowProcessDecoderGroupKey(schema Schema, typ reflect2.
 
 func (c *frozenConfig) returnProcessGroupKey(key []byte) {
 	c.processingGroup.Forget(*(*string)(unsafe.Pointer(&key)))
-	c.processingGroupKeys.Put(key)
-	return
+	c.processingGroupKeys.Put(key[:])
 }
 
 func (c *frozenConfig) getTagKey() string {
