@@ -295,7 +295,7 @@ func (c *frozenConfig) getProcessingEncoderFromCache(fingerprint [32]byte, rtype
 func (c *frozenConfig) borrowProcessEncoderGroupKey(schema Schema, typ reflect2.Type) (key []byte) {
 	k := c.processingGroupKeys.Get()
 	if k != nil {
-		key = k.([]byte)
+		key = *(k.(*[]byte))
 	} else {
 		key = make([]byte, 64)
 	}
@@ -315,7 +315,7 @@ func (c *frozenConfig) borrowProcessEncoderGroupKey(schema Schema, typ reflect2.
 func (c *frozenConfig) borrowProcessDecoderGroupKey(schema Schema, typ reflect2.Type) (key []byte) {
 	k := c.processingGroupKeys.Get()
 	if k != nil {
-		key = k.([]byte)
+		key = *(k.(*[]byte))
 	} else {
 		key = make([]byte, 64)
 	}
@@ -334,7 +334,7 @@ func (c *frozenConfig) borrowProcessDecoderGroupKey(schema Schema, typ reflect2.
 
 func (c *frozenConfig) returnProcessGroupKey(key []byte) {
 	c.processingGroup.Forget(*(*string)(unsafe.Pointer(&key)))
-	c.processingGroupKeys.Put(key[:])
+	c.processingGroupKeys.Put(&key)
 }
 
 func (c *frozenConfig) getTagKey() string {
