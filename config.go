@@ -3,13 +3,13 @@ package avro
 import (
 	"encoding/binary"
 	"errors"
-	"github.com/hamba/avro/v2/internal/mmhash"
-	"golang.org/x/sync/singleflight"
 	"io"
 	"sync"
 	"unsafe"
 
+	"github.com/hamba/avro/v2/internal/mmhash"
 	"github.com/modern-go/reflect2"
+	"golang.org/x/sync/singleflight"
 )
 
 const maxByteSliceSize = 1024 * 1024
