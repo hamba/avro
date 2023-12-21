@@ -3,6 +3,7 @@ package avro
 import (
 	"encoding/binary"
 	"errors"
+	"github.com/hamba/avro/v2/internal/mmhash"
 	"golang.org/x/sync/singleflight"
 	"io"
 	"sync"
@@ -291,11 +292,6 @@ func (c *frozenConfig) getProcessingEncoderFromCache(fingerprint [32]byte, rtype
 	return nil
 }
 
-var (
-	encoderProcessingKeyType = []byte{1}
-	decoderProcessingKeyType = []byte{2}
-)
-
 func (c *frozenConfig) borrowProcessEncoderGroupKey(schema Schema, typ reflect2.Type) (key []byte) {
 	k := c.processingGroupKeys.Get()
 	if k != nil {
@@ -306,7 +302,13 @@ func (c *frozenConfig) borrowProcessEncoderGroupKey(schema Schema, typ reflect2.
 	fingerprint := schema.Fingerprint()
 	copy(key[:32], fingerprint[:])
 	binary.LittleEndian.PutUint64(key[32:], uint64(typ.RType()))
-	copy(key[63:], encoderProcessingKeyType)
+	ref, isRef := schema.(*RefSchema)
+	if isRef {
+		binary.LittleEndian.PutUint64(key[40:], mmhash.Sum64(reflect2.UnsafeCastString(ref.String())))
+	} else {
+		binary.LittleEndian.PutUint64(key[40:], uint64(0))
+	}
+	copy(key[:48], []byte{1})
 	return
 }
 
@@ -320,7 +322,13 @@ func (c *frozenConfig) borrowProcessDecoderGroupKey(schema Schema, typ reflect2.
 	fingerprint := schema.Fingerprint()
 	copy(key[:32], fingerprint[:])
 	binary.LittleEndian.PutUint64(key[32:], uint64(typ.RType()))
-	copy(key[63:], decoderProcessingKeyType)
+	ref, isRef := schema.(*RefSchema)
+	if isRef {
+		binary.LittleEndian.PutUint64(key[40:], mmhash.Sum64(reflect2.UnsafeCastString(ref.String())))
+	} else {
+		binary.LittleEndian.PutUint64(key[40:], uint64(0))
+	}
+	copy(key[:48], []byte{2})
 	return
 }
 
