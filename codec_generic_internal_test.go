@@ -211,7 +211,7 @@ func TestGenericDecode(t *testing.T) {
 	}
 }
 
-func TestReader_UnsupportedType(t *testing.T) {
+func TestGenericDecode_UnsupportedType(t *testing.T) {
 	schema := NewPrimitiveSchema(Type("test"), nil)
 	r := NewReader(bytes.NewReader([]byte{0x01}), 10)
 

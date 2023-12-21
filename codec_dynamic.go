@@ -16,14 +16,12 @@ func (d *efaceDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 	obj := *pObj
 	if obj == nil {
 		*pObj = genericDecode(d.schema, r)
-		// *pObj = r.ReadNext(d.schema)
 		return
 	}
 
 	typ := reflect2.TypeOf(obj)
 	if typ.Kind() != reflect.Ptr {
 		*pObj = genericDecode(d.schema, r)
-		// *pObj = r.ReadNext(d.schema)
 		return
 	}
 
