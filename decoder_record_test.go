@@ -393,3 +393,28 @@ func TestDecoder_RefStruct(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, want, got)
 }
+
+func TestDecoder_RecursiveStructs(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x36, 0x6, 0x66, 0x6f, 0x6f, 0x2, 0x38, 0x6, 0x62, 0x61, 0x72, 0x0}
+	schema := `{
+	"type": "record",
+	"namespace": "tns",
+	"name": "test",
+	"fields" : [
+		{"name": "a", "type": "long"},
+	    {"name": "b", "type": "string"},
+	    {"name": "r", "type": ["null", "tns.test"]}
+	]
+}`
+
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	var got TestRecursiveRecord
+	err = dec.Decode(&got)
+
+	require.NoError(t, err)
+	assert.Equal(t, TestRecursiveRecord{A: 27, B: "foo", R: &TestRecursiveRecord{A: 28, B: "bar"}}, got)
+}
