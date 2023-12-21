@@ -373,34 +373,42 @@ func (c *SchemaCompatibility) resolveRecord(reader, writer Schema) (Schema, erro
 	fields := make([]*Field, 0)
 	seen := make(map[string]struct{})
 
-	for _, field := range w.Fields() {
-		f, _ := NewField(field.Name(), field.Type(), WithAliases(field.aliases), WithOrder(field.order))
-		f.def = field.def
-		f.hasDef = field.hasDef
-		rf, ok := c.getField(r.Fields(), field, func(gfo *getFieldOptions) {
+	for _, wf := range w.Fields() {
+		rf, ok := c.getField(r.Fields(), wf, func(gfo *getFieldOptions) {
 			gfo.elemAlias = true
 		})
 		if !ok {
+			f, _ := NewField(wf.Name(), wf.Type(), WithAliases(wf.aliases), WithOrder(wf.order))
+			// I believe def is read only it can be copied even if it's a like-pointer type;
+			// data race should not occur.
+			f.def = wf.def
+			f.hasDef = wf.hasDef
 			f.action = FieldDrain
 			fields = append(fields, f)
 			continue
 		}
-		ft, err := c.resolve(rf.Type(), f.Type())
+
+		ft, err := c.resolve(rf.Type(), wf.Type())
 		if err != nil {
 			return nil, err
 		}
-		rf.typ = ft
-		fields = append(fields, rf)
+		f, _ := NewField(rf.Name(), ft, WithAliases(rf.aliases), WithOrder(rf.order))
+		f.def = rf.def
+		f.hasDef = rf.hasDef
+		fields = append(fields, f)
+
 		seen[rf.Name()] = struct{}{}
 	}
 
-	for _, field := range r.Fields() {
-		if _, ok := seen[field.Name()]; ok {
+	for _, rf := range r.Fields() {
+		// check if seen in writer's record
+		if _, ok := seen[rf.Name()]; ok {
 			continue
 		}
-		f, _ := NewField(field.Name(), field.Type(), WithAliases(field.aliases), WithOrder(field.order))
-		f.def = field.def
-		f.hasDef = field.hasDef
+
+		f, _ := NewField(rf.Name(), rf.Type(), WithAliases(rf.aliases), WithOrder(rf.order))
+		f.def = rf.def
+		f.hasDef = rf.hasDef
 		f.action = FieldSetDefault
 		fields = append(fields, f)
 	}
