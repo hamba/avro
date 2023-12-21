@@ -294,7 +294,6 @@ func (d *unionResolvedDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		// We cannot resolve this, set it to the map type
 		name := schemaTypeName(schema)
 		obj := map[string]any{}
-		// obj[name] = r.ReadNext(schema)
 		obj[name] = genericDecode(schema, r)
 
 		*pObj = obj
