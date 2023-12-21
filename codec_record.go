@@ -54,6 +54,13 @@ func createEncoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) 
 }
 
 func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
+	processing := cfg.getProcessingDecoderFromCache(schema.Fingerprint(), typ.RType())
+	if processing != nil {
+		return processing
+	}
+	dec := &structDecoder{typ: typ, fields: nil}
+	cfg.addProcessingDecoderToCache(schema.Fingerprint(), typ.RType(), dec)
+
 	rec := schema.(*RecordSchema)
 	structDesc := describeStruct(cfg.getTagKey(), typ)
 
@@ -77,14 +84,14 @@ func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 			continue
 		}
 
-		dec := decoderOfType(cfg, field.Type(), sf.Field[len(sf.Field)-1].Type())
 		fields = append(fields, &structFieldDecoder{
 			field:   sf.Field,
-			decoder: dec,
+			decoder: decoderOfType(cfg, field.Type(), sf.Field[len(sf.Field)-1].Type()),
 		})
 	}
 
-	return &structDecoder{typ: typ, fields: fields}
+	dec.fields = fields
+	return dec
 }
 
 type structFieldDecoder struct {
@@ -134,6 +141,13 @@ func (d *structDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 }
 
 func encoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncoder {
+	processing := cfg.getProcessingEncoderFromCache(schema.Fingerprint(), typ.RType())
+	if processing != nil {
+		return processing
+	}
+	enc := &structEncoder{typ: typ, fields: nil}
+	cfg.addProcessingEncoderToCache(schema.Fingerprint(), typ.RType(), enc)
+
 	rec := schema.(*RecordSchema)
 	structDesc := describeStruct(cfg.getTagKey(), typ)
 
@@ -181,7 +195,9 @@ func encoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEnc
 			encoder:    defaultEncoder,
 		})
 	}
-	return &structEncoder{typ: typ, fields: fields}
+
+	enc.fields = fields
+	return enc
 }
 
 type structFieldEncoder struct {

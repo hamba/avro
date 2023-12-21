@@ -114,6 +114,9 @@ type frozenConfig struct {
 	decoderCache sync.Map // map[cacheKey]ValDecoder
 	encoderCache sync.Map // map[cacheKey]ValEncoder
 
+	processingDecoderCache sync.Map // map[cacheKey]ValDecoder
+	processingEncoderCache sync.Map // map[cacheKey]ValEncoder
+
 	readerPool *sync.Pool
 	writerPool *sync.Pool
 
@@ -240,6 +243,42 @@ func (c *frozenConfig) getEncoderFromCache(fingerprint [32]byte, rtype uintptr) 
 		return enc.(ValEncoder)
 	}
 
+	return nil
+}
+
+func (c *frozenConfig) addProcessingDecoderToCache(fingerprint [32]byte, rtype uintptr, dec ValDecoder) {
+	key := cacheKey{fingerprint: fingerprint, rtype: rtype}
+	c.processingDecoderCache.Store(key, dec)
+}
+
+func (c *frozenConfig) getProcessingDecoderFromCache(fingerprint [32]byte, rtype uintptr) ValDecoder {
+	key := cacheKey{fingerprint: fingerprint, rtype: rtype}
+	if !c.config.DisableCaching {
+		if dec, ok := c.decoderCache.Load(key); ok {
+			return dec.(ValDecoder)
+		}
+	}
+	if dec, ok := c.processingDecoderCache.Load(key); ok {
+		return dec.(ValDecoder)
+	}
+	return nil
+}
+
+func (c *frozenConfig) addProcessingEncoderToCache(fingerprint [32]byte, rtype uintptr, enc ValEncoder) {
+	key := cacheKey{fingerprint: fingerprint, rtype: rtype}
+	c.processingEncoderCache.Store(key, enc)
+}
+
+func (c *frozenConfig) getProcessingEncoderFromCache(fingerprint [32]byte, rtype uintptr) ValEncoder {
+	key := cacheKey{fingerprint: fingerprint, rtype: rtype}
+	if !c.config.DisableCaching {
+		if enc, ok := c.encoderCache.Load(key); ok {
+			return enc.(ValEncoder)
+		}
+	}
+	if enc, ok := c.processingEncoderCache.Load(key); ok {
+		return enc.(ValEncoder)
+	}
 	return nil
 }
 
