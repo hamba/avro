@@ -125,6 +125,9 @@ func decoderOfType(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecod
 }
 
 func (c *frozenConfig) EncoderOf(schema Schema, typ reflect2.Type) ValEncoder {
+	if typ == nil {
+		typ = reflect2.TypeOf((*null)(nil))
+	}
 	processKey := c.borrowProcessEncoderGroupKey(schema, typ)
 	v, _, _ := c.processingGroup.Do(*(*string)(unsafe.Pointer(&processKey)), func() (interface{}, error) {
 		if typ == nil {
