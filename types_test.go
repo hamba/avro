@@ -55,3 +55,9 @@ type TestUnexportedRecord struct {
 	A int64  `avro:"a"`
 	b string `avro:"b"`
 }
+
+type TestRecursiveRecord struct {
+	A int64                `avro:"a"`
+	B string               `avro:"b"`
+	R *TestRecursiveRecord `avro:"r"`
+}

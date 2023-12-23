@@ -15,7 +15,8 @@ func genericDecode(schema Schema, r *Reader) any {
 		r.ReportError("Read", err.Error())
 		return nil
 	}
-	decoderOfType(r.cfg, schema, rTyp).Decode(rPtr, r)
+	dec := r.cfg.processingGroup.processingDecoderOfType(r.cfg, schema, rTyp, decoderOfType)
+	dec.Decode(rPtr, r)
 	if r.Error != nil {
 		return nil
 	}

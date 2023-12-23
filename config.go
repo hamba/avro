@@ -2,10 +2,9 @@ package avro
 
 import (
 	"errors"
+	"github.com/modern-go/reflect2"
 	"io"
 	"sync"
-
-	"github.com/modern-go/reflect2"
 )
 
 const maxByteSliceSize = 1024 * 1024
@@ -80,6 +79,8 @@ func (c Config) Freeze() API {
 		},
 	}
 
+	api.processingGroup = newProcessingGroup()
+
 	return api
 }
 
@@ -113,6 +114,8 @@ type frozenConfig struct {
 
 	decoderCache sync.Map // map[cacheKey]ValDecoder
 	encoderCache sync.Map // map[cacheKey]ValEncoder
+
+	processingGroup *processingGroup
 
 	readerPool *sync.Pool
 	writerPool *sync.Pool

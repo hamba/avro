@@ -7,11 +7,11 @@ import (
 	"github.com/modern-go/reflect2"
 )
 
-func decoderOfPtr(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
+func decoderOfPtr(cfg *frozenConfig, p *processing, schema Schema, typ reflect2.Type) ValDecoder {
 	ptrType := typ.(*reflect2.UnsafePtrType)
 	elemType := ptrType.Elem()
 
-	decoder := decoderOfType(cfg, schema, elemType)
+	decoder := decoderOfType(cfg, p, schema, elemType)
 
 	return &dereferenceDecoder{typ: elemType, decoder: decoder}
 }
@@ -34,11 +34,11 @@ func (d *dereferenceDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 	d.decoder.Decode(*((*unsafe.Pointer)(ptr)), r)
 }
 
-func encoderOfPtr(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncoder {
+func encoderOfPtr(cfg *frozenConfig, p *processing, schema Schema, typ reflect2.Type) ValEncoder {
 	ptrType := typ.(*reflect2.UnsafePtrType)
 	elemType := ptrType.Elem()
 
-	enc := encoderOfType(cfg, schema, elemType)
+	enc := encoderOfType(cfg, p, schema, elemType)
 
 	return &dereferenceEncoder{typ: elemType, encoder: enc}
 }
