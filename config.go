@@ -1,15 +1,10 @@
 package avro
 
 import (
-	"encoding/binary"
 	"errors"
+	"github.com/modern-go/reflect2"
 	"io"
 	"sync"
-	"unsafe"
-
-	"github.com/hamba/avro/v2/internal/mmhash"
-	"github.com/modern-go/reflect2"
-	"golang.org/x/sync/singleflight"
 )
 
 const maxByteSliceSize = 1024 * 1024
@@ -84,8 +79,7 @@ func (c Config) Freeze() API {
 		},
 	}
 
-	api.processingGroup = new(singleflight.Group)
-	api.processingGroupKeys = &sync.Pool{}
+	api.processingGroup = newProcessingGroup()
 
 	return api
 }
@@ -121,11 +115,7 @@ type frozenConfig struct {
 	decoderCache sync.Map // map[cacheKey]ValDecoder
 	encoderCache sync.Map // map[cacheKey]ValEncoder
 
-	processingDecoderCache sync.Map // map[cacheKey]ValDecoder
-	processingEncoderCache sync.Map // map[cacheKey]ValEncoder
-
-	processingGroup     *singleflight.Group
-	processingGroupKeys *sync.Pool
+	processingGroup *processingGroup
 
 	readerPool *sync.Pool
 	writerPool *sync.Pool
@@ -254,87 +244,6 @@ func (c *frozenConfig) getEncoderFromCache(fingerprint [32]byte, rtype uintptr) 
 	}
 
 	return nil
-}
-
-func (c *frozenConfig) addProcessingDecoderToCache(fingerprint [32]byte, rtype uintptr, dec ValDecoder) {
-	key := cacheKey{fingerprint: fingerprint, rtype: rtype}
-	c.processingDecoderCache.Store(key, dec)
-}
-
-func (c *frozenConfig) getProcessingDecoderFromCache(fingerprint [32]byte, rtype uintptr) ValDecoder {
-	key := cacheKey{fingerprint: fingerprint, rtype: rtype}
-	if !c.config.DisableCaching {
-		if dec, ok := c.decoderCache.Load(key); ok {
-			return dec.(ValDecoder)
-		}
-	}
-	if dec, ok := c.processingDecoderCache.Load(key); ok {
-		return dec.(ValDecoder)
-	}
-	return nil
-}
-
-func (c *frozenConfig) addProcessingEncoderToCache(fingerprint [32]byte, rtype uintptr, enc ValEncoder) {
-	key := cacheKey{fingerprint: fingerprint, rtype: rtype}
-	c.processingEncoderCache.Store(key, enc)
-}
-
-func (c *frozenConfig) getProcessingEncoderFromCache(fingerprint [32]byte, rtype uintptr) ValEncoder {
-	key := cacheKey{fingerprint: fingerprint, rtype: rtype}
-	if !c.config.DisableCaching {
-		if enc, ok := c.encoderCache.Load(key); ok {
-			return enc.(ValEncoder)
-		}
-	}
-	if enc, ok := c.processingEncoderCache.Load(key); ok {
-		return enc.(ValEncoder)
-	}
-	return nil
-}
-
-func (c *frozenConfig) borrowProcessEncoderGroupKey(schema Schema, typ reflect2.Type) (key []byte) {
-	k := c.processingGroupKeys.Get()
-	if k != nil {
-		key = *(k.(*[]byte))
-	} else {
-		key = make([]byte, 64)
-	}
-	fingerprint := schema.Fingerprint()
-	copy(key[:32], fingerprint[:])
-	binary.LittleEndian.PutUint64(key[32:], uint64(typ.RType()))
-	ref, isRef := schema.(*RefSchema)
-	if isRef {
-		binary.LittleEndian.PutUint64(key[40:], mmhash.Sum64(reflect2.UnsafeCastString(ref.String())))
-	} else {
-		binary.LittleEndian.PutUint64(key[40:], uint64(0))
-	}
-	copy(key[:48], []byte{1})
-	return
-}
-
-func (c *frozenConfig) borrowProcessDecoderGroupKey(schema Schema, typ reflect2.Type) (key []byte) {
-	k := c.processingGroupKeys.Get()
-	if k != nil {
-		key = *(k.(*[]byte))
-	} else {
-		key = make([]byte, 64)
-	}
-	fingerprint := schema.Fingerprint()
-	copy(key[:32], fingerprint[:])
-	binary.LittleEndian.PutUint64(key[32:], uint64(typ.RType()))
-	ref, isRef := schema.(*RefSchema)
-	if isRef {
-		binary.LittleEndian.PutUint64(key[40:], mmhash.Sum64(reflect2.UnsafeCastString(ref.String())))
-	} else {
-		binary.LittleEndian.PutUint64(key[40:], uint64(0))
-	}
-	copy(key[:48], []byte{2})
-	return
-}
-
-func (c *frozenConfig) returnProcessGroupKey(key []byte) {
-	c.processingGroup.Forget(*(*string)(unsafe.Pointer(&key)))
-	c.processingGroupKeys.Put(&key)
 }
 
 func (c *frozenConfig) getTagKey() string {

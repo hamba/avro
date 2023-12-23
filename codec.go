@@ -64,24 +64,16 @@ func (w *Writer) WriteVal(schema Schema, val any) {
 }
 
 func (c *frozenConfig) DecoderOf(schema Schema, typ reflect2.Type) ValDecoder {
-	processKey := c.borrowProcessDecoderGroupKey(schema, typ)
-	v, _, _ := c.processingGroup.Do(*(*string)(unsafe.Pointer(&processKey)), func() (interface{}, error) {
-		rtype := typ.RType()
-		decoder := c.getDecoderFromCache(schema.Fingerprint(), rtype)
-		if decoder != nil {
-			return decoder, nil
-		}
-
-		ptrType := typ.(*reflect2.UnsafePtrType)
-		decoder = decoderOfType(c, schema, ptrType.Elem())
-		c.addDecoderToCache(schema.Fingerprint(), rtype, decoder)
-		return decoder, nil
-	})
-	c.returnProcessGroupKey(processKey)
-	return v.(ValDecoder)
+	rtype := typ.RType()
+	decoder := c.getDecoderFromCache(schema.Fingerprint(), rtype)
+	if decoder != nil {
+		return decoder
+	}
+	decoder = c.processingGroup.processingDecoderOfType(c, schema, typ, decoderOfType)
+	return decoder
 }
 
-func decoderOfType(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
+func decoderOfType(cfg *frozenConfig, p *processing, schema Schema, typ reflect2.Type) ValDecoder {
 	if dec := createDecoderOfMarshaler(cfg, schema, typ); dec != nil {
 		return dec
 	}
@@ -98,22 +90,22 @@ func decoderOfType(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecod
 		return createDecoderOfNative(schema, typ)
 
 	case Record:
-		return createDecoderOfRecord(cfg, schema, typ)
+		return createDecoderOfRecord(cfg, p, schema, typ)
 
 	case Ref:
-		return decoderOfType(cfg, schema.(*RefSchema).Schema(), typ)
+		return decoderOfType(cfg, p, schema.(*RefSchema).Schema(), typ)
 
 	case Enum:
 		return createDecoderOfEnum(schema, typ)
 
 	case Array:
-		return createDecoderOfArray(cfg, schema, typ)
+		return createDecoderOfArray(cfg, p, schema, typ)
 
 	case Map:
-		return createDecoderOfMap(cfg, schema, typ)
+		return createDecoderOfMap(cfg, p, schema, typ)
 
 	case Union:
-		return createDecoderOfUnion(cfg, schema, typ)
+		return createDecoderOfUnion(cfg, p, schema, typ)
 
 	case Fixed:
 		return createDecoderOfFixed(schema, typ)
@@ -128,27 +120,13 @@ func (c *frozenConfig) EncoderOf(schema Schema, typ reflect2.Type) ValEncoder {
 	if typ == nil {
 		typ = reflect2.TypeOf((*null)(nil))
 	}
-	processKey := c.borrowProcessEncoderGroupKey(schema, typ)
-	v, _, _ := c.processingGroup.Do(*(*string)(unsafe.Pointer(&processKey)), func() (interface{}, error) {
-		if typ == nil {
-			typ = reflect2.TypeOf((*null)(nil))
-		}
-
-		rtype := typ.RType()
-		encoder := c.getEncoderFromCache(schema.Fingerprint(), rtype)
-		if encoder != nil {
-			return encoder, nil
-		}
-
-		encoder = encoderOfType(c, schema, typ)
-		if typ.LikePtr() {
-			encoder = &onePtrEncoder{encoder}
-		}
-		c.addEncoderToCache(schema.Fingerprint(), rtype, encoder)
-		return encoder, nil
-	})
-	c.returnProcessGroupKey(processKey)
-	return v.(ValEncoder)
+	rtype := typ.RType()
+	encoder := c.getEncoderFromCache(schema.Fingerprint(), rtype)
+	if encoder != nil {
+		return encoder
+	}
+	encoder = c.processingGroup.processingEncoderOfType(c, schema, typ, encoderOfType)
+	return encoder
 }
 
 type onePtrEncoder struct {
@@ -159,7 +137,7 @@ func (e *onePtrEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 	e.enc.Encode(noescape(unsafe.Pointer(&ptr)), w)
 }
 
-func encoderOfType(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncoder {
+func encoderOfType(cfg *frozenConfig, p *processing, schema Schema, typ reflect2.Type) ValEncoder {
 	if enc := createEncoderOfMarshaler(cfg, schema, typ); enc != nil {
 		return enc
 	}
@@ -173,22 +151,22 @@ func encoderOfType(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncod
 		return createEncoderOfNative(schema, typ)
 
 	case Record:
-		return createEncoderOfRecord(cfg, schema, typ)
+		return createEncoderOfRecord(cfg, p, schema, typ)
 
 	case Ref:
-		return encoderOfType(cfg, schema.(*RefSchema).Schema(), typ)
+		return encoderOfType(cfg, p, schema.(*RefSchema).Schema(), typ)
 
 	case Enum:
 		return createEncoderOfEnum(schema, typ)
 
 	case Array:
-		return createEncoderOfArray(cfg, schema, typ)
+		return createEncoderOfArray(cfg, p, schema, typ)
 
 	case Map:
-		return createEncoderOfMap(cfg, schema, typ)
+		return createEncoderOfMap(cfg, p, schema, typ)
 
 	case Union:
-		return createEncoderOfUnion(cfg, schema, typ)
+		return createEncoderOfUnion(cfg, p, schema, typ)
 
 	case Fixed:
 		return createEncoderOfFixed(schema, typ)

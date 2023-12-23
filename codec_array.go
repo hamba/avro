@@ -10,26 +10,26 @@ import (
 	"github.com/modern-go/reflect2"
 )
 
-func createDecoderOfArray(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
+func createDecoderOfArray(cfg *frozenConfig, p *processing, schema Schema, typ reflect2.Type) ValDecoder {
 	if typ.Kind() == reflect.Slice {
-		return decoderOfArray(cfg, schema, typ)
+		return decoderOfArray(cfg, p, schema, typ)
 	}
 
 	return &errorDecoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s", typ.String(), schema.Type())}
 }
 
-func createEncoderOfArray(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncoder {
+func createEncoderOfArray(cfg *frozenConfig, p *processing, schema Schema, typ reflect2.Type) ValEncoder {
 	if typ.Kind() == reflect.Slice {
-		return encoderOfArray(cfg, schema, typ)
+		return encoderOfArray(cfg, p, schema, typ)
 	}
 
 	return &errorEncoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s", typ.String(), schema.Type())}
 }
 
-func decoderOfArray(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
+func decoderOfArray(cfg *frozenConfig, p *processing, schema Schema, typ reflect2.Type) ValDecoder {
 	arr := schema.(*ArraySchema)
 	sliceType := typ.(*reflect2.UnsafeSliceType)
-	decoder := decoderOfType(cfg, arr.Items(), sliceType.Elem())
+	decoder := decoderOfType(cfg, p, arr.Items(), sliceType.Elem())
 
 	return &arrayDecoder{typ: sliceType, decoder: decoder}
 }
@@ -68,10 +68,10 @@ func (d *arrayDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 	}
 }
 
-func encoderOfArray(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncoder {
+func encoderOfArray(cfg *frozenConfig, p *processing, schema Schema, typ reflect2.Type) ValEncoder {
 	arr := schema.(*ArraySchema)
 	sliceType := typ.(*reflect2.UnsafeSliceType)
-	encoder := encoderOfType(cfg, arr.Items(), sliceType.Elem())
+	encoder := encoderOfType(cfg, p, arr.Items(), sliceType.Elem())
 
 	return &arrayEncoder{
 		blockLength: cfg.getBlockLength(),
