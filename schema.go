@@ -17,7 +17,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
-var nullDefault null = struct{}{}
+var nullDefault = struct{}{}
 
 var (
 	schemaReserved = []string{
@@ -778,7 +778,7 @@ func (f *Field) encodeDefault(encode func(any) ([]byte, error)) ([]byte, error) 
 	if encode == nil {
 		return nil, fmt.Errorf("avro: failed to encode '%s' default value", f.name)
 	}
-	b, err := encode(f.def)
+	b, err := encode(f.Default())
 	if err != nil {
 		return nil, err
 	}

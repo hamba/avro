@@ -10,6 +10,9 @@ import (
 func createDefaultDecoder(cfg *frozenConfig, field *Field, typ reflect2.Type) ValDecoder {
 	fn := func(def any) ([]byte, error) {
 		defaultType := reflect2.TypeOf(def)
+		if defaultType == nil {
+			defaultType = reflect2.TypeOf((*null)(nil))
+		}
 		defaultEncoder := encoderOfType(cfg, field.Type(), defaultType)
 		if defaultType.LikePtr() {
 			defaultEncoder = &onePtrEncoder{defaultEncoder}
