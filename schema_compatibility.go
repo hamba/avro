@@ -383,7 +383,7 @@ func (c *SchemaCompatibility) resolveRecord(reader, writer Schema) (Schema, erro
 			// data race should not occur.
 			f.def = wf.def
 			f.hasDef = wf.hasDef
-			f.action = FieldDrain
+			f.action = FieldIgnore
 			fields = append(fields, f)
 			continue
 		}

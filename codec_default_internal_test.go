@@ -57,7 +57,7 @@ func TestDecoder_InvalidDefault(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestDecoder_DrainField(t *testing.T) {
+func TestDecoder_IgnoreField(t *testing.T) {
 	defer ConfigTeardown()
 
 	// write schema
@@ -81,7 +81,7 @@ func TestDecoder_DrainField(t *testing.T) {
 		]
 	}`)
 
-	schema.(*RecordSchema).Fields()[0].action = FieldDrain
+	schema.(*RecordSchema).Fields()[0].action = FieldIgnore
 	schema.(*RecordSchema).Fields()[1].action = FieldSetDefault
 
 	type TestRecord struct {

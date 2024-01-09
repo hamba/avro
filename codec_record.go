@@ -60,7 +60,7 @@ func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 	fields := make([]*structFieldDecoder, 0, len(rec.Fields()))
 
 	for _, field := range rec.Fields() {
-		if field.action == FieldDrain {
+		if field.action == FieldIgnore {
 			fields = append(fields, &structFieldDecoder{
 				decoder: createSkipDecoder(field.Type()),
 			})
@@ -256,7 +256,7 @@ func decoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 
 	fields := make([]recordMapDecoderField, len(rec.Fields()))
 	for i, field := range rec.Fields() {
-		if field.action == FieldDrain {
+		if field.action == FieldIgnore {
 			fields[i] = recordMapDecoderField{
 				name:    field.Name(),
 				decoder: createSkipDecoder(field.Type()),

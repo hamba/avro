@@ -100,7 +100,7 @@ type Action string
 
 // Action type constants.
 const (
-	FieldDrain      Action = "drain"
+	FieldIgnore     Action = "ignore"
 	FieldSetDefault Action = "set_default"
 )
 
