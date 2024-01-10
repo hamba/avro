@@ -90,9 +90,8 @@ func isPromotable(typ Type) bool {
 	case Int, Long, Float, String, Bytes:
 		return true
 	default:
+		return false
 	}
-
-	return false
 }
 
 // Action is a field action used during decoding process.
@@ -656,14 +655,13 @@ func (s *RecordSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
 func (s *RecordSchema) CacheFingerprint() [32]byte {
 	data := make([]any, 0)
 	for _, field := range s.fields {
-		if field.HasDefault() {
+		if field.HasDefault() && field.action == FieldSetDefault {
 			data = append(data, field.Name(), field.Default())
 		}
 	}
 	if len(data) == 0 {
 		return s.Fingerprint()
 	}
-
 	data = append(data, s.Fingerprint())
 	return s.cacheFingerprinter.fingerprint(data)
 }
