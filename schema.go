@@ -80,7 +80,7 @@ func isNative(typ Type) bool {
 	case Null, Boolean, Int, Long, Float, Double, Bytes, String:
 		return true
 	default:
-	    return false
+		return false
 	}
 }
 
