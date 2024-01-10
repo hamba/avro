@@ -658,6 +658,9 @@ func (s *RecordSchema) CacheFingerprint() [32]byte {
 		if field.HasDefault() && field.action == FieldSetDefault {
 			data = append(data, field.Name(), field.Default())
 		}
+		if field.action == FieldIgnore {
+			data = append(data, field.Name()+string(FieldIgnore))
+		}
 	}
 	if len(data) == 0 {
 		return s.Fingerprint()
