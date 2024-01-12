@@ -2,6 +2,7 @@ package avro
 
 import (
 	"fmt"
+	"unsafe"
 
 	"github.com/modern-go/reflect2"
 )
@@ -71,10 +72,10 @@ func createStringConverter(typ Type) (func(*Reader) string, error) {
 	case Bytes:
 		return func(r *Reader) string {
 			b := r.ReadBytes()
-			// TBD: update go.mod version to go 1.20 minimum
-			// runtime.KeepAlive(b)
-			// return unsafe.String(unsafe.SliceData(b), len(b))
-			return string(b)
+			if len(b) == 0 {
+				return ""
+			}
+			return *(*string)(unsafe.Pointer(&b))
 		}, nil
 	case String:
 		return func(r *Reader) string { return r.ReadString() }, nil
