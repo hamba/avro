@@ -75,6 +75,33 @@ const (
 	Duration        LogicalType = "duration"
 )
 
+func isNative(typ Type) bool {
+	switch typ {
+	case Null, Boolean, Int, Long, Float, Double, Bytes, String:
+		return true
+	default:
+		return false
+	}
+}
+
+func isPromotable(typ Type) bool {
+	switch typ {
+	case Int, Long, Float, String, Bytes:
+		return true
+	default:
+		return false
+	}
+}
+
+// Action is a field action used during decoding process.
+type Action string
+
+// Action type constants.
+const (
+	FieldIgnore     Action = "ignore"
+	FieldSetDefault Action = "set_default"
+)
+
 // FingerprintType is a fingerprinting algorithm.
 type FingerprintType string
 
@@ -167,6 +194,9 @@ type NamedSchema interface {
 
 	// FullName returns the full qualified name of a schema.
 	FullName() string
+
+	// Aliases returns the full qualified aliases of a schema.
+	Aliases() []string
 }
 
 // LogicalTypeSchema represents a schema that can contain a logical type.
@@ -283,6 +313,32 @@ func (f *fingerprinter) FingerprintUsing(typ FingerprintType, stringer fmt.Strin
 	return fingerprint, nil
 }
 
+// cacheFingerprintOf returns a special fingerprint mainly used by decoders cache.
+func cacheFingerprintOf(schema Schema) [32]byte {
+	if s, ok := schema.(interface{ CacheFingerprint() [32]byte }); ok {
+		return s.CacheFingerprint()
+	}
+	return schema.Fingerprint()
+}
+
+type cacheFingerprinter struct {
+	key atomic.Value // [32]byte
+}
+
+func (sf *cacheFingerprinter) fingerprint(data []any) [32]byte {
+	if v := sf.key.Load(); v != nil {
+		return v.([32]byte)
+	}
+
+	b, err := jsoniter.Marshal(data)
+	if err != nil {
+		panic("cache fingerprint: couldn't json marshal receipt data: " + err.Error())
+	}
+	key := sha256.Sum256(b)
+	sf.key.Store(key)
+	return key
+}
+
 type properties struct {
 	props map[string]any
 }
@@ -383,9 +439,15 @@ func WithProps(props map[string]any) SchemaOption {
 type PrimitiveSchema struct {
 	properties
 	fingerprinter
+	cacheFingerprinter
 
 	typ     Type
 	logical LogicalSchema
+
+	// actual presents the actual type of the encoded value
+	// which can be promoted to schema current type.
+	// It's only used in the context of write-read schema resolution.
+	actual Type
 }
 
 // NewPrimitiveSchema creates a new PrimitiveSchema.
@@ -455,12 +517,21 @@ func (s *PrimitiveSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) 
 	return s.fingerprinter.FingerprintUsing(typ, s)
 }
 
+// CacheFingerprint returns a special fingerprint of the schema for caching purposes.
+func (s *PrimitiveSchema) CacheFingerprint() [32]byte {
+	if s.actual == "" {
+		return s.Fingerprint()
+	}
+
+	return s.cacheFingerprinter.fingerprint([]any{s.Fingerprint(), s.actual})
+}
+
 // RecordSchema is an Avro record type schema.
 type RecordSchema struct {
 	name
 	properties
 	fingerprinter
-
+	cacheFingerprinter
 	isError bool
 	fields  []*Field
 	doc     string
@@ -579,6 +650,24 @@ func (s *RecordSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
 	return s.fingerprinter.FingerprintUsing(typ, s)
 }
 
+// CacheFingerprint returns a special fingerprint of the schema for caching purposes.
+func (s *RecordSchema) CacheFingerprint() [32]byte {
+	data := make([]any, 0)
+	for _, field := range s.fields {
+		if field.HasDefault() && field.action == FieldSetDefault {
+			data = append(data, field.Name(), field.Default())
+		}
+		if field.action == FieldIgnore {
+			data = append(data, field.Name()+string(FieldIgnore))
+		}
+	}
+	if len(data) == 0 {
+		return s.Fingerprint()
+	}
+	data = append(data, s.Fingerprint())
+	return s.cacheFingerprinter.fingerprint(data)
+}
+
 // Field is an Avro record type field.
 type Field struct {
 	properties
@@ -590,6 +679,12 @@ type Field struct {
 	hasDef  bool
 	def     any
 	order   Order
+
+	// action mainly used when decoding data that lack the field for schema evolution purposes.
+	action Action
+	// encodedDef mainly used when decoding data that lack the field for schema evolution purposes.
+	// Its value remains empty unless the field's encodeDefault function is called.
+	encodedDef atomic.Value
 }
 
 type noDef struct{}
@@ -671,6 +766,25 @@ func (f *Field) Default() any {
 	}
 
 	return f.def
+}
+
+func (f *Field) encodeDefault(encode func(any) ([]byte, error)) ([]byte, error) {
+	if v := f.encodedDef.Load(); v != nil {
+		return v.([]byte), nil
+	}
+	if !f.hasDef {
+		return nil, fmt.Errorf("avro: '%s' field must have a non-empty default value", f.name)
+	}
+	if encode == nil {
+		return nil, fmt.Errorf("avro: failed to encode '%s' default value", f.name)
+	}
+	b, err := encode(f.Default())
+	if err != nil {
+		return nil, err
+	}
+	f.encodedDef.Store(b)
+
+	return b, nil
 }
 
 // Doc returns the documentation of a field.
@@ -756,7 +870,7 @@ func NewEnumSchema(name, namespace string, symbols []string, opts ...SchemaOptio
 	}
 	for _, sym := range symbols {
 		if err = validateName(sym); err != nil {
-			return nil, fmt.Errorf("avro: invalid symnol %q", sym)
+			return nil, fmt.Errorf("avro: invalid symbol %q", sym)
 		}
 	}
 
@@ -1363,9 +1477,20 @@ func isValidDefault(schema Schema, def any) (any, bool) {
 			}
 		}
 		return def, found
-	case String, Bytes, Fixed:
+	case String:
 		if _, ok := def.(string); ok {
 			return def, true
+		}
+	case Bytes, Fixed:
+		// Spec: Default values for bytes and fixed fields are JSON strings,
+		// where Unicode code points 0-255 are mapped to unsigned 8-bit byte values 0-255.
+		if d, ok := def.(string); ok {
+			if b, ok := isValidDefaultBytes(d); ok {
+				if schema.Type() == Fixed {
+					return byteSliceToArray(b, schema.(*FixedSchema).Size()), true
+				}
+				return b, true
+			}
 		}
 	case Boolean:
 		if _, ok := def.(bool); ok {
@@ -1477,4 +1602,17 @@ func schemaTypeName(schema Schema) string {
 		sname += "." + string(lt)
 	}
 	return sname
+}
+
+func isValidDefaultBytes(def string) ([]byte, bool) {
+	runes := []rune(def)
+	l := len(runes)
+	b := make([]byte, l)
+	for i := 0; i < l; i++ {
+		if runes[i] < 0 || runes[i] > 255 {
+			return nil, false
+		}
+		b[i] = byte(runes[i])
+	}
+	return b, true
 }

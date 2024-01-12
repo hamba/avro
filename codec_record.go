@@ -58,7 +58,15 @@ func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 	structDesc := describeStruct(cfg.getTagKey(), typ)
 
 	fields := make([]*structFieldDecoder, 0, len(rec.Fields()))
+
 	for _, field := range rec.Fields() {
+		if field.action == FieldIgnore {
+			fields = append(fields, &structFieldDecoder{
+				decoder: createSkipDecoder(field.Type()),
+			})
+			continue
+		}
+
 		sf := structDesc.Fields.Get(field.Name())
 		if sf == nil {
 			for _, alias := range field.Aliases() {
@@ -75,6 +83,17 @@ func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 				decoder: createSkipDecoder(field.Type()),
 			})
 			continue
+		}
+
+		if field.action == FieldSetDefault {
+			if field.hasDef {
+				fields = append(fields, &structFieldDecoder{
+					field:   sf.Field,
+					decoder: createDefaultDecoder(cfg, field, sf.Field[len(sf.Field)-1].Type()),
+				})
+
+				continue
+			}
 		}
 
 		dec := decoderOfType(cfg, field.Type(), sf.Field[len(sf.Field)-1].Type())
@@ -237,6 +256,25 @@ func decoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 
 	fields := make([]recordMapDecoderField, len(rec.Fields()))
 	for i, field := range rec.Fields() {
+		if field.action == FieldIgnore {
+			fields[i] = recordMapDecoderField{
+				name:    field.Name(),
+				decoder: createSkipDecoder(field.Type()),
+				skip:    true,
+			}
+			continue
+		}
+
+		if field.action == FieldSetDefault {
+			if field.hasDef {
+				fields[i] = recordMapDecoderField{
+					name:    field.Name(),
+					decoder: createDefaultDecoder(cfg, field, mapType.Elem()),
+				}
+				continue
+			}
+		}
+
 		fields[i] = recordMapDecoderField{
 			name:    field.Name(),
 			decoder: decoderOfType(cfg, field.Type(), mapType.Elem()),
@@ -253,6 +291,7 @@ func decoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 type recordMapDecoderField struct {
 	name    string
 	decoder ValDecoder
+	skip    bool
 }
 
 type recordMapDecoder struct {
@@ -269,6 +308,9 @@ func (d *recordMapDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 	for _, field := range d.fields {
 		elem := d.elemType.UnsafeNew()
 		field.decoder.Decode(elem, r)
+		if field.skip {
+			continue
+		}
 
 		d.mapType.UnsafeSetIndex(ptr, reflect2.PtrOf(field), elem)
 	}
