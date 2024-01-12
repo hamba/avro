@@ -18,11 +18,17 @@ func createDefaultDecoder(cfg *frozenConfig, field *Field, typ reflect2.Type) Va
 			defaultEncoder = &onePtrEncoder{defaultEncoder}
 		}
 		w := cfg.borrowWriter()
+		defer cfg.returnWriter(w)
+
 		defaultEncoder.Encode(reflect2.PtrOf(def), w)
 		if w.Error != nil {
 			return nil, w.Error
 		}
-		return w.Buffer(), nil
+		b := w.Buffer()
+		data := make([]byte, len(b))
+		copy(data, b)
+
+		return data, nil
 	}
 
 	b, err := field.encodeDefault(fn)
@@ -30,19 +36,22 @@ func createDefaultDecoder(cfg *frozenConfig, field *Field, typ reflect2.Type) Va
 		return &errorDecoder{err: fmt.Errorf("decode default: %w", err)}
 	}
 	return &defaultDecoder{
-		defaultReader: cfg.borrowReader(b),
-		decoder:       decoderOfType(cfg, field.Type(), typ),
+		data:    b,
+		decoder: decoderOfType(cfg, field.Type(), typ),
 	}
 }
 
 type defaultDecoder struct {
-	defaultReader *Reader
-	decoder       ValDecoder
+	data    []byte
+	decoder ValDecoder
 }
 
 // Decode implements ValDecoder.
-func (d *defaultDecoder) Decode(ptr unsafe.Pointer, _ *Reader) {
-	d.decoder.Decode(ptr, d.defaultReader)
+func (d *defaultDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
+	rr := r.cfg.borrowReader(d.data)
+	defer r.cfg.returnReader(rr)
+
+	d.decoder.Decode(ptr, rr)
 }
 
 var _ ValDecoder = &defaultDecoder{}
