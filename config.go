@@ -8,7 +8,7 @@ import (
 	"github.com/modern-go/reflect2"
 )
 
-const maxByteSliceSize = 1024 * 1024
+const defaultMaxByteSliceSize = 1_048_576 // 1 MiB
 
 // DefaultConfig is the default API.
 var DefaultConfig = Config{}.Freeze()
@@ -262,7 +262,7 @@ func (c *frozenConfig) getBlockLength() int {
 func (c *frozenConfig) getMaxByteSliceSize() int {
 	size := c.config.MaxByteSliceSize
 	if size == 0 {
-		return maxByteSliceSize
+		return defaultMaxByteSliceSize
 	}
 	return size
 }
