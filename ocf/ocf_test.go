@@ -311,6 +311,65 @@ func TestDecoder_WithSnappyHandlesInvalidCRC(t *testing.T) {
 	assert.Error(t, dec.Error())
 }
 
+func TestDecoder_WithZStandard(t *testing.T) {
+	unionStr := "union value"
+	want := FullRecord{
+		Strings: []string{"string1", "string2", "string3", "string4", "string5"},
+		Longs:   []int64{1, 2, 3, 4, 5},
+		Enum:    "C",
+		Map: map[string]int{
+			"key1": 1,
+			"key2": 2,
+			"key3": 3,
+			"key4": 4,
+			"key5": 5,
+		},
+		Nullable: &unionStr,
+		Fixed:    [16]byte{0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04},
+		Record: &TestRecord{
+			Long:   1925639126735,
+			String: "I am a test record",
+			Int:    666,
+			Float:  7171.17,
+			Double: 916734926348163.01973408746523,
+			Bool:   true,
+		},
+	}
+
+	f, err := os.Open("testdata/full-zstd.avro")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = f.Close() })
+
+	dec, err := ocf.NewDecoder(f)
+	require.NoError(t, err)
+
+	var count int
+	for dec.HasNext() {
+		count++
+		var got FullRecord
+		err = dec.Decode(&got)
+
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	}
+
+	require.NoError(t, dec.Error())
+	assert.Equal(t, 1, count)
+}
+
+func TestDecoder_WithZStandardHandlesInvalidData(t *testing.T) {
+	f, err := os.Open("testdata/zstd-invalid-data.avro")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = f.Close() })
+
+	dec, err := ocf.NewDecoder(f)
+	require.NoError(t, err)
+
+	dec.HasNext()
+
+	assert.Error(t, dec.Error())
+}
+
 func TestDecoder_DecodeAvroError(t *testing.T) {
 	data := []byte{'O', 'b', 'j', 0x01, 0x01, 0x26, 0x16, 'a', 'v', 'r', 'o', '.', 's', 'c', 'h', 'e', 'm', 'a',
 		0x0c, '"', 'l', 'o', 'n', 'g', '"', 0x00, 0xfb, 0x2b, 0x0f, 0x1a, 0xdd, 0xfd, 0x90, 0x7d, 0x87, 0x12,
@@ -679,6 +738,43 @@ func TestEncoder_EncodeCompressesSnappy(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, 938, buf.Len())
+}
+
+func TestEncoder_EncodeCompressesZStandard(t *testing.T) {
+	unionStr := "union value"
+	record := FullRecord{
+		Strings: []string{"string1", "string2", "string3", "string4", "string5"},
+		Longs:   []int64{1, 2, 3, 4, 5},
+		Enum:    "C",
+		Map: map[string]int{
+			"key1": 1,
+			"key2": 2,
+			"key3": 3,
+			"key4": 4,
+			"key5": 5,
+		},
+		Nullable: &unionStr,
+		Fixed:    [16]byte{0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04},
+		Record: &TestRecord{
+			Long:   1925639126735,
+			String: "I am a test record",
+			Int:    666,
+			Float:  7171.17,
+			Double: 916734926348163.01973408746523,
+			Bool:   true,
+		},
+	}
+
+	buf := &bytes.Buffer{}
+	enc, _ := ocf.NewEncoder(schema, buf, ocf.WithCodec(ocf.ZStandard))
+
+	err := enc.Encode(record)
+	assert.NoError(t, err)
+
+	err = enc.Close()
+
+	require.NoError(t, err)
+	assert.Equal(t, 951, buf.Len())
 }
 
 func TestEncoder_EncodeError(t *testing.T) {

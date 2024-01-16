@@ -10,6 +10,7 @@ import (
 	"io"
 
 	"github.com/golang/snappy"
+	"github.com/klauspost/compress/zstd"
 )
 
 // CodecName represents a compression codec name.
@@ -17,9 +18,10 @@ type CodecName string
 
 // Supported compression codecs.
 const (
-	Null    CodecName = "null"
-	Deflate CodecName = "deflate"
-	Snappy  CodecName = "snappy"
+	Null      CodecName = "null"
+	Deflate   CodecName = "deflate"
+	Snappy    CodecName = "snappy"
+	ZStandard CodecName = "zstandard"
 )
 
 func resolveCodec(name CodecName, lvl int) (Codec, error) {
@@ -32,6 +34,9 @@ func resolveCodec(name CodecName, lvl int) (Codec, error) {
 
 	case Snappy:
 		return &SnappyCodec{}, nil
+
+	case ZStandard:
+		return &ZStandardCodec{}, nil
 
 	default:
 		return nil, fmt.Errorf("unknown codec %s", name)
@@ -119,4 +124,23 @@ func (*SnappyCodec) Encode(b []byte) []byte {
 	binary.BigEndian.PutUint32(dst[len(dst)-4:], crc32.ChecksumIEEE(b))
 
 	return dst
+}
+
+// ZStandardCodec is a zstandard compression codec.
+type ZStandardCodec struct{}
+
+// Decode decodes the given bytes.
+func (*ZStandardCodec) Decode(b []byte) ([]byte, error) {
+	dec, _ := zstd.NewReader(nil)
+	defer dec.Close()
+
+	return dec.DecodeAll(b, nil)
+}
+
+// Encode encodes the given bytes.
+func (*ZStandardCodec) Encode(b []byte) []byte {
+	enc, _ := zstd.NewWriter(nil)
+	defer func() { _ = enc.Close() }()
+
+	return enc.EncodeAll(b, nil)
 }
