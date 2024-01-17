@@ -35,6 +35,7 @@ linters:
     - gocyclo
     - goerr113
     - gomnd
+    - gosmopolitan
     - ireturn
     - nestif
     - nlreturn

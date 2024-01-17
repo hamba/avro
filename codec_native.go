@@ -10,6 +10,7 @@ import (
 	"github.com/modern-go/reflect2"
 )
 
+//nolint:maintidx // Splitting this would not make it simpler.
 func createDecoderOfNative(schema Schema, typ reflect2.Type) ValDecoder {
 	converter := resolveConverter(schema.(*PrimitiveSchema).actual)
 
@@ -120,24 +121,29 @@ func createDecoderOfNative(schema Schema, typ reflect2.Type) ValDecoder {
 		st := schema.Type()
 		ls := getLogicalSchema(schema)
 		lt := getLogicalType(schema)
-		tpy1 := typ.Type1()
-		Istpy1Time := tpy1.ConvertibleTo(timeType)
-		Istpy1Rat := tpy1.ConvertibleTo(ratType)
+		isTime := typ.Type1().ConvertibleTo(timeType)
 		switch {
-		case Istpy1Time && st == Int && lt == Date:
+		case isTime && st == Int && lt == Date:
 			return &dateCodec{}
-
-		case Istpy1Time && st == Long && lt == TimestampMillis:
+		case isTime && st == Long && lt == TimestampMillis:
 			return &timestampMillisCodec{
 				convert: converter.toLong,
 			}
-
-		case Istpy1Time && st == Long && lt == TimestampMicros:
+		case isTime && st == Long && lt == TimestampMicros:
 			return &timestampMicrosCodec{
 				convert: converter.toLong,
 			}
-
-		case Istpy1Rat && st == Bytes && lt == Decimal:
+		case isTime && st == Long && lt == LocalTimestampMillis:
+			return &timestampMillisCodec{
+				local:   true,
+				convert: converter.toLong,
+			}
+		case isTime && st == Long && lt == LocalTimestampMicros:
+			return &timestampMicrosCodec{
+				local:   true,
+				convert: converter.toLong,
+			}
+		case typ.Type1().ConvertibleTo(ratType) && st == Bytes && lt == Decimal:
 			dec := ls.(*DecimalLogicalSchema)
 			return &bytesDecimalCodec{
 				prec: dec.Precision(), scale: dec.Scale(),
@@ -228,13 +234,10 @@ func createEncoderOfNative(schema Schema, typ reflect2.Type) ValEncoder {
 		switch {
 		case st == Int && lt == TimeMillis: // time.Duration
 			return &timeMillisCodec{}
-
 		case st == Long && lt == TimeMicros: // time.Duration
 			return &timeMicrosCodec{}
-
 		case st == Long:
 			return &longCodec[int64]{}
-
 		default:
 			break
 		}
@@ -243,7 +246,6 @@ func createEncoderOfNative(schema Schema, typ reflect2.Type) ValEncoder {
 		switch schema.Type() {
 		case Double:
 			return &float32DoubleCodec{}
-
 		case Float:
 			return &float32Codec{}
 		}
@@ -269,24 +271,22 @@ func createEncoderOfNative(schema Schema, typ reflect2.Type) ValEncoder {
 	case reflect.Struct:
 		st := schema.Type()
 		lt := getLogicalType(schema)
-		tpy1 := typ.Type1()
-		Istpy1Time := tpy1.ConvertibleTo(timeType)
-		Istpy1Rat := tpy1.ConvertibleTo(ratType)
+		isTime := typ.Type1().ConvertibleTo(timeType)
 		switch {
-		case Istpy1Time && st == Int && lt == Date:
+		case isTime && st == Int && lt == Date:
 			return &dateCodec{}
-		case Istpy1Time && st == Long && lt == TimestampMillis:
+		case isTime && st == Long && lt == TimestampMillis:
 			return &timestampMillisCodec{}
-
-		case Istpy1Time && st == Long && lt == TimestampMicros:
+		case isTime && st == Long && lt == TimestampMicros:
 			return &timestampMicrosCodec{}
-
-		case Istpy1Rat && st != Bytes || lt == Decimal:
+		case isTime && st == Long && lt == LocalTimestampMillis:
+			return &timestampMillisCodec{local: true}
+		case isTime && st == Long && lt == LocalTimestampMicros:
+			return &timestampMicrosCodec{local: true}
+		case typ.Type1().ConvertibleTo(ratType) && st != Bytes || lt == Decimal:
 			ls := getLogicalSchema(schema)
 			dec := ls.(*DecimalLogicalSchema)
-
 			return &bytesDecimalCodec{prec: dec.Precision(), scale: dec.Scale()}
-
 		default:
 			break
 		}
@@ -477,6 +477,7 @@ func (c *dateCodec) Encode(ptr unsafe.Pointer, w *Writer) {
 }
 
 type timestampMillisCodec struct {
+	local   bool
 	convert func(*Reader) int64
 }
 
@@ -489,15 +490,31 @@ func (c *timestampMillisCodec) Decode(ptr unsafe.Pointer, r *Reader) {
 	}
 	sec := i / 1e3
 	nsec := (i - sec*1e3) * 1e6
-	*((*time.Time)(ptr)) = time.Unix(sec, nsec).UTC()
+	t := time.Unix(sec, nsec)
+
+	if c.local {
+		// When doing unix time, Go will convert the time from UTC to Local,
+		// changing the time by the number of seconds in the zone offset.
+		// Remove those added seconds.
+		_, offset := t.Zone()
+		t = t.Add(time.Duration(-1*offset) * time.Second)
+		*((*time.Time)(ptr)) = t
+		return
+	}
+	*((*time.Time)(ptr)) = t.UTC()
 }
 
 func (c *timestampMillisCodec) Encode(ptr unsafe.Pointer, w *Writer) {
 	t := *((*time.Time)(ptr))
+	if c.local {
+		t = t.Local()
+		t = time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), time.UTC)
+	}
 	w.WriteLong(t.Unix()*1e3 + int64(t.Nanosecond()/1e6))
 }
 
 type timestampMicrosCodec struct {
+	local   bool
 	convert func(*Reader) int64
 }
 
@@ -510,11 +527,26 @@ func (c *timestampMicrosCodec) Decode(ptr unsafe.Pointer, r *Reader) {
 	}
 	sec := i / 1e6
 	nsec := (i - sec*1e6) * 1e3
-	*((*time.Time)(ptr)) = time.Unix(sec, nsec).UTC()
+	t := time.Unix(sec, nsec)
+
+	if c.local {
+		// When doing unix time, Go will convert the time from UTC to Local,
+		// changing the time by the number of seconds in the zone offset.
+		// Remove those added seconds.
+		_, offset := t.Zone()
+		t = t.Add(time.Duration(-1*offset) * time.Second)
+		*((*time.Time)(ptr)) = t
+		return
+	}
+	*((*time.Time)(ptr)) = t.UTC()
 }
 
 func (c *timestampMicrosCodec) Encode(ptr unsafe.Pointer, w *Writer) {
 	t := *((*time.Time)(ptr))
+	if c.local {
+		t = t.Local()
+		t = time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), time.UTC)
+	}
 	w.WriteLong(t.Unix()*1e6 + int64(t.Nanosecond()/1e3))
 }
 

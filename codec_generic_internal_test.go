@@ -3,7 +3,6 @@ package avro
 import (
 	"bytes"
 	"math/big"
-	"strconv"
 	"testing"
 	"time"
 
@@ -74,6 +73,20 @@ func TestGenericDecode(t *testing.T) {
 			data:    []byte{0x80, 0xCD, 0xB7, 0xA2, 0xEE, 0xC7, 0xCD, 0x05},
 			schema:  `{"type":"long","logicalType":"timestamp-micros"}`,
 			want:    time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC),
+			wantErr: require.NoError,
+		},
+		{
+			name:    "Long Local-Timestamp-Millis",
+			data:    []byte{0x90, 0xB2, 0xAE, 0xC3, 0xEC, 0x5B},
+			schema:  `{"type":"long","logicalType":"local-timestamp-millis"}`,
+			want:    time.Date(2020, 1, 2, 3, 4, 5, 0, time.Local),
+			wantErr: require.NoError,
+		},
+		{
+			name:    "Long Local-Timestamp-Micros",
+			data:    []byte{0x80, 0xCD, 0xB7, 0xA2, 0xEE, 0xC7, 0xCD, 0x05},
+			schema:  `{"type":"long","logicalType":"local-timestamp-micros"}`,
+			want:    time.Date(2020, 1, 2, 3, 4, 5, 0, time.Local),
 			wantErr: require.NoError,
 		},
 		{
@@ -197,9 +210,9 @@ func TestGenericDecode(t *testing.T) {
 		},
 	}
 
-	for i, test := range tests {
+	for _, test := range tests {
 		test := test
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
+		t.Run(test.name, func(t *testing.T) {
 			schema := MustParse(test.schema)
 			r := NewReader(bytes.NewReader(test.data), 10)
 
