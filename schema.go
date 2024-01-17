@@ -919,7 +919,7 @@ func (s *EnumSchema) Symbols() []string {
 }
 
 // Symbol returns the symbol for the given index.
-// It might return the default value in the context of schema read-write resolution.
+// It might return the default value in the context of write-read schema resolution.
 func (s *EnumSchema) Symbol(i int) (string, bool) {
 	symbols := s.symbols
 	// has actual symbols

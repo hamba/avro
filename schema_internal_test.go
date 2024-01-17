@@ -600,3 +600,78 @@ func TestSchema_CacheFingerprint(t *testing.T) {
 		assert.NotEqual(t, schema1.CacheFingerprint(), schema2.CacheFingerprint())
 	})
 }
+
+func TestEnumSchema_GetSymbol(t *testing.T) {
+	tests := []struct {
+		schemaFn func() *EnumSchema
+		idx      int
+		want     any
+		wantOk   bool
+	}{
+		{
+			schemaFn: func() *EnumSchema {
+				enum, _ := NewEnumSchema("foo", "", []string{"BAR"})
+				return enum
+			},
+			idx:    0,
+			wantOk: true,
+			want:   "BAR",
+		},
+		{
+			schemaFn: func() *EnumSchema {
+				enum, _ := NewEnumSchema("foo", "", []string{"BAR"})
+				return enum
+			},
+			idx:    1,
+			wantOk: false,
+		},
+		{
+			schemaFn: func() *EnumSchema {
+				enum, _ := NewEnumSchema("foo", "", []string{"FOO"}, WithDefault("FOO"))
+				return enum
+			},
+			idx:    1,
+			wantOk: false,
+		},
+		{
+			schemaFn: func() *EnumSchema {
+				enum, _ := NewEnumSchema("foo", "", []string{"FOO"})
+				enum.actual = []string{"FOO", "BAR"}
+				return enum
+			},
+			idx:    1,
+			wantOk: false,
+		},
+		{
+			schemaFn: func() *EnumSchema {
+				enum, _ := NewEnumSchema("foo", "", []string{"FOO"}, WithDefault("FOO"))
+				enum.actual = []string{"FOO", "BAR"}
+				return enum
+			},
+			idx:    1,
+			wantOk: true,
+			want:   "FOO",
+		},
+		{
+			schemaFn: func() *EnumSchema {
+				enum, _ := NewEnumSchema("foo", "", []string{"FOO", "BAR"})
+				enum.actual = []string{"FOO"}
+				return enum
+			},
+			idx:    0,
+			wantOk: true,
+			want:   "FOO",
+		},
+	}
+
+	for i, test := range tests {
+		test := test
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			got, ok := test.schemaFn().Symbol(test.idx)
+			assert.Equal(t, test.wantOk, ok)
+			if ok {
+				assert.Equal(t, test.want, got)
+			}
+		})
+	}
+}

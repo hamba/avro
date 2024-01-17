@@ -425,6 +425,22 @@ func TestSchemaCompatibility_Resolve(t *testing.T) {
 			want:  "foo",
 		},
 		{
+			name: "Enum Writer Missing Symbols and Unused Reader Default",
+			reader: `{
+				"type": "enum",
+				"name": "test.enum",
+				"symbols": ["foo", "bar"],
+				"default": "bar"
+			}`,
+			writer: `{
+				"type": "enum",
+				"name": "test.enum",
+				"symbols": ["foo"]
+			}`,
+			value: "foo",
+			want:  "foo",
+		},
+		{
 			name: "Enum With Alias",
 			reader: `{
 				"type": "enum",
