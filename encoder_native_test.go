@@ -501,6 +501,90 @@ func TestEncoder_Time_TimestampMillisOneMicros(t *testing.T) {
 	assert.Equal(t, []byte{0x2}, buf.Bytes())
 }
 
+func TestEncoder_Time_LocalTimestampMillis(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"long","logicalType":"local-timestamp-millis"}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode(time.Date(2020, 1, 2, 3, 4, 5, 6, time.Local))
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x90, 0xB2, 0xAE, 0xC3, 0xEC, 0x5B}, buf.Bytes())
+}
+
+func TestEncoder_Time_LocalTimestampMillisZero(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"long","logicalType":"local-timestamp-millis"}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode(time.Date(1, 1, 1, 0, 0, 0, 0, time.Local))
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0xff, 0xdf, 0xe6, 0xa2, 0xe2, 0xa0, 0x1c}, buf.Bytes())
+}
+
+func TestEncoder_Time_LocalTimestampMillisOneMillis(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"long","logicalType":"local-timestamp-millis"}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode(time.Date(1970, 1, 1, 0, 0, 0, 1e6, time.Local))
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x2}, buf.Bytes())
+}
+
+func TestEncoder_Time_LocalTimestampMicros(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"long","logicalType":"local-timestamp-micros"}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode(time.Date(2020, 1, 2, 3, 4, 5, 6, time.Local))
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x80, 0xCD, 0xB7, 0xA2, 0xEE, 0xC7, 0xCD, 0x05}, buf.Bytes())
+}
+
+func TestEncoder_Time_LocalTimestampMicrosZero(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"long","logicalType":"local-timestamp-micros"}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode(time.Date(1, 1, 1, 0, 0, 0, 0, time.Local))
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0xff, 0xff, 0xdd, 0xf2, 0xdf, 0xff, 0xdf, 0xdc, 0x1}, buf.Bytes())
+}
+
+func TestEncoder_Time_LocalTimestampMicrosOneMicros(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"long","logicalType":"local-timestamp-micros"}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode(time.Date(1970, 1, 1, 0, 0, 0, 1e3, time.Local))
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x2}, buf.Bytes())
+}
+
 func TestEncoder_TimeInvalidSchema(t *testing.T) {
 	defer ConfigTeardown()
 

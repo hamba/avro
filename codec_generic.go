@@ -24,7 +24,8 @@ func genericDecode(schema Schema, r *Reader) any {
 		return nil
 	}
 
-	// seems generic reader is not compatible with codec
+	// Generic reader returns a different result from the
+	// codec in the case of a big.Rat. Handle this.
 	if rTyp.Type1() == ratType {
 		dec := obj.(big.Rat)
 		return &dec
@@ -69,12 +70,16 @@ func genericReceiver(schema Schema) (unsafe.Pointer, reflect2.Type, error) {
 			case TimeMicros:
 				var v time.Duration
 				return unsafe.Pointer(&v), reflect2.TypeOf(v), nil
-
 			case TimestampMillis:
 				var v time.Time
 				return unsafe.Pointer(&v), reflect2.TypeOf(v), nil
-
 			case TimestampMicros:
+				var v time.Time
+				return unsafe.Pointer(&v), reflect2.TypeOf(v), nil
+			case LocalTimestampMillis:
+				var v time.Time
+				return unsafe.Pointer(&v), reflect2.TypeOf(v), nil
+			case LocalTimestampMicros:
 				var v time.Time
 				return unsafe.Pointer(&v), reflect2.TypeOf(v), nil
 			}

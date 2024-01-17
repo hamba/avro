@@ -185,7 +185,9 @@ func parsePrimitiveLogicalType(typ Type, lt string, prec, scale int) LogicalSche
 		(typ == Int && ltyp == TimeMillis) ||
 		(typ == Long && ltyp == TimeMicros) ||
 		(typ == Long && ltyp == TimestampMillis) ||
-		(typ == Long && ltyp == TimestampMicros) {
+		(typ == Long && ltyp == TimestampMicros) ||
+		(typ == Long && ltyp == LocalTimestampMillis) ||
+		(typ == Long && ltyp == LocalTimestampMicros) {
 		return NewPrimitiveLogicalSchema(ltyp)
 	}
 

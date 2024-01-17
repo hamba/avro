@@ -507,6 +507,96 @@ func TestDecoder_Time_TimestampMillisOneMicros(t *testing.T) {
 	assert.Equal(t, time.Date(1970, 1, 1, 0, 0, 0, 1e3, time.UTC), got)
 }
 
+func TestDecoder_Time_LocalTimestampMillis(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x90, 0xB2, 0xAE, 0xC3, 0xEC, 0x5B}
+	schema := `{"type":"long","logicalType":"local-timestamp-millis"}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	var got time.Time
+	err = dec.Decode(&got)
+
+	require.NoError(t, err)
+	assert.Equal(t, time.Date(2020, 1, 2, 3, 4, 5, 0, time.Local), got)
+}
+
+func TestDecoder_Time_LocalTimestampMillisZero(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0xff, 0xdf, 0xe6, 0xa2, 0xe2, 0xa0, 0x1c}
+	schema := `{"type":"long","logicalType":"local-timestamp-millis"}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	var got time.Time
+	err = dec.Decode(&got)
+
+	require.NoError(t, err)
+	assert.Equal(t, time.Date(1, 1, 1, 0, 0, 0, 0, time.Local), got)
+}
+
+func TestDecoder_Time_LocalTimestampMillisOneMillis(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x02}
+	schema := `{"type":"long","logicalType":"local-timestamp-millis"}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	var got time.Time
+	err = dec.Decode(&got)
+
+	require.NoError(t, err)
+	assert.Equal(t, time.Date(1970, 1, 1, 0, 0, 0, 1e6, time.Local), got)
+}
+
+func TestDecoder_Time_LocalTimestampMicros(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x80, 0xCD, 0xB7, 0xA2, 0xEE, 0xC7, 0xCD, 0x05}
+	schema := `{"type":"long","logicalType":"local-timestamp-micros"}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	var got time.Time
+	err = dec.Decode(&got)
+
+	require.NoError(t, err)
+	assert.Equal(t, time.Date(2020, 1, 2, 3, 4, 5, 0, time.Local), got)
+}
+
+func TestDecoder_Time_LocalTimestampMicrosZero(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0xff, 0xff, 0xdd, 0xf2, 0xdf, 0xff, 0xdf, 0xdc, 0x1}
+	schema := `{"type":"long","logicalType":"local-timestamp-micros"}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	var got time.Time
+	err = dec.Decode(&got)
+
+	require.NoError(t, err)
+	assert.Equal(t, time.Date(1, 1, 1, 0, 0, 0, 0, time.Local), got)
+}
+
+func TestDecoder_Time_LocalTimestampMillisOneMicros(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x02}
+	schema := `{"type":"long","logicalType":"local-timestamp-micros"}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	var got time.Time
+	err = dec.Decode(&got)
+
+	require.NoError(t, err)
+	assert.Equal(t, time.Date(1970, 1, 1, 0, 0, 0, 1e3, time.Local), got)
+}
+
 func TestDecoder_TimeInvalidSchema(t *testing.T) {
 	defer ConfigTeardown()
 

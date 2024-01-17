@@ -65,14 +65,16 @@ type LogicalType string
 
 // Schema logical type constants.
 const (
-	Decimal         LogicalType = "decimal"
-	UUID            LogicalType = "uuid"
-	Date            LogicalType = "date"
-	TimeMillis      LogicalType = "time-millis"
-	TimeMicros      LogicalType = "time-micros"
-	TimestampMillis LogicalType = "timestamp-millis"
-	TimestampMicros LogicalType = "timestamp-micros"
-	Duration        LogicalType = "duration"
+	Decimal              LogicalType = "decimal"
+	UUID                 LogicalType = "uuid"
+	Date                 LogicalType = "date"
+	TimeMillis           LogicalType = "time-millis"
+	TimeMicros           LogicalType = "time-micros"
+	TimestampMillis      LogicalType = "timestamp-millis"
+	TimestampMicros      LogicalType = "timestamp-micros"
+	LocalTimestampMillis LogicalType = "local-timestamp-millis"
+	LocalTimestampMicros LogicalType = "local-timestamp-micros"
+	Duration             LogicalType = "duration"
 )
 
 func isNative(typ Type) bool {
