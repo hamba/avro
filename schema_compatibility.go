@@ -149,6 +149,9 @@ func (c *SchemaCompatibility) match(reader, writer Schema) error {
 		}
 
 		if err := c.checkEnumSymbols(r, w); err != nil {
+			if r.HasDefault() {
+				return nil
+			}
 			return err
 		}
 
@@ -324,6 +327,20 @@ func (c *SchemaCompatibility) resolve(reader, writer Schema) (Schema, error) {
 	}
 
 	if writer.Type() == Enum {
+		r := reader.(*EnumSchema)
+		w := writer.(*EnumSchema)
+		if err := c.checkEnumSymbols(r, w); err != nil {
+			if r.HasDefault() {
+				enum, _ := NewEnumSchema(r.Name(), r.Namespace(), r.Symbols(),
+					WithAliases(r.Aliases()),
+					WithDefault(r.Default()),
+				)
+				enum.actual = w.Symbols()
+				return enum, nil
+			}
+
+			return nil, err
+		}
 		return reader, nil
 	}
 

@@ -92,7 +92,31 @@ func TestConfig_ReusesDecoders_WithRecordFieldActions(t *testing.T) {
 
 		assert.NotSame(t, dec1, dec2)
 	})
+}
 
+func TestConfig_ReusesDecoders_WithEnum(t *testing.T) {
+	sch := `{
+		"type": "enum",
+		"name": "test.enum",
+		"symbols": ["foo"],
+		"default": "foo"
+	}`
+	typ := reflect2.TypeOfPtr(new(string))
+
+	api := Config{
+		TagKey:      "test",
+		BlockLength: 2,
+	}.Freeze()
+	cfg := api.(*frozenConfig)
+
+	schema1 := MustParse(sch)
+	schema2 := MustParse(sch)
+	schema2.(*EnumSchema).actual = []string{"foo", "bar"}
+
+	dec1 := cfg.DecoderOf(schema1, typ)
+	dec2 := cfg.DecoderOf(schema2, typ)
+
+	assert.NotSame(t, dec1, dec2)
 }
 
 func TestConfig_DisableCache_DoesNotReuseDecoders(t *testing.T) {

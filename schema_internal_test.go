@@ -558,6 +558,25 @@ func TestSchema_CacheFingerprint(t *testing.T) {
 		assert.NotEqual(t, schema.Fingerprint(), schema.CacheFingerprint())
 	})
 
+	t.Run("enum", func(t *testing.T) {
+		schema1 := MustParse(`{
+			"type": "enum",
+			"name": "test.enum",
+			"symbols": ["foo"]
+		}`).(*EnumSchema)
+
+		schema2 := MustParse(`{
+			"type": "enum",
+			"name": "test.enum",
+			"symbols": ["foo"],
+			"default": "foo"
+			}`).(*EnumSchema)
+		schema2.actual = []string{"boo"}
+
+		assert.Equal(t, schema1.Fingerprint(), schema1.CacheFingerprint())
+		assert.NotEqual(t, schema1.CacheFingerprint(), schema2.CacheFingerprint())
+	})
+
 	t.Run("record", func(t *testing.T) {
 		schema1 := MustParse(`{
 			"type": "record",
