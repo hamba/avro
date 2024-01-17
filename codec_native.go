@@ -10,6 +10,7 @@ import (
 	"github.com/modern-go/reflect2"
 )
 
+//nolint:maintidx // Splitting this would not make it simpler.
 func createDecoderOfNative(schema Schema, typ reflect2.Type) ValDecoder {
 	converter := resolveConverter(schema.(*PrimitiveSchema).actual)
 
