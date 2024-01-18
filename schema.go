@@ -848,11 +848,14 @@ type EnumSchema struct {
 	name
 	properties
 	fingerprinter
+	cacheFingerprinter
 
 	symbols []string
 	def     string
-
-	doc string
+	doc     string
+	// actual presents the actual symbols of the encoded value.
+	// It's only used in the context of write-read schema resolution.
+	actual []string
 }
 
 // NewEnumSchema creates a new enum schema instance.
@@ -917,9 +920,40 @@ func (s *EnumSchema) Symbols() []string {
 	return s.symbols
 }
 
+// Symbol returns the symbol for the given index.
+// It might return the default value in the context of write-read schema resolution.
+func (s *EnumSchema) Symbol(i int) (string, bool) {
+	symbols := s.symbols
+	// has actual symbols
+	hasActual := len(s.actual) > 0
+	if hasActual {
+		symbols = s.actual
+	}
+
+	if i < 0 || i >= len(symbols) {
+		return "", false
+	}
+
+	symbol := symbols[i]
+
+	if hasActual && !hasSymbol(s.symbols, symbol) {
+		if !s.HasDefault() {
+			return "", false
+		}
+		return s.Default(), true
+	}
+
+	return symbol, true
+}
+
 // Default returns the default of an enum or an empty string.
 func (s *EnumSchema) Default() string {
 	return s.def
+}
+
+// HasDefault determines if the schema has a default value.
+func (s *EnumSchema) HasDefault() bool {
+	return s.def != ""
 }
 
 // String returns the canonical form of the schema.
@@ -975,6 +1009,15 @@ func (s *EnumSchema) Fingerprint() [32]byte {
 // FingerprintUsing returns the fingerprint of the schema using the given algorithm or an error.
 func (s *EnumSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
 	return s.fingerprinter.FingerprintUsing(typ, s)
+}
+
+// CacheFingerprint returns a special fingerprint of the schema for caching purposes.
+func (s *EnumSchema) CacheFingerprint() [32]byte {
+	if len(s.actual) == 0 || !s.HasDefault() {
+		return s.Fingerprint()
+	}
+
+	return s.cacheFingerprinter.fingerprint([]any{s.Fingerprint(), s.actual, s.Default()})
 }
 
 // ArraySchema is an Avro array type schema.

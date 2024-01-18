@@ -13,11 +13,11 @@ import (
 func createDecoderOfEnum(schema Schema, typ reflect2.Type) ValDecoder {
 	switch {
 	case typ.Kind() == reflect.String:
-		return &enumCodec{symbols: schema.(*EnumSchema).Symbols()}
+		return &enumCodec{enum: schema.(*EnumSchema)}
 	case typ.Implements(textUnmarshalerType):
-		return &enumTextMarshalerCodec{typ: typ, symbols: schema.(*EnumSchema).Symbols()}
+		return &enumTextMarshalerCodec{typ: typ, enum: schema.(*EnumSchema)}
 	case reflect2.PtrTo(typ).Implements(textUnmarshalerType):
-		return &enumTextMarshalerCodec{typ: typ, symbols: schema.(*EnumSchema).Symbols(), ptr: true}
+		return &enumTextMarshalerCodec{typ: typ, enum: schema.(*EnumSchema), ptr: true}
 	}
 
 	return &errorDecoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s", typ.String(), schema.Type())}
@@ -26,34 +26,35 @@ func createDecoderOfEnum(schema Schema, typ reflect2.Type) ValDecoder {
 func createEncoderOfEnum(schema Schema, typ reflect2.Type) ValEncoder {
 	switch {
 	case typ.Kind() == reflect.String:
-		return &enumCodec{symbols: schema.(*EnumSchema).Symbols()}
+		return &enumCodec{enum: schema.(*EnumSchema)}
 	case typ.Implements(textMarshalerType):
-		return &enumTextMarshalerCodec{typ: typ, symbols: schema.(*EnumSchema).Symbols()}
+		return &enumTextMarshalerCodec{typ: typ, enum: schema.(*EnumSchema)}
 	case reflect2.PtrTo(typ).Implements(textMarshalerType):
-		return &enumTextMarshalerCodec{typ: typ, symbols: schema.(*EnumSchema).Symbols(), ptr: true}
+		return &enumTextMarshalerCodec{typ: typ, enum: schema.(*EnumSchema), ptr: true}
 	}
 
 	return &errorEncoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s", typ.String(), schema.Type())}
 }
 
 type enumCodec struct {
-	symbols []string
+	enum *EnumSchema
 }
 
 func (c *enumCodec) Decode(ptr unsafe.Pointer, r *Reader) {
 	i := int(r.ReadInt())
 
-	if i < 0 || i >= len(c.symbols) {
+	symbol, ok := c.enum.Symbol(i)
+	if !ok {
 		r.ReportError("decode enum symbol", "unknown enum symbol")
 		return
 	}
 
-	*((*string)(ptr)) = c.symbols[i]
+	*((*string)(ptr)) = symbol
 }
 
 func (c *enumCodec) Encode(ptr unsafe.Pointer, w *Writer) {
 	str := *((*string)(ptr))
-	for i, sym := range c.symbols {
+	for i, sym := range c.enum.symbols {
 		if str != sym {
 			continue
 		}
@@ -66,15 +67,16 @@ func (c *enumCodec) Encode(ptr unsafe.Pointer, w *Writer) {
 }
 
 type enumTextMarshalerCodec struct {
-	typ     reflect2.Type
-	symbols []string
-	ptr     bool
+	typ  reflect2.Type
+	enum *EnumSchema
+	ptr  bool
 }
 
 func (c *enumTextMarshalerCodec) Decode(ptr unsafe.Pointer, r *Reader) {
 	i := int(r.ReadInt())
 
-	if i < 0 || i >= len(c.symbols) {
+	symbol, ok := c.enum.Symbol(i)
+	if !ok {
 		r.ReportError("decode enum symbol", "unknown enum symbol")
 		return
 	}
@@ -92,7 +94,7 @@ func (c *enumTextMarshalerCodec) Decode(ptr unsafe.Pointer, r *Reader) {
 		obj = c.typ.UnsafeIndirect(ptr)
 	}
 	unmarshaler := (obj).(encoding.TextUnmarshaler)
-	if err := unmarshaler.UnmarshalText([]byte(c.symbols[i])); err != nil {
+	if err := unmarshaler.UnmarshalText([]byte(symbol)); err != nil {
 		r.ReportError("decode enum text unmarshaler", err.Error())
 	}
 }
@@ -116,7 +118,7 @@ func (c *enumTextMarshalerCodec) Encode(ptr unsafe.Pointer, w *Writer) {
 	}
 
 	str := string(b)
-	for i, sym := range c.symbols {
+	for i, sym := range c.enum.symbols {
 		if str != sym {
 			continue
 		}

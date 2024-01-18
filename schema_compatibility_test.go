@@ -179,6 +179,12 @@ func TestSchemaCompatibility_Compatible(t *testing.T) {
 			wantErr: assert.Error,
 		},
 		{
+			name:    "Enum Reader Missing Symbol With Default",
+			reader:  `{"type":"enum", "name":"test", "namespace": "org.hamba.avro", "symbols":["TEST1"], "default": "TEST1"}`,
+			writer:  `{"type":"enum", "name":"test", "namespace": "org.hamba.avro", "symbols":["TEST1", "TEST2"]}`,
+			wantErr: assert.NoError,
+		},
+		{
 			name:    "Enum Writer Missing Symbol",
 			reader:  `{"type":"enum", "name":"test", "namespace": "org.hamba.avro", "symbols":["TEST1", "TEST2"]}`,
 			writer:  `{"type":"enum", "name":"test", "namespace": "org.hamba.avro", "symbols":["TEST1"]}`,
@@ -386,6 +392,53 @@ func TestSchemaCompatibility_Resolve(t *testing.T) {
 			writer: `{"type":"map", "values": "string"}`,
 			value:  map[string]any{"foo": "bar"},
 			want:   map[string]any{"foo": []byte("bar")},
+		},
+		{
+			name: "Enum Reader Missing Symbols With Default",
+			reader: `{
+				"type": "enum",
+				"name": "test.enum",
+				"symbols": ["foo"],
+				"default": "foo"
+			}`,
+			writer: `{
+				"type": "enum",
+				"name": "test.enum",
+				"symbols": ["foo", "bar"]
+			}`,
+			value: "bar",
+			want:  "foo",
+		},
+		{
+			name: "Enum Writer Missing Symbols",
+			reader: `{
+				"type": "enum",
+				"name": "test.enum",
+				"symbols": ["foo", "bar"]
+			}`,
+			writer: `{
+				"type": "enum",
+				"name": "test.enum",
+				"symbols": ["foo"]
+			}`,
+			value: "foo",
+			want:  "foo",
+		},
+		{
+			name: "Enum Writer Missing Symbols and Unused Reader Default",
+			reader: `{
+				"type": "enum",
+				"name": "test.enum",
+				"symbols": ["foo", "bar"],
+				"default": "bar"
+			}`,
+			writer: `{
+				"type": "enum",
+				"name": "test.enum",
+				"symbols": ["foo"]
+			}`,
+			value: "foo",
+			want:  "foo",
 		},
 		{
 			name: "Enum With Alias",
