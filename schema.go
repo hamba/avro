@@ -77,24 +77,6 @@ const (
 	Duration             LogicalType = "duration"
 )
 
-func isNative(typ Type) bool {
-	switch typ {
-	case Null, Boolean, Int, Long, Float, Double, Bytes, String:
-		return true
-	default:
-		return false
-	}
-}
-
-func isPromotable(typ Type) bool {
-	switch typ {
-	case Int, Long, Float, String, Bytes:
-		return true
-	default:
-		return false
-	}
-}
-
 // Action is a field action used during decoding process.
 type Action string
 
@@ -166,6 +148,11 @@ type Schema interface {
 
 	// FingerprintUsing returns the fingerprint of the schema using the given algorithm or an error.
 	FingerprintUsing(FingerprintType) ([]byte, error)
+
+	// CacheFingerprint returns the unique identity of the schema.
+	// This returns a unique identity for schemas resolved from a writer schema, otherwise it returns
+	// the schemas Fingerprint.
+	CacheFingerprint() [32]byte
 }
 
 // LogicalSchema represents an Avro schema with a logical type.
@@ -315,30 +302,33 @@ func (f *fingerprinter) FingerprintUsing(typ FingerprintType, stringer fmt.Strin
 	return fingerprint, nil
 }
 
-// cacheFingerprintOf returns a special fingerprint mainly used by decoders cache.
-func cacheFingerprintOf(schema Schema) [32]byte {
-	if s, ok := schema.(interface{ CacheFingerprint() [32]byte }); ok {
-		return s.CacheFingerprint()
-	}
-	return schema.Fingerprint()
-}
-
 type cacheFingerprinter struct {
-	key atomic.Value // [32]byte
+	writerFingerprint *[32]byte
+
+	cache atomic.Value // [32]byte
 }
 
-func (sf *cacheFingerprinter) fingerprint(data []any) [32]byte {
-	if v := sf.key.Load(); v != nil {
+// CacheFingerprint returns the SHA256 identity of the schema.
+func (i *cacheFingerprinter) CacheFingerprint(schema Schema, fn func() []byte) [32]byte {
+	if v := i.cache.Load(); v != nil {
 		return v.([32]byte)
 	}
 
-	b, err := jsoniter.Marshal(data)
-	if err != nil {
-		panic("cache fingerprint: couldn't json marshal receipt data: " + err.Error())
+	if i.writerFingerprint == nil {
+		fp := schema.Fingerprint()
+		i.cache.Store(fp)
+		return fp
 	}
-	key := sha256.Sum256(b)
-	sf.key.Store(key)
-	return key
+
+	fp := schema.Fingerprint()
+	d := append([]byte{}, fp[:]...)
+	d = append(d, (*i.writerFingerprint)[:]...)
+	if fn != nil {
+		d = append(d, fn()...)
+	}
+	ident := sha256.Sum256(d)
+	i.cache.Store(ident)
+	return ident
 }
 
 type properties struct {
@@ -397,6 +387,7 @@ type schemaConfig struct {
 	def     any
 	order   Order
 	props   map[string]any
+	wfp     *[32]byte
 }
 
 // SchemaOption is a function that sets a schema option.
@@ -437,6 +428,20 @@ func WithProps(props map[string]any) SchemaOption {
 	}
 }
 
+func withWriterFingerprint(fp [32]byte) SchemaOption {
+	return func(opts *schemaConfig) {
+		opts.wfp = &fp
+	}
+}
+
+func withWriterFingerprintIfResolved(fp [32]byte, isConv bool) SchemaOption {
+	return func(opts *schemaConfig) {
+		if isConv {
+			opts.wfp = &fp
+		}
+	}
+}
+
 // PrimitiveSchema is an Avro primitive type schema.
 type PrimitiveSchema struct {
 	properties
@@ -446,10 +451,9 @@ type PrimitiveSchema struct {
 	typ     Type
 	logical LogicalSchema
 
-	// actual presents the actual type of the encoded value
-	// which can be promoted to schema current type.
+	// encodedType is the type of the encoded value, if it is different from the typ.
 	// It's only used in the context of write-read schema resolution.
-	actual Type
+	encodedType Type
 }
 
 // NewPrimitiveSchema creates a new PrimitiveSchema.
@@ -460,9 +464,10 @@ func NewPrimitiveSchema(t Type, l LogicalSchema, opts ...SchemaOption) *Primitiv
 	}
 
 	return &PrimitiveSchema{
-		properties: newProperties(cfg.props, schemaReserved),
-		typ:        t,
-		logical:    l,
+		properties:         newProperties(cfg.props, schemaReserved),
+		cacheFingerprinter: cacheFingerprinter{writerFingerprint: cfg.wfp},
+		typ:                t,
+		logical:            l,
 	}
 }
 
@@ -519,13 +524,9 @@ func (s *PrimitiveSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) 
 	return s.fingerprinter.FingerprintUsing(typ, s)
 }
 
-// CacheFingerprint returns a special fingerprint of the schema for caching purposes.
+// CacheFingerprint returns unique identity of the schema.
 func (s *PrimitiveSchema) CacheFingerprint() [32]byte {
-	if s.actual == "" {
-		return s.Fingerprint()
-	}
-
-	return s.cacheFingerprinter.fingerprint([]any{s.Fingerprint(), s.actual})
+	return s.cacheFingerprinter.CacheFingerprint(s, nil)
 }
 
 // RecordSchema is an Avro record type schema.
@@ -552,10 +553,11 @@ func NewRecordSchema(name, namespace string, fields []*Field, opts ...SchemaOpti
 	}
 
 	return &RecordSchema{
-		name:       n,
-		properties: newProperties(cfg.props, schemaReserved),
-		fields:     fields,
-		doc:        cfg.doc,
+		name:               n,
+		properties:         newProperties(cfg.props, schemaReserved),
+		cacheFingerprinter: cacheFingerprinter{writerFingerprint: cfg.wfp},
+		fields:             fields,
+		doc:                cfg.doc,
 	}, nil
 }
 
@@ -652,22 +654,19 @@ func (s *RecordSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
 	return s.fingerprinter.FingerprintUsing(typ, s)
 }
 
-// CacheFingerprint returns a special fingerprint of the schema for caching purposes.
+// CacheFingerprint returns unique identity of the schema.
 func (s *RecordSchema) CacheFingerprint() [32]byte {
-	data := make([]any, 0)
-	for _, field := range s.fields {
-		if field.HasDefault() && field.action == FieldSetDefault {
-			data = append(data, field.Name(), field.Default())
+	return s.cacheFingerprinter.CacheFingerprint(s, func() []byte {
+		var defs []any
+		for _, field := range s.fields {
+			if !field.HasDefault() {
+				continue
+			}
+			defs = append(defs, field.Default())
 		}
-		if field.action == FieldIgnore {
-			data = append(data, field.Name()+string(FieldIgnore))
-		}
-	}
-	if len(data) == 0 {
-		return s.Fingerprint()
-	}
-	data = append(data, s.Fingerprint())
-	return s.cacheFingerprinter.fingerprint(data)
+		b, _ := jsoniter.Marshal(defs)
+		return b
+	})
 }
 
 // Field is an Avro record type field.
@@ -853,9 +852,10 @@ type EnumSchema struct {
 	symbols []string
 	def     string
 	doc     string
-	// actual presents the actual symbols of the encoded value.
+
+	// encodedSymbols is the symbols of the encoded value.
 	// It's only used in the context of write-read schema resolution.
-	actual []string
+	encodedSymbols []string
 }
 
 // NewEnumSchema creates a new enum schema instance.
@@ -888,11 +888,12 @@ func NewEnumSchema(name, namespace string, symbols []string, opts ...SchemaOptio
 	}
 
 	return &EnumSchema{
-		name:       n,
-		properties: newProperties(cfg.props, schemaReserved),
-		symbols:    symbols,
-		def:        def,
-		doc:        cfg.doc,
+		name:               n,
+		properties:         newProperties(cfg.props, schemaReserved),
+		cacheFingerprinter: cacheFingerprinter{writerFingerprint: cfg.wfp},
+		symbols:            symbols,
+		def:                def,
+		doc:                cfg.doc,
 	}, nil
 }
 
@@ -923,11 +924,11 @@ func (s *EnumSchema) Symbols() []string {
 // Symbol returns the symbol for the given index.
 // It might return the default value in the context of write-read schema resolution.
 func (s *EnumSchema) Symbol(i int) (string, bool) {
+	resolv := len(s.encodedSymbols) > 0
 	symbols := s.symbols
-	// has actual symbols
-	hasActual := len(s.actual) > 0
-	if hasActual {
-		symbols = s.actual
+	if resolv {
+		// A different set of symbols is encoded.
+		symbols = s.encodedSymbols
 	}
 
 	if i < 0 || i >= len(symbols) {
@@ -935,14 +936,12 @@ func (s *EnumSchema) Symbol(i int) (string, bool) {
 	}
 
 	symbol := symbols[i]
-
-	if hasActual && !hasSymbol(s.symbols, symbol) {
+	if resolv && !hasSymbol(s.symbols, symbol) {
 		if !s.HasDefault() {
 			return "", false
 		}
 		return s.Default(), true
 	}
-
 	return symbol, true
 }
 
@@ -1011,19 +1010,21 @@ func (s *EnumSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
 	return s.fingerprinter.FingerprintUsing(typ, s)
 }
 
-// CacheFingerprint returns a special fingerprint of the schema for caching purposes.
+// CacheFingerprint returns unique identity of the schema.
 func (s *EnumSchema) CacheFingerprint() [32]byte {
-	if len(s.actual) == 0 || !s.HasDefault() {
-		return s.Fingerprint()
-	}
-
-	return s.cacheFingerprinter.fingerprint([]any{s.Fingerprint(), s.actual, s.Default()})
+	return s.cacheFingerprinter.CacheFingerprint(s, func() []byte {
+		if !s.HasDefault() {
+			return []byte{}
+		}
+		return []byte(s.Default())
+	})
 }
 
 // ArraySchema is an Avro array type schema.
 type ArraySchema struct {
 	properties
 	fingerprinter
+	cacheFingerprinter
 
 	items Schema
 }
@@ -1036,8 +1037,9 @@ func NewArraySchema(items Schema, opts ...SchemaOption) *ArraySchema {
 	}
 
 	return &ArraySchema{
-		properties: newProperties(cfg.props, schemaReserved),
-		items:      items,
+		properties:         newProperties(cfg.props, schemaReserved),
+		cacheFingerprinter: cacheFingerprinter{writerFingerprint: cfg.wfp},
+		items:              items,
 	}
 }
 
@@ -1083,10 +1085,16 @@ func (s *ArraySchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
 	return s.fingerprinter.FingerprintUsing(typ, s)
 }
 
+// CacheFingerprint returns unique identity of the schema.
+func (s *ArraySchema) CacheFingerprint() [32]byte {
+	return s.cacheFingerprinter.CacheFingerprint(s, nil)
+}
+
 // MapSchema is an Avro map type schema.
 type MapSchema struct {
 	properties
 	fingerprinter
+	cacheFingerprinter
 
 	values Schema
 }
@@ -1099,8 +1107,9 @@ func NewMapSchema(values Schema, opts ...SchemaOption) *MapSchema {
 	}
 
 	return &MapSchema{
-		properties: newProperties(cfg.props, schemaReserved),
-		values:     values,
+		properties:         newProperties(cfg.props, schemaReserved),
+		cacheFingerprinter: cacheFingerprinter{writerFingerprint: cfg.wfp},
+		values:             values,
 	}
 }
 
@@ -1146,15 +1155,26 @@ func (s *MapSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
 	return s.fingerprinter.FingerprintUsing(typ, s)
 }
 
+// CacheFingerprint returns unique identity of the schema.
+func (s *MapSchema) CacheFingerprint() [32]byte {
+	return s.cacheFingerprinter.CacheFingerprint(s, nil)
+}
+
 // UnionSchema is an Avro union type schema.
 type UnionSchema struct {
 	fingerprinter
+	cacheFingerprinter
 
 	types Schemas
 }
 
 // NewUnionSchema creates a union schema instance.
-func NewUnionSchema(types []Schema) (*UnionSchema, error) {
+func NewUnionSchema(types []Schema, opts ...SchemaOption) (*UnionSchema, error) {
+	var cfg schemaConfig
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
 	seen := map[string]bool{}
 	for _, schema := range types {
 		if schema.Type() == Union {
@@ -1170,7 +1190,8 @@ func NewUnionSchema(types []Schema) (*UnionSchema, error) {
 	}
 
 	return &UnionSchema{
-		types: types,
+		cacheFingerprinter: cacheFingerprinter{writerFingerprint: cfg.wfp},
+		types:              types,
 	}, nil
 }
 
@@ -1234,11 +1255,17 @@ func (s *UnionSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
 	return s.fingerprinter.FingerprintUsing(typ, s)
 }
 
+// CacheFingerprint returns unique identity of the schema.
+func (s *UnionSchema) CacheFingerprint() [32]byte {
+	return s.cacheFingerprinter.CacheFingerprint(s, nil)
+}
+
 // FixedSchema is an Avro fixed type schema.
 type FixedSchema struct {
 	name
 	properties
 	fingerprinter
+	cacheFingerprinter
 
 	size    int
 	logical LogicalSchema
@@ -1262,10 +1289,11 @@ func NewFixedSchema(
 	}
 
 	return &FixedSchema{
-		name:       n,
-		properties: newProperties(cfg.props, schemaReserved),
-		size:       size,
-		logical:    logical,
+		name:               n,
+		properties:         newProperties(cfg.props, schemaReserved),
+		cacheFingerprinter: cacheFingerprinter{writerFingerprint: cfg.wfp},
+		size:               size,
+		logical:            logical,
 	}, nil
 }
 
@@ -1336,6 +1364,11 @@ func (s *FixedSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
 	return s.fingerprinter.FingerprintUsing(typ, s)
 }
 
+// CacheFingerprint returns unique identity of the schema.
+func (s *FixedSchema) CacheFingerprint() [32]byte {
+	return s.cacheFingerprinter.CacheFingerprint(s, nil)
+}
+
 // NullSchema is an Avro null type schema.
 type NullSchema struct {
 	fingerprinter
@@ -1364,6 +1397,11 @@ func (s *NullSchema) Fingerprint() [32]byte {
 // FingerprintUsing returns the fingerprint of the schema using the given algorithm or an error.
 func (s *NullSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
 	return s.fingerprinter.FingerprintUsing(typ, s)
+}
+
+// CacheFingerprint returns unique identity of the schema.
+func (s *NullSchema) CacheFingerprint() [32]byte {
+	return s.Fingerprint()
 }
 
 // RefSchema is a reference to a named Avro schema.
@@ -1406,6 +1444,11 @@ func (s *RefSchema) Fingerprint() [32]byte {
 // FingerprintUsing returns the fingerprint of the schema using the given algorithm or an error.
 func (s *RefSchema) FingerprintUsing(typ FingerprintType) ([]byte, error) {
 	return s.actual.FingerprintUsing(typ)
+}
+
+// CacheFingerprint returns unique identity of the schema.
+func (s *RefSchema) CacheFingerprint() [32]byte {
+	return s.actual.CacheFingerprint()
 }
 
 // PrimitiveLogicalSchema is a logical type with no properties.

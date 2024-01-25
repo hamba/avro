@@ -44,7 +44,7 @@ func TestConfig_ReusesDecoders(t *testing.T) {
 	assert.Same(t, dec1, dec2)
 }
 
-func TestConfig_ReusesDecoders_WithRecordFieldActions(t *testing.T) {
+func TestConfig_ReusesDecoders_WithWriterFingerprint(t *testing.T) {
 	type testObj struct {
 		A int64  `avro:"a"`
 		B string `avro:"b"`
@@ -59,39 +59,21 @@ func TestConfig_ReusesDecoders_WithRecordFieldActions(t *testing.T) {
 	}`
 	typ := reflect2.TypeOfPtr(&testObj{})
 
-	t.Run("set default", func(t *testing.T) {
-		api := Config{
-			TagKey:      "test",
-			BlockLength: 2,
-		}.Freeze()
-		cfg := api.(*frozenConfig)
+	api := Config{
+		TagKey:      "test",
+		BlockLength: 2,
+	}.Freeze()
+	cfg := api.(*frozenConfig)
 
-		schema1 := MustParse(sch)
-		schema2 := MustParse(sch)
-		schema2.(*RecordSchema).Fields()[1].action = FieldSetDefault
+	schema1 := MustParse(sch)
+	schema2 := MustParse(sch)
+	fp := [32]byte{1, 2, 3}
+	schema2.(*RecordSchema).writerFingerprint = &fp
 
-		dec1 := cfg.DecoderOf(schema1, typ)
-		dec2 := cfg.DecoderOf(schema2, typ)
+	dec1 := cfg.DecoderOf(schema1, typ)
+	dec2 := cfg.DecoderOf(schema2, typ)
 
-		assert.NotSame(t, dec1, dec2)
-	})
-
-	t.Run("ignore", func(t *testing.T) {
-		api := Config{
-			TagKey:      "test",
-			BlockLength: 2,
-		}.Freeze()
-		cfg := api.(*frozenConfig)
-
-		schema1 := MustParse(sch)
-		schema1.(*RecordSchema).Fields()[0].action = FieldIgnore
-		schema2 := MustParse(sch)
-
-		dec1 := cfg.DecoderOf(schema1, typ)
-		dec2 := cfg.DecoderOf(schema2, typ)
-
-		assert.NotSame(t, dec1, dec2)
-	})
+	assert.NotSame(t, dec1, dec2)
 }
 
 func TestConfig_ReusesDecoders_WithEnum(t *testing.T) {
@@ -111,7 +93,9 @@ func TestConfig_ReusesDecoders_WithEnum(t *testing.T) {
 
 	schema1 := MustParse(sch)
 	schema2 := MustParse(sch)
-	schema2.(*EnumSchema).actual = []string{"foo", "bar"}
+	schema2.(*EnumSchema).encodedSymbols = []string{"foo", "bar"}
+	fp := schema1.Fingerprint()
+	schema2.(*EnumSchema).writerFingerprint = &fp
 
 	dec1 := cfg.DecoderOf(schema1, typ)
 	dec2 := cfg.DecoderOf(schema2, typ)
