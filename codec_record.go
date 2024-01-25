@@ -256,16 +256,15 @@ func decoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 
 	fields := make([]recordMapDecoderField, len(rec.Fields()))
 	for i, field := range rec.Fields() {
-		if field.action == FieldIgnore {
+		switch field.action {
+		case FieldIgnore:
 			fields[i] = recordMapDecoderField{
 				name:    field.Name(),
 				decoder: createSkipDecoder(field.Type()),
 				skip:    true,
 			}
 			continue
-		}
-
-		if field.action == FieldSetDefault {
+		case FieldSetDefault:
 			if field.hasDef {
 				fields[i] = recordMapDecoderField{
 					name:    field.Name(),
@@ -277,7 +276,7 @@ func decoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 
 		fields[i] = recordMapDecoderField{
 			name:    field.Name(),
-			decoder: decoderOfType(cfg, field.Type(), mapType.Elem()),
+			decoder: newEfaceDecoder(cfg, field.Type()),
 		}
 	}
 
@@ -302,17 +301,17 @@ type recordMapDecoder struct {
 
 func (d *recordMapDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 	if d.mapType.UnsafeIsNil(ptr) {
-		d.mapType.UnsafeSet(ptr, d.mapType.UnsafeMakeMap(0))
+		d.mapType.UnsafeSet(ptr, d.mapType.UnsafeMakeMap(len(d.fields)))
 	}
 
 	for _, field := range d.fields {
-		elem := d.elemType.UnsafeNew()
-		field.decoder.Decode(elem, r)
+		elemPtr := d.elemType.UnsafeNew()
+		field.decoder.Decode(elemPtr, r)
 		if field.skip {
 			continue
 		}
 
-		d.mapType.UnsafeSetIndex(ptr, reflect2.PtrOf(field), elem)
+		d.mapType.UnsafeSetIndex(ptr, reflect2.PtrOf(field), elemPtr)
 	}
 
 	if r.Error != nil && !errors.Is(r.Error, io.EOF) {

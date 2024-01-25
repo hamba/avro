@@ -11,9 +11,8 @@ import (
 )
 
 //nolint:maintidx // Splitting this would not make it simpler.
-func createDecoderOfNative(schema Schema, typ reflect2.Type) ValDecoder {
-	converter := resolveConverter(schema.(*PrimitiveSchema).actual)
-
+func createDecoderOfNative(schema *PrimitiveSchema, typ reflect2.Type) ValDecoder {
+	isConv := schema.actual != ""
 	switch typ.Kind() {
 	case reflect.Bool:
 		if schema.Type() != Boolean {
@@ -61,7 +60,10 @@ func createDecoderOfNative(schema Schema, typ reflect2.Type) ValDecoder {
 		if schema.Type() != Long {
 			break
 		}
-		return &longCodec[uint32]{convert: converter.toLong}
+		if isConv {
+			return &longConvCodec[uint32]{convert: createLongConverter(schema.actual)}
+		}
+		return &longCodec[uint32]{}
 
 	case reflect.Int64:
 		st := schema.Type()
@@ -72,13 +74,14 @@ func createDecoderOfNative(schema Schema, typ reflect2.Type) ValDecoder {
 
 		case st == Long && lt == TimeMicros: // time.Duration
 			return &timeMicrosCodec{
-				convert: converter.toLong,
+				convert: createLongConverter(schema.actual),
 			}
 
 		case st == Long:
-			return &longCodec[int64]{
-				convert: converter.toLong,
+			if isConv {
+				return &longConvCodec[int64]{convert: createLongConverter(schema.actual)}
 			}
+			return &longCodec[int64]{}
 
 		default:
 			break
@@ -88,34 +91,31 @@ func createDecoderOfNative(schema Schema, typ reflect2.Type) ValDecoder {
 		if schema.Type() != Float {
 			break
 		}
-		return &float32Codec{
-			convert: converter.toFloat,
+		if isConv {
+			return &float32ConvCodec{convert: createFloatConverter(schema.actual)}
 		}
+		return &float32Codec{}
 
 	case reflect.Float64:
 		if schema.Type() != Double {
 			break
 		}
-		return &float64Codec{
-			convert: converter.toDouble,
+		if isConv {
+			return &float64ConvCodec{convert: createDoubleConverter(schema.actual)}
 		}
+		return &float64Codec{}
 
 	case reflect.String:
 		if schema.Type() != String {
 			break
 		}
-		return &stringCodec{
-			convert: converter.toString,
-		}
+		return &stringCodec{}
 
 	case reflect.Slice:
 		if typ.(reflect2.SliceType).Elem().Kind() != reflect.Uint8 || schema.Type() != Bytes {
 			break
 		}
-		return &bytesCodec{
-			sliceType: typ.(*reflect2.UnsafeSliceType),
-			convert:   converter.toBytes,
-		}
+		return &bytesCodec{sliceType: typ.(*reflect2.UnsafeSliceType)}
 
 	case reflect.Struct:
 		st := schema.Type()
@@ -127,28 +127,25 @@ func createDecoderOfNative(schema Schema, typ reflect2.Type) ValDecoder {
 			return &dateCodec{}
 		case isTime && st == Long && lt == TimestampMillis:
 			return &timestampMillisCodec{
-				convert: converter.toLong,
+				convert: createLongConverter(schema.actual),
 			}
 		case isTime && st == Long && lt == TimestampMicros:
 			return &timestampMicrosCodec{
-				convert: converter.toLong,
+				convert: createLongConverter(schema.actual),
 			}
 		case isTime && st == Long && lt == LocalTimestampMillis:
 			return &timestampMillisCodec{
 				local:   true,
-				convert: converter.toLong,
+				convert: createLongConverter(schema.actual),
 			}
 		case isTime && st == Long && lt == LocalTimestampMicros:
 			return &timestampMicrosCodec{
 				local:   true,
-				convert: converter.toLong,
+				convert: createLongConverter(schema.actual),
 			}
 		case typ.Type1().ConvertibleTo(ratType) && st == Bytes && lt == Decimal:
 			dec := ls.(*DecimalLogicalSchema)
-			return &bytesDecimalCodec{
-				prec: dec.Precision(), scale: dec.Scale(),
-				convert: converter.toBytes,
-			}
+			return &bytesDecimalCodec{prec: dec.Precision(), scale: dec.Scale()}
 
 		default:
 			break
@@ -166,10 +163,7 @@ func createDecoderOfNative(schema Schema, typ reflect2.Type) ValDecoder {
 		}
 		dec := ls.(*DecimalLogicalSchema)
 
-		return &bytesDecimalPtrCodec{
-			prec: dec.Precision(), scale: dec.Scale(),
-			convert: converter.toBytes,
-		}
+		return &bytesDecimalPtrCodec{prec: dec.Precision(), scale: dec.Scale()}
 	}
 
 	return &errorDecoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s", typ.String(), schema.Type())}
@@ -364,41 +358,40 @@ type largeInt interface {
 	~int32 | ~uint32 | int64
 }
 
-type longCodec[T largeInt] struct {
-	convert func(*Reader) int64
-}
+type longCodec[T largeInt] struct{}
 
 func (c *longCodec[T]) Decode(ptr unsafe.Pointer, r *Reader) {
-	var v T
-	if c.convert != nil {
-		v = T(c.convert(r))
-	} else {
-		v = T(r.ReadLong())
-	}
-	*((*T)(ptr)) = v
+	*((*T)(ptr)) = T(r.ReadLong())
 }
 
 func (*longCodec[T]) Encode(ptr unsafe.Pointer, w *Writer) {
 	w.WriteLong(int64(*((*T)(ptr))))
 }
 
-type float32Codec struct {
-	convert func(*Reader) float32
+type longConvCodec[T largeInt] struct {
+	convert func(*Reader) int64
 }
 
-func (c *float32Codec) Decode(ptr unsafe.Pointer, r *Reader) {
-	var v float32
-	if c.convert != nil {
-		v = c.convert(r)
-	} else {
-		v = r.ReadFloat()
-	}
+func (c *longConvCodec[T]) Decode(ptr unsafe.Pointer, r *Reader) {
+	*((*T)(ptr)) = T(c.convert(r))
+}
 
-	*((*float32)(ptr)) = v
+type float32Codec struct{}
+
+func (c *float32Codec) Decode(ptr unsafe.Pointer, r *Reader) {
+	*((*float32)(ptr)) = r.ReadFloat()
 }
 
 func (*float32Codec) Encode(ptr unsafe.Pointer, w *Writer) {
 	w.WriteFloat(*((*float32)(ptr)))
+}
+
+type float32ConvCodec struct {
+	convert func(*Reader) float32
+}
+
+func (c *float32ConvCodec) Decode(ptr unsafe.Pointer, r *Reader) {
+	*((*float32)(ptr)) = c.convert(r)
 }
 
 type float32DoubleCodec struct{}
@@ -407,36 +400,28 @@ func (*float32DoubleCodec) Encode(ptr unsafe.Pointer, w *Writer) {
 	w.WriteDouble(float64(*((*float32)(ptr))))
 }
 
-type float64Codec struct {
-	convert func(*Reader) float64
-}
+type float64Codec struct{}
 
 func (c *float64Codec) Decode(ptr unsafe.Pointer, r *Reader) {
-	var v float64
-	if c.convert != nil {
-		v = c.convert(r)
-	} else {
-		v = r.ReadDouble()
-	}
-	*((*float64)(ptr)) = v
+	*((*float64)(ptr)) = r.ReadDouble()
 }
 
 func (*float64Codec) Encode(ptr unsafe.Pointer, w *Writer) {
 	w.WriteDouble(*((*float64)(ptr)))
 }
 
-type stringCodec struct {
-	convert func(*Reader) string
+type float64ConvCodec struct {
+	convert func(*Reader) float64
 }
 
+func (c *float64ConvCodec) Decode(ptr unsafe.Pointer, r *Reader) {
+	*((*float64)(ptr)) = c.convert(r)
+}
+
+type stringCodec struct{}
+
 func (c *stringCodec) Decode(ptr unsafe.Pointer, r *Reader) {
-	var v string
-	if c.convert != nil {
-		v = c.convert(r)
-	} else {
-		v = r.ReadString()
-	}
-	*((*string)(ptr)) = v
+	*((*string)(ptr)) = r.ReadString()
 }
 
 func (*stringCodec) Encode(ptr unsafe.Pointer, w *Writer) {
@@ -445,16 +430,10 @@ func (*stringCodec) Encode(ptr unsafe.Pointer, w *Writer) {
 
 type bytesCodec struct {
 	sliceType *reflect2.UnsafeSliceType
-	convert   func(*Reader) []byte
 }
 
 func (c *bytesCodec) Decode(ptr unsafe.Pointer, r *Reader) {
-	var b []byte
-	if c.convert != nil {
-		b = c.convert(r)
-	} else {
-		b = r.ReadBytes()
-	}
+	b := r.ReadBytes()
 	c.sliceType.UnsafeSet(ptr, reflect2.PtrOf(b))
 }
 
@@ -584,18 +563,12 @@ func (c *timeMicrosCodec) Encode(ptr unsafe.Pointer, w *Writer) {
 var one = big.NewInt(1)
 
 type bytesDecimalCodec struct {
-	prec    int
-	scale   int
-	convert func(*Reader) []byte
+	prec  int
+	scale int
 }
 
 func (c *bytesDecimalCodec) Decode(ptr unsafe.Pointer, r *Reader) {
-	var b []byte
-	if c.convert != nil {
-		b = c.convert(r)
-	} else {
-		b = r.ReadBytes()
-	}
+	b := r.ReadBytes()
 	if i := (&big.Int{}).SetBytes(b); len(b) > 0 && b[0]&0x80 > 0 {
 		i.Sub(i, new(big.Int).Lsh(one, uint(len(b))*8))
 	}
@@ -636,19 +609,12 @@ func (c *bytesDecimalCodec) Encode(ptr unsafe.Pointer, w *Writer) {
 }
 
 type bytesDecimalPtrCodec struct {
-	prec    int
-	scale   int
-	convert func(*Reader) []byte
+	prec  int
+	scale int
 }
 
 func (c *bytesDecimalPtrCodec) Decode(ptr unsafe.Pointer, r *Reader) {
-	var b []byte
-	if c.convert != nil {
-		b = c.convert(r)
-	} else {
-		b = r.ReadBytes()
-	}
-
+	b := r.ReadBytes()
 	if i := (&big.Int{}).SetBytes(b); len(b) > 0 && b[0]&0x80 > 0 {
 		i.Sub(i, new(big.Int).Lsh(one, uint(len(b))*8))
 	}

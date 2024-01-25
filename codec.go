@@ -86,13 +86,13 @@ func decoderOfType(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecod
 	// Handle eface case when it isnt a union
 	if typ.Kind() == reflect.Interface && schema.Type() != Union {
 		if _, ok := typ.(*reflect2.UnsafeIFaceType); !ok {
-			return &efaceDecoder{schema: schema}
+			return newEfaceDecoder(cfg, schema)
 		}
 	}
 
 	switch schema.Type() {
 	case String, Bytes, Int, Long, Float, Double, Boolean:
-		return createDecoderOfNative(schema, typ)
+		return createDecoderOfNative(schema.(*PrimitiveSchema), typ)
 
 	case Record:
 		return createDecoderOfRecord(cfg, schema, typ)

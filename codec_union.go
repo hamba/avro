@@ -62,11 +62,20 @@ func decoderOfMapUnion(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValD
 	union := schema.(*UnionSchema)
 	mapType := typ.(*reflect2.UnsafeMapType)
 
+	typeDecs := make([]ValDecoder, len(union.Types()))
+	for i, s := range union.Types() {
+		if s.Type() == Null {
+			continue
+		}
+		typeDecs[i] = newEfaceDecoder(cfg, s)
+	}
+
 	return &mapUnionDecoder{
 		cfg:      cfg,
 		schema:   union,
 		mapType:  mapType,
 		elemType: mapType.Elem(),
+		typeDecs: typeDecs,
 	}
 }
 
@@ -75,10 +84,11 @@ type mapUnionDecoder struct {
 	schema   *UnionSchema
 	mapType  *reflect2.UnsafeMapType
 	elemType reflect2.Type
+	typeDecs []ValDecoder
 }
 
 func (d *mapUnionDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
-	_, resSchema := getUnionSchema(d.schema, r)
+	idx, resSchema := getUnionSchema(d.schema, r)
 	if resSchema == nil {
 		return
 	}
@@ -89,14 +99,14 @@ func (d *mapUnionDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 	}
 
 	if d.mapType.UnsafeIsNil(ptr) {
-		d.mapType.UnsafeSet(ptr, d.mapType.UnsafeMakeMap(0))
+		d.mapType.UnsafeSet(ptr, d.mapType.UnsafeMakeMap(1))
 	}
 
 	key := schemaTypeName(resSchema)
 	keyPtr := reflect2.PtrOf(key)
 
 	elemPtr := d.elemType.UnsafeNew()
-	decoderOfType(d.cfg, resSchema, d.elemType).Decode(elemPtr, r)
+	d.typeDecs[idx].Decode(elemPtr, r)
 
 	d.mapType.UnsafeSetIndex(ptr, keyPtr, elemPtr)
 }
@@ -294,7 +304,12 @@ func (d *unionResolvedDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		// We cannot resolve this, set it to the map type
 		name := schemaTypeName(schema)
 		obj := map[string]any{}
-		obj[name] = genericDecode(schema, r)
+		vTyp, err := genericReceiver(schema)
+		if err != nil {
+			r.ReportError("Union", err.Error())
+			return
+		}
+		obj[name] = genericDecode(vTyp, decoderOfType(d.cfg, schema, vTyp), r)
 
 		*pObj = obj
 		return

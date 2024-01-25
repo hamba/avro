@@ -1,98 +1,34 @@
 package avro
 
-import (
-	"fmt"
-	"unsafe"
-
-	"github.com/modern-go/reflect2"
-)
-
-type converter struct {
-	toLong   func(*Reader) int64
-	toFloat  func(*Reader) float32
-	toDouble func(*Reader) float64
-	toString func(*Reader) string
-	toBytes  func(*Reader) []byte
-}
-
-// resolveConverter returns a set of converter functions based on the actual type.
-// Depending on the actual type value, some converter functions may be nil;
-// thus, the downstream caller must first check the converter function value.
-func resolveConverter(typ Type) converter {
-	cv := converter{}
-	cv.toLong, _ = createLongConverter(typ)
-	cv.toFloat, _ = createFloatConverter(typ)
-	cv.toDouble, _ = createDoubleConverter(typ)
-	cv.toString, _ = createStringConverter(typ)
-	cv.toBytes, _ = createBytesConverter(typ)
-	return cv
-}
-
-func createLongConverter(typ Type) (func(*Reader) int64, error) {
+func createLongConverter(typ Type) func(*Reader) int64 {
 	switch typ {
 	case Int:
-		return func(r *Reader) int64 { return int64(r.ReadInt()) }, nil
-	case Long:
-		return func(r *Reader) int64 { return r.ReadLong() }, nil
+		return func(r *Reader) int64 { return int64(r.ReadInt()) }
 	default:
-		return nil, fmt.Errorf("cannot promote from %q to %q", typ, Long)
+		return nil
 	}
 }
 
-func createFloatConverter(typ Type) (func(*Reader) float32, error) {
+func createFloatConverter(typ Type) func(*Reader) float32 {
 	switch typ {
 	case Int:
-		return func(r *Reader) float32 { return float32(r.ReadInt()) }, nil
+		return func(r *Reader) float32 { return float32(r.ReadInt()) }
 	case Long:
-		return func(r *Reader) float32 { return float32(r.ReadLong()) }, nil
+		return func(r *Reader) float32 { return float32(r.ReadLong()) }
+	default:
+		return nil
+	}
+}
+
+func createDoubleConverter(typ Type) func(*Reader) float64 {
+	switch typ {
+	case Int:
+		return func(r *Reader) float64 { return float64(r.ReadInt()) }
+	case Long:
+		return func(r *Reader) float64 { return float64(r.ReadLong()) }
 	case Float:
-		return func(r *Reader) float32 { return r.ReadFloat() }, nil
+		return func(r *Reader) float64 { return float64(r.ReadFloat()) }
 	default:
-		return nil, fmt.Errorf("cannot promote from %q to %q", typ, Long)
-	}
-}
-
-func createDoubleConverter(typ Type) (func(*Reader) float64, error) {
-	switch typ {
-	case Int:
-		return func(r *Reader) float64 { return float64(r.ReadInt()) }, nil
-	case Long:
-		return func(r *Reader) float64 { return float64(r.ReadLong()) }, nil
-	case Float:
-		return func(r *Reader) float64 { return float64(r.ReadFloat()) }, nil
-	case Double:
-		return func(r *Reader) float64 { return r.ReadDouble() }, nil
-	default:
-		return nil, fmt.Errorf("cannot promote from %q to %q", typ, Long)
-	}
-}
-
-func createStringConverter(typ Type) (func(*Reader) string, error) {
-	switch typ {
-	case Bytes:
-		return func(r *Reader) string {
-			b := r.ReadBytes()
-			if len(b) == 0 {
-				return ""
-			}
-			return *(*string)(unsafe.Pointer(&b))
-		}, nil
-	case String:
-		return func(r *Reader) string { return r.ReadString() }, nil
-	default:
-		return nil, fmt.Errorf("cannot promote from %q to %q", typ, Long)
-	}
-}
-
-func createBytesConverter(typ Type) (func(*Reader) []byte, error) {
-	switch typ {
-	case String:
-		return func(r *Reader) []byte {
-			return reflect2.UnsafeCastString(r.ReadString())
-		}, nil
-	case Bytes:
-		return func(r *Reader) []byte { return r.ReadBytes() }, nil
-	default:
-		return nil, fmt.Errorf("cannot promote from %q to %q", typ, Long)
+		return nil
 	}
 }
