@@ -213,10 +213,16 @@ func TestGenericDecode(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
+			defer ConfigTeardown()
+
 			schema := MustParse(test.schema)
 			r := NewReader(bytes.NewReader(test.data), 10)
 
-			got := genericDecode(schema, r)
+			typ, err := genericReceiver(schema)
+			require.NoError(t, err)
+			dec := decoderOfType(DefaultConfig.(*frozenConfig), schema, typ)
+
+			got := genericDecode(typ, dec, r)
 
 			test.wantErr(t, r.Error)
 			assert.Equal(t, test.want, got)
@@ -224,11 +230,10 @@ func TestGenericDecode(t *testing.T) {
 	}
 }
 
-func TestGenericDecode_UnsupportedType(t *testing.T) {
+func TestGenericReceiver_UnsupportedType(t *testing.T) {
 	schema := NewPrimitiveSchema(Type("test"), nil)
-	r := NewReader(bytes.NewReader([]byte{0x01}), 10)
 
-	_ = genericDecode(schema, r)
+	_, err := genericReceiver(schema)
 
-	assert.Error(t, r.Error)
+	assert.Error(t, err)
 }

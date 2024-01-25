@@ -11,9 +11,7 @@ import (
 )
 
 //nolint:maintidx // Splitting this would not make it simpler.
-func createDecoderOfNative(schema Schema, typ reflect2.Type) ValDecoder {
-	converter := resolveConverter(schema.(*PrimitiveSchema).actual)
-
+func createDecoderOfNative(schema *PrimitiveSchema, typ reflect2.Type) ValDecoder {
 	switch typ.Kind() {
 	case reflect.Bool:
 		if schema.Type() != Boolean {
@@ -61,7 +59,7 @@ func createDecoderOfNative(schema Schema, typ reflect2.Type) ValDecoder {
 		if schema.Type() != Long {
 			break
 		}
-		return &longCodec[uint32]{convert: converter.toLong}
+		return &longCodec[uint32]{convert: createLongConverter(schema.actual)}
 
 	case reflect.Int64:
 		st := schema.Type()
@@ -72,12 +70,12 @@ func createDecoderOfNative(schema Schema, typ reflect2.Type) ValDecoder {
 
 		case st == Long && lt == TimeMicros: // time.Duration
 			return &timeMicrosCodec{
-				convert: converter.toLong,
+				convert: createLongConverter(schema.actual),
 			}
 
 		case st == Long:
 			return &longCodec[int64]{
-				convert: converter.toLong,
+				convert: createLongConverter(schema.actual),
 			}
 
 		default:
@@ -89,7 +87,7 @@ func createDecoderOfNative(schema Schema, typ reflect2.Type) ValDecoder {
 			break
 		}
 		return &float32Codec{
-			convert: converter.toFloat,
+			convert: createFloatConverter(schema.actual),
 		}
 
 	case reflect.Float64:
@@ -97,7 +95,7 @@ func createDecoderOfNative(schema Schema, typ reflect2.Type) ValDecoder {
 			break
 		}
 		return &float64Codec{
-			convert: converter.toDouble,
+			convert: createDoubleConverter(schema.actual),
 		}
 
 	case reflect.String:
@@ -105,7 +103,7 @@ func createDecoderOfNative(schema Schema, typ reflect2.Type) ValDecoder {
 			break
 		}
 		return &stringCodec{
-			convert: converter.toString,
+			convert: createStringConverter(schema.actual),
 		}
 
 	case reflect.Slice:
@@ -114,7 +112,7 @@ func createDecoderOfNative(schema Schema, typ reflect2.Type) ValDecoder {
 		}
 		return &bytesCodec{
 			sliceType: typ.(*reflect2.UnsafeSliceType),
-			convert:   converter.toBytes,
+			convert:   createBytesConverter(schema.actual),
 		}
 
 	case reflect.Struct:
@@ -127,27 +125,27 @@ func createDecoderOfNative(schema Schema, typ reflect2.Type) ValDecoder {
 			return &dateCodec{}
 		case isTime && st == Long && lt == TimestampMillis:
 			return &timestampMillisCodec{
-				convert: converter.toLong,
+				convert: createLongConverter(schema.actual),
 			}
 		case isTime && st == Long && lt == TimestampMicros:
 			return &timestampMicrosCodec{
-				convert: converter.toLong,
+				convert: createLongConverter(schema.actual),
 			}
 		case isTime && st == Long && lt == LocalTimestampMillis:
 			return &timestampMillisCodec{
 				local:   true,
-				convert: converter.toLong,
+				convert: createLongConverter(schema.actual),
 			}
 		case isTime && st == Long && lt == LocalTimestampMicros:
 			return &timestampMicrosCodec{
 				local:   true,
-				convert: converter.toLong,
+				convert: createLongConverter(schema.actual),
 			}
 		case typ.Type1().ConvertibleTo(ratType) && st == Bytes && lt == Decimal:
 			dec := ls.(*DecimalLogicalSchema)
 			return &bytesDecimalCodec{
 				prec: dec.Precision(), scale: dec.Scale(),
-				convert: converter.toBytes,
+				convert: createBytesConverter(schema.actual),
 			}
 
 		default:
@@ -168,7 +166,7 @@ func createDecoderOfNative(schema Schema, typ reflect2.Type) ValDecoder {
 
 		return &bytesDecimalPtrCodec{
 			prec: dec.Precision(), scale: dec.Scale(),
-			convert: converter.toBytes,
+			convert: createBytesConverter(schema.actual),
 		}
 	}
 

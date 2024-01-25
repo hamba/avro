@@ -9,31 +9,43 @@ import (
 
 type efaceDecoder struct {
 	schema Schema
+	typ    reflect2.Type
+	dec    ValDecoder
+}
+
+func newEfaceDecoder(cfg *frozenConfig, schema Schema) *efaceDecoder {
+	typ, _ := genericReceiver(schema)
+	dec := decoderOfType(cfg, schema, typ)
+
+	return &efaceDecoder{
+		schema: schema,
+		typ:    typ,
+		dec:    dec,
+	}
 }
 
 func (d *efaceDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 	pObj := (*any)(ptr)
-	obj := *pObj
-	if obj == nil {
-		*pObj = genericDecode(d.schema, r)
+	if *pObj == nil {
+		*pObj = genericDecode(d.typ, d.dec, r)
 		return
 	}
 
-	typ := reflect2.TypeOf(obj)
+	typ := reflect2.TypeOf(*pObj)
 	if typ.Kind() != reflect.Ptr {
-		*pObj = genericDecode(d.schema, r)
+		*pObj = genericDecode(d.typ, d.dec, r)
 		return
 	}
 
 	ptrType := typ.(*reflect2.UnsafePtrType)
 	ptrElemType := ptrType.Elem()
-	if reflect2.IsNil(obj) {
+	if reflect2.IsNil(*pObj) {
 		obj := ptrElemType.New()
 		r.ReadVal(d.schema, obj)
 		*pObj = obj
 		return
 	}
-	r.ReadVal(d.schema, obj)
+	r.ReadVal(d.schema, *pObj)
 }
 
 type interfaceEncoder struct {
