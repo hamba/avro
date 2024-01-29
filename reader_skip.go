@@ -28,33 +28,25 @@ func (r *Reader) SkipBool() {
 
 // SkipInt skips an Int in the reader.
 func (r *Reader) SkipInt() {
-	var offset int8
-	for r.Error == nil {
-		if offset == maxIntBufSize {
-			return
-		}
-
+	var n int
+	for r.Error == nil && n < maxIntBufSize {
 		b := r.readByte()
 		if b&0x80 == 0 {
 			break
 		}
-		offset++
+		n++
 	}
 }
 
 // SkipLong skips a Long in the reader.
 func (r *Reader) SkipLong() {
-	var offset int8
-	for r.Error == nil {
-		if offset == maxLongBufSize {
-			return
-		}
-
+	var n int
+	for r.Error == nil && n < maxLongBufSize {
 		b := r.readByte()
 		if b&0x80 == 0 {
 			break
 		}
-		offset++
+		n++
 	}
 }
 

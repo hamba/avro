@@ -159,7 +159,7 @@ func TestReader_ReadInt(t *testing.T) {
 		},
 		{
 			name:    "negative int",
-			data:    []byte{0x0F},
+			data:    []byte{0x0f},
 			want:    -8,
 			wantErr: require.NoError,
 		},
@@ -183,7 +183,7 @@ func TestReader_ReadInt(t *testing.T) {
 		},
 		{
 			name:    "negative 64",
-			data:    []byte{0x7F},
+			data:    []byte{0x7f},
 			want:    -64,
 			wantErr: require.NoError,
 		},
@@ -195,34 +195,32 @@ func TestReader_ReadInt(t *testing.T) {
 		},
 		{
 			name:    "large int",
-			data:    []byte{0xAA, 0xB4, 0xDE, 0x75},
+			data:    []byte{0xaa, 0xb4, 0xde, 0x75},
 			want:    123456789,
 			wantErr: require.NoError,
 		},
 		{
 			name:    "larger int",
-			data:    []byte{0xE2, 0xA2, 0xF3, 0xAD, 0x07},
+			data:    []byte{0xe2, 0xa2, 0xf3, 0xad, 0x07},
 			want:    987654321,
 			wantErr: require.NoError,
 		},
 		{
 			name:    "overflow",
-			data:    []byte{0xE2, 0xA2, 0xF3, 0xAD, 0xAD, 0xAD},
+			data:    []byte{0xe2, 0xa2, 0xf3, 0xad, 0xad, 0xad},
 			want:    0,
 			wantErr: require.Error,
 		},
 		{
 			name:    "eof",
-			data:    []byte{0xE2},
-			want:    49,
+			data:    []byte{0xe2},
+			want:    0,
 			wantErr: require.Error,
 		},
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
-
 			r := avro.NewReader(bytes.NewReader(test.data), 10)
 
 			got := r.ReadInt()
@@ -235,85 +233,99 @@ func TestReader_ReadInt(t *testing.T) {
 
 func TestReader_ReadLong(t *testing.T) {
 	tests := []struct {
+		name    string
 		data    []byte
 		want    int64
 		wantErr require.ErrorAssertionFunc
 	}{
 		{
+			name:    "long",
 			data:    []byte{0x36},
 			want:    27,
 			wantErr: require.NoError,
 		},
 		{
-			data:    []byte{0x0F},
+			name:    "negative long",
+			data:    []byte{0x0f},
 			want:    -8,
 			wantErr: require.NoError,
 		},
 		{
+			name:    "negative long",
 			data:    []byte{0x01},
 			want:    -1,
 			wantErr: require.NoError,
 		},
 		{
+			name:    "zero",
 			data:    []byte{0x00},
 			want:    0,
 			wantErr: require.NoError,
 		},
 		{
+			name:    "one",
 			data:    []byte{0x02},
 			want:    1,
 			wantErr: require.NoError,
 		},
 		{
-			data:    []byte{0x7F},
+			name:    "negative 64",
+			data:    []byte{0x7f},
 			want:    -64,
 			wantErr: require.NoError,
 		},
 		{
+			name:    "multi-byte",
 			data:    []byte{0x80, 0x01},
 			want:    64,
 			wantErr: require.NoError,
 		},
 		{
-			data:    []byte{0xAA, 0xB4, 0xDE, 0x75},
+			name:    "large long",
+			data:    []byte{0xaa, 0xb4, 0xde, 0x75},
 			want:    123456789,
 			wantErr: require.NoError,
 		},
 		{
-			data:    []byte{0xE2, 0xA2, 0xF3, 0xAD, 0x07},
+			name:    "larger long",
+			data:    []byte{0xe2, 0xa2, 0xf3, 0xad, 0x07},
 			want:    987654321,
 			wantErr: require.NoError,
 		},
 		{
-			data:    []byte{0xFE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01},
+			name:    "very very big long",
+			data:    []byte{0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x01},
 			want:    9223372036854775807,
 			wantErr: require.NoError,
 		},
 		{
-			data:    []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01},
+			name:    "very very big negative long",
+			data:    []byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x01},
 			want:    -9223372036854775808,
 			wantErr: require.NoError,
 		},
 		{
-			data:    []byte{0xBD, 0xB1, 0xAE, 0xD4, 0xD2, 0xCD, 0xBD, 0xE4, 0x97, 0x01},
+			name:    "very very big negative long",
+			data:    []byte{0xbd, 0xb1, 0xae, 0xd4, 0xd2, 0xcd, 0xbd, 0xe4, 0x97, 0x01},
 			want:    -5468631321897454687,
 			wantErr: require.NoError,
 		},
 		{
-			data:    []byte{0xE2, 0xA2, 0xF3, 0xAD, 0xAD, 0xAD, 0xE2, 0xA2, 0xF3, 0xAD, 0xAD}, // Overflow
+			name:    "overflow",
+			data:    []byte{0xe2, 0xa2, 0xf3, 0xad, 0xad, 0xad, 0xe2, 0xa2, 0xf3, 0xad, 0xad},
 			want:    0,
 			wantErr: require.Error,
 		},
 		{
-			data:    []byte{0xE2}, // io.EOF
-			want:    49,
+			name:    "eof",
+			data:    []byte{0xe2},
+			want:    0,
 			wantErr: require.Error,
 		},
 	}
 
-	for i, test := range tests {
-		test := test
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
 			r := avro.NewReader(bytes.NewReader(test.data), 10)
 
 			got := r.ReadLong()

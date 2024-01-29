@@ -139,46 +139,86 @@ func (r *Reader) ReadBool() bool {
 
 // ReadInt reads an Int from the Reader.
 func (r *Reader) ReadInt() int32 {
-	var val uint32
-	var offset int8
+	if r.Error != nil {
+		return 0
+	}
 
-	for r.Error == nil {
-		if offset == maxIntBufSize {
+	var (
+		n int
+		v uint32
+		s uint8
+	)
+
+	for {
+		tail := r.tail
+		if r.tail-r.head+n > maxIntBufSize {
+			tail = r.head + maxIntBufSize - n
+		}
+
+		// Consume what it is in the buffer.
+		for i, b := range r.buf[r.head:tail] {
+			v |= uint32(b&0x7f) << s
+			if b&0x80 == 0 {
+				r.head += i + 1
+				return int32((v >> 1) ^ -(v & 1))
+			}
+			s += 7
+			n++
+		}
+		if n >= maxIntBufSize {
 			r.ReportError("ReadInt", "int overflow")
 			return 0
 		}
+		r.head += n
 
-		b := r.readByte()
-		val |= uint32(b&0x7F) << uint(7*offset)
-		if b&0x80 == 0 {
-			break
+		// We ran out of buffer and are not at the end of the int,
+		// Read more into the buffer.
+		if !r.loadMore() {
+			return 0
 		}
-		offset++
 	}
-
-	return int32((val >> 1) ^ -(val & 1))
 }
 
 // ReadLong reads a Long from the Reader.
 func (r *Reader) ReadLong() int64 {
-	var val uint64
-	var offset int8
-
-	for r.Error == nil {
-		if offset == maxLongBufSize {
-			r.ReportError("ReadLong", "long overflow")
-			return 0
-		}
-
-		b := r.readByte()
-		val |= uint64(b&0x7F) << uint(7*offset)
-		if b&0x80 == 0 {
-			break
-		}
-		offset++
+	if r.Error != nil {
+		return 0
 	}
 
-	return int64((val >> 1) ^ -(val & 1))
+	var (
+		n int
+		v uint64
+		s uint8
+	)
+
+	for {
+		tail := r.tail
+		if r.tail-r.head+n > maxLongBufSize {
+			tail = r.head + maxLongBufSize - n
+		}
+
+		// Consume what it is in the buffer.
+		for i, b := range r.buf[r.head:tail] {
+			v |= uint64(b&0x7f) << s
+			if b&0x80 == 0 {
+				r.head += i + 1
+				return int64((v >> 1) ^ -(v & 1))
+			}
+			s += 7
+			n++
+		}
+		if n >= maxLongBufSize {
+			r.ReportError("ReadLong", "int overflow")
+			return 0
+		}
+		r.head += n
+
+		// We ran out of buffer and are not at the end of the long,
+		// Read more into the buffer.
+		if !r.loadMore() {
+			return 0
+		}
+	}
 }
 
 // ReadFloat reads a Float from the Reader.
