@@ -1,6 +1,6 @@
 module github.com/hamba/avro/v2
 
-go 1.19
+go 1.20
 
 require (
 	github.com/ettle/strcase v0.2.0

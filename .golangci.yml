@@ -32,10 +32,12 @@ linters:
     - gochecknoglobals
     - gochecknoinits
     - gocognit
+    - goconst
     - gocyclo
     - goerr113
     - gomnd
     - gosmopolitan
+    - inamedparam
     - ireturn
     - nestif
     - nlreturn
