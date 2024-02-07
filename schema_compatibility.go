@@ -276,11 +276,12 @@ func (c *SchemaCompatibility) Resolve(reader, writer Schema) (Schema, error) {
 		return nil, err
 	}
 
-	return c.resolve(reader, writer)
+	schema, _, err := c.resolve(reader, writer)
+	return schema, err
 }
 
 // resolve requires the reader's schema to be already compatible with the writer's.
-func (c *SchemaCompatibility) resolve(reader, writer Schema) (Schema, error) {
+func (c *SchemaCompatibility) resolve(reader, writer Schema) (schema Schema, resolved bool, err error) {
 	if reader.Type() == Ref {
 		reader = reader.(*RefSchema).Schema()
 	}
@@ -291,144 +292,191 @@ func (c *SchemaCompatibility) resolve(reader, writer Schema) (Schema, error) {
 	if writer.Type() != reader.Type() {
 		if reader.Type() == Union {
 			for _, schema := range reader.(*UnionSchema).Types() {
-				sch, err := c.Resolve(schema, writer)
+				sch, _, err := c.resolve(schema, writer)
 				if err != nil {
 					continue
 				}
-				return sch, nil
+				return sch, true, nil
 			}
 
-			return nil, fmt.Errorf("reader union lacking writer schema %s", writer.Type())
+			return nil, false, fmt.Errorf("reader union lacking writer schema %s", writer.Type())
 		}
 
 		if writer.Type() == Union {
 			schemas := make([]Schema, 0)
 			for _, schema := range writer.(*UnionSchema).Types() {
-				sch, err := c.Resolve(reader, schema)
+				sch, _, err := c.resolve(reader, schema)
 				if err != nil {
-					return nil, err
+					return nil, false, err
 				}
 				schemas = append(schemas, sch)
 			}
-			return NewUnionSchema(schemas)
+			s, err := NewUnionSchema(schemas, withWriterFingerprint(writer.Fingerprint()))
+			return s, true, err
 		}
 
-		if isPromotable(writer.Type()) {
-			r := NewPrimitiveSchema(reader.Type(), reader.(*PrimitiveSchema).Logical())
-			r.actual = writer.Type()
-			return r, nil
+		if isPromotable(writer.Type(), reader.Type()) {
+			r := NewPrimitiveSchema(reader.Type(), reader.(*PrimitiveSchema).Logical(),
+				withWriterFingerprint(writer.Fingerprint()),
+			)
+			r.encodedType = writer.Type()
+			return r, true, nil
 		}
 
-		return nil, fmt.Errorf("failed to resolve composite schema for %s and %s", reader.Type(), writer.Type())
+		return nil, false, fmt.Errorf("failed to resolve composite schema for %s and %s", reader.Type(), writer.Type())
 	}
 
 	if isNative(writer.Type()) {
-		return reader, nil
+		return reader, false, nil
 	}
 
 	if writer.Type() == Enum {
 		r := reader.(*EnumSchema)
 		w := writer.(*EnumSchema)
-		if err := c.checkEnumSymbols(r, w); err != nil {
+		if err = c.checkEnumSymbols(r, w); err != nil {
 			if r.HasDefault() {
 				enum, _ := NewEnumSchema(r.Name(), r.Namespace(), r.Symbols(),
 					WithAliases(r.Aliases()),
 					WithDefault(r.Default()),
+					withWriterFingerprint(w.Fingerprint()),
 				)
-				enum.actual = w.Symbols()
-				return enum, nil
+				enum.encodedSymbols = w.Symbols()
+				return enum, true, nil
 			}
 
-			return nil, err
+			return nil, false, err
 		}
-		return reader, nil
+		return reader, false, nil
 	}
 
 	if writer.Type() == Fixed {
-		return reader, nil
+		return reader, false, nil
 	}
 
 	if writer.Type() == Union {
 		schemas := make([]Schema, 0)
-		for _, schema := range writer.(*UnionSchema).Types() {
-			sch, err := c.Resolve(reader, schema)
+		for _, s := range writer.(*UnionSchema).Types() {
+			sch, resolv, err := c.resolve(reader, s)
 			if err != nil {
-				return nil, err
+				return nil, false, err
 			}
 			schemas = append(schemas, sch)
+			resolved = resolv || resolved
 		}
-		return NewUnionSchema(schemas)
+		s, err := NewUnionSchema(schemas, withWriterFingerprintIfResolved(writer.Fingerprint(), resolved))
+		if err != nil {
+			return nil, false, err
+		}
+		return s, resolved, nil
 	}
 
 	if writer.Type() == Array {
-		schema, err := c.resolve(reader.(*ArraySchema).Items(), writer.(*ArraySchema).Items())
+		schema, resolved, err = c.resolve(reader.(*ArraySchema).Items(), writer.(*ArraySchema).Items())
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
-		return NewArraySchema(schema), nil
+		return NewArraySchema(schema, withWriterFingerprintIfResolved(writer.Fingerprint(), resolved)), resolved, nil
 	}
 
 	if writer.Type() == Map {
-		schema, err := c.resolve(reader.(*MapSchema).Values(), writer.(*MapSchema).Values())
+		schema, resolved, err = c.resolve(reader.(*MapSchema).Values(), writer.(*MapSchema).Values())
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
-		return NewMapSchema(schema), nil
+		return NewMapSchema(schema, withWriterFingerprintIfResolved(writer.Fingerprint(), resolved)), resolved, nil
 	}
 
 	if writer.Type() == Record {
 		return c.resolveRecord(reader, writer)
 	}
 
-	return nil, fmt.Errorf("failed to resolve composite schema for %s and %s", reader.Type(), writer.Type())
+	return nil, false, fmt.Errorf("failed to resolve composite schema for %s and %s", reader.Type(), writer.Type())
 }
 
-func (c *SchemaCompatibility) resolveRecord(reader, writer Schema) (Schema, error) {
+func (c *SchemaCompatibility) resolveRecord(reader, writer Schema) (Schema, bool, error) {
 	w := writer.(*RecordSchema)
 	r := reader.(*RecordSchema)
 
 	fields := make([]*Field, 0)
 	seen := make(map[string]struct{})
 
+	var resolved bool
 	for _, wf := range w.Fields() {
 		rf, ok := c.getField(r.Fields(), wf, func(gfo *getFieldOptions) {
 			gfo.elemAlias = true
 		})
 		if !ok {
+			// The field was not found in the reader schema, it should be ignored.
 			f, _ := NewField(wf.Name(), wf.Type(), WithAliases(wf.aliases), WithOrder(wf.order))
-			// I believe def is read only it can be copied even if it's a like-pointer type;
-			// data race should not occur.
 			f.def = wf.def
 			f.hasDef = wf.hasDef
 			f.action = FieldIgnore
 			fields = append(fields, f)
+
+			resolved = true
 			continue
 		}
 
-		ft, err := c.resolve(rf.Type(), wf.Type())
+		ft, resolv, err := c.resolve(rf.Type(), wf.Type())
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		f, _ := NewField(rf.Name(), ft, WithAliases(rf.aliases), WithOrder(rf.order))
 		f.def = rf.def
 		f.hasDef = rf.hasDef
 		fields = append(fields, f)
+		resolved = resolv || resolved
 
 		seen[rf.Name()] = struct{}{}
 	}
 
 	for _, rf := range r.Fields() {
-		// check if seen in writer's record
 		if _, ok := seen[rf.Name()]; ok {
+			// This field has already been seen.
 			continue
 		}
+
+		// The schemas are already known to be compatible, so there must be a default on
+		// the field in the writer. Use the default.
 
 		f, _ := NewField(rf.Name(), rf.Type(), WithAliases(rf.aliases), WithOrder(rf.order))
 		f.def = rf.def
 		f.hasDef = rf.hasDef
 		f.action = FieldSetDefault
 		fields = append(fields, f)
+
+		resolved = true
 	}
 
-	return NewRecordSchema(r.Name(), r.Namespace(), fields, WithAliases(r.Aliases()))
+	schema, err := NewRecordSchema(r.Name(), r.Namespace(), fields,
+		WithAliases(r.Aliases()),
+		withWriterFingerprintIfResolved(writer.Fingerprint(), resolved),
+	)
+	return schema, resolved, err
+}
+
+func isNative(typ Type) bool {
+	switch typ {
+	case Null, Boolean, Int, Long, Float, Double, Bytes, String:
+		return true
+	default:
+		return false
+	}
+}
+
+func isPromotable(writerTyp, readerType Type) bool {
+	switch writerTyp {
+	case Int:
+		return readerType == Long || readerType == Float || readerType == Double
+	case Long:
+		return readerType == Float || readerType == Double
+	case Float:
+		return readerType == Double
+	case String:
+		return readerType == Bytes
+	case Bytes:
+		return readerType == String
+	default:
+		return false
+	}
 }

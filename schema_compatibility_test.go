@@ -577,7 +577,9 @@ func TestSchemaCompatibility_Resolve(t *testing.T) {
 			// decoder cache must be aware of fields defaults.
 			name: "Record Writer Field Missing With Record Default 2",
 			reader: `{
-						"type":"record", "name":"test", "namespace": "org.hamba.avro",
+						"type":"record", 
+						"name":"test", 
+						"namespace": "org.hamba.avro",
 						"fields":[
 							{"name": "a", "type": "int"},
 							{

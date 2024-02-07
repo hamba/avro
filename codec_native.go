@@ -12,7 +12,7 @@ import (
 
 //nolint:maintidx // Splitting this would not make it simpler.
 func createDecoderOfNative(schema *PrimitiveSchema, typ reflect2.Type) ValDecoder {
-	isConv := schema.actual != ""
+	resolved := schema.encodedType != ""
 	switch typ.Kind() {
 	case reflect.Bool:
 		if schema.Type() != Boolean {
@@ -60,8 +60,8 @@ func createDecoderOfNative(schema *PrimitiveSchema, typ reflect2.Type) ValDecode
 		if schema.Type() != Long {
 			break
 		}
-		if isConv {
-			return &longConvCodec[uint32]{convert: createLongConverter(schema.actual)}
+		if resolved {
+			return &longConvCodec[uint32]{convert: createLongConverter(schema.encodedType)}
 		}
 		return &longCodec[uint32]{}
 
@@ -74,12 +74,12 @@ func createDecoderOfNative(schema *PrimitiveSchema, typ reflect2.Type) ValDecode
 
 		case st == Long && lt == TimeMicros: // time.Duration
 			return &timeMicrosCodec{
-				convert: createLongConverter(schema.actual),
+				convert: createLongConverter(schema.encodedType),
 			}
 
 		case st == Long:
-			if isConv {
-				return &longConvCodec[int64]{convert: createLongConverter(schema.actual)}
+			if resolved {
+				return &longConvCodec[int64]{convert: createLongConverter(schema.encodedType)}
 			}
 			return &longCodec[int64]{}
 
@@ -91,8 +91,8 @@ func createDecoderOfNative(schema *PrimitiveSchema, typ reflect2.Type) ValDecode
 		if schema.Type() != Float {
 			break
 		}
-		if isConv {
-			return &float32ConvCodec{convert: createFloatConverter(schema.actual)}
+		if resolved {
+			return &float32ConvCodec{convert: createFloatConverter(schema.encodedType)}
 		}
 		return &float32Codec{}
 
@@ -100,8 +100,8 @@ func createDecoderOfNative(schema *PrimitiveSchema, typ reflect2.Type) ValDecode
 		if schema.Type() != Double {
 			break
 		}
-		if isConv {
-			return &float64ConvCodec{convert: createDoubleConverter(schema.actual)}
+		if resolved {
+			return &float64ConvCodec{convert: createDoubleConverter(schema.encodedType)}
 		}
 		return &float64Codec{}
 
@@ -127,21 +127,21 @@ func createDecoderOfNative(schema *PrimitiveSchema, typ reflect2.Type) ValDecode
 			return &dateCodec{}
 		case isTime && st == Long && lt == TimestampMillis:
 			return &timestampMillisCodec{
-				convert: createLongConverter(schema.actual),
+				convert: createLongConverter(schema.encodedType),
 			}
 		case isTime && st == Long && lt == TimestampMicros:
 			return &timestampMicrosCodec{
-				convert: createLongConverter(schema.actual),
+				convert: createLongConverter(schema.encodedType),
 			}
 		case isTime && st == Long && lt == LocalTimestampMillis:
 			return &timestampMillisCodec{
 				local:   true,
-				convert: createLongConverter(schema.actual),
+				convert: createLongConverter(schema.encodedType),
 			}
 		case isTime && st == Long && lt == LocalTimestampMicros:
 			return &timestampMicrosCodec{
 				local:   true,
-				convert: createLongConverter(schema.actual),
+				convert: createLongConverter(schema.encodedType),
 			}
 		case typ.Type1().ConvertibleTo(ratType) && st == Bytes && lt == Decimal:
 			dec := ls.(*DecimalLogicalSchema)
