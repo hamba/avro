@@ -566,66 +566,6 @@ func TestSchema_FieldEncodeDefault(t *testing.T) {
 	assert.Equal(t, []byte("foo"), def)
 }
 
-// func TestSchema_CacheFingerprint(t *testing.T) {
-// 	t.Run("invalid", func(t *testing.T) {
-// 		cacheFingerprint := cacheFingerprinter{}
-// 		assert.Panics(t, func() {
-// 			cacheFingerprint.fingerprint([]any{func() {}})
-// 		})
-// 	})
-//
-// 	t.Run("promoted", func(t *testing.T) {
-// 		schema := NewPrimitiveSchema(Long, nil)
-// 		assert.Equal(t, schema.Fingerprint(), schema.CacheFingerprint())
-//
-// 		schema = NewPrimitiveSchema(Long, nil)
-// 		schema.encodedType = Int
-// 		assert.NotEqual(t, schema.Fingerprint(), schema.CacheFingerprint())
-// 	})
-//
-// 	t.Run("enum", func(t *testing.T) {
-// 		schema1 := MustParse(`{
-// 			"type": "enum",
-// 			"name": "test.enum",
-// 			"symbols": ["foo"]
-// 		}`).(*EnumSchema)
-//
-// 		schema2 := MustParse(`{
-// 			"type": "enum",
-// 			"name": "test.enum",
-// 			"symbols": ["foo"],
-// 			"default": "foo"
-// 			}`).(*EnumSchema)
-// 		schema2.encodedSymbols = []string{"boo"}
-//
-// 		assert.Equal(t, schema1.Fingerprint(), schema1.CacheFingerprint())
-// 		assert.NotEqual(t, schema1.CacheFingerprint(), schema2.CacheFingerprint())
-// 	})
-//
-// 	t.Run("record", func(t *testing.T) {
-// 		schema1 := MustParse(`{
-// 			"type": "record",
-// 			"name": "test",
-// 			"fields" : [
-// 				{"name": "a", "type": "string"},
-// 				{"name": "b", "type": "boolean"}
-// 			]
-// 		}`).(*RecordSchema)
-//
-// 		schema2 := MustParse(`{
-// 			"type": "record",
-// 			"name": "test2",
-// 			"fields" : [
-// 				{"name": "a", "type": "string", "default": "bar"},
-// 				{"name": "b", "type": "boolean", "default": false}
-// 			]
-// 		}`).(*RecordSchema)
-//
-// 		assert.Equal(t, schema1.Fingerprint(), schema1.CacheFingerprint())
-// 		assert.NotEqual(t, schema1.CacheFingerprint(), schema2.CacheFingerprint())
-// 	})
-// }
-
 func TestEnumSchema_GetSymbol(t *testing.T) {
 	tests := []struct {
 		schemaFn func() *EnumSchema

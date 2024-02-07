@@ -434,9 +434,9 @@ func withWriterFingerprint(fp [32]byte) SchemaOption {
 	}
 }
 
-func withWriterFingerprintIfResolved(fp [32]byte, isConv bool) SchemaOption {
+func withWriterFingerprintIfResolved(fp [32]byte, resolved bool) SchemaOption {
 	return func(opts *schemaConfig) {
-		if isConv {
+		if resolved {
 			opts.wfp = &fp
 		}
 	}
