@@ -6,7 +6,7 @@ require (
 	github.com/ettle/strcase v0.2.0
 	github.com/golang/snappy v0.0.4
 	github.com/json-iterator/go v1.1.12
-	github.com/klauspost/compress v1.17.6
+	github.com/klauspost/compress v1.17.7
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/modern-go/reflect2 v1.0.2
 	github.com/stretchr/testify v1.7.1
