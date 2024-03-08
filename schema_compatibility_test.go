@@ -862,3 +862,44 @@ func TestSchemaCompatibility_ResolveWithRefs(t *testing.T) {
 	want := map[string]any{"a": "foo"}
 	assert.Equal(t, want, result)
 }
+
+func TestSchemaCompatibility_ResolveWithComplexUnion(t *testing.T) {
+	r := avro.MustParse(`[
+				{
+					"type":"record",
+					"name":"testA",
+					"aliases": ["test1"], 
+					"namespace": "org.hamba.avro", 
+					"fields":[{"name": "a", "type": "long"}]
+				},
+				{
+					"type":"record",
+					"name":"testB",
+					"aliases": ["test2"], 
+					"namespace": "org.hamba.avro", 
+					"fields":[{"name": "b", "type": "bytes"}]
+				}
+			]`)
+
+	w := avro.MustParse(`{
+				"type":"record",
+				"name":"test2",
+				"namespace": "org.hamba.avro", 
+				"fields":[{"name": "b", "type": "string"}]
+			}`)
+
+	value := map[string]any{"b": "foo"}
+	b, err := avro.Marshal(w, value)
+	assert.NoError(t, err)
+
+	sc := avro.NewSchemaCompatibility()
+	sch, err := sc.Resolve(r, w)
+	assert.NoError(t, err)
+
+	var result any
+	err = avro.Unmarshal(sch, b, &result)
+	assert.NoError(t, err)
+
+	want := map[string]any{"b": []byte("foo")}
+	assert.Equal(t, want, result)
+}
