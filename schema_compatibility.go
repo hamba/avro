@@ -292,6 +292,11 @@ func (c *SchemaCompatibility) resolve(reader, writer Schema) (schema Schema, res
 	if writer.Type() != reader.Type() {
 		if reader.Type() == Union {
 			for _, schema := range reader.(*UnionSchema).Types() {
+				// Compatibility is not guaranteed for every Union reader schema.
+				// Therefore, we need to check compatibility in every iteration.
+				if err := c.compatible(schema, writer); err != nil {
+					continue
+				}
 				sch, _, err := c.resolve(schema, writer)
 				if err != nil {
 					continue
