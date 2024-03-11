@@ -155,11 +155,55 @@ func (d *structDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 func encoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncoder {
 	rec := schema.(*RecordSchema)
 	structDesc := describeStruct(cfg.getTagKey(), typ)
-
+	recursiveArrayStruct := map[int][]*reflect2.UnsafeStructField{}
+	recursiveStruct := map[int][]*reflect2.UnsafeStructField{}
 	fields := make([]*structFieldEncoder, 0, len(rec.Fields()))
-	for _, field := range rec.Fields() {
+fieldsFor:
+	for index, field := range rec.Fields() {
 		sf := structDesc.Fields.Get(field.Name())
 		if sf != nil {
+			if field.Type().Type() == Union {
+				union := field.Type().(*UnionSchema)
+				nullIdx, typeIdx := union.Indices()
+				for _, schemaUnion := range field.Type().(*UnionSchema).Types() {
+					if schemaUnion.Type() == Ref && schemaUnion.(*RefSchema).Schema().Name() == rec.name.Name() {
+						recursiveStruct[index] = sf.Field
+						fields = append(fields, &structFieldEncoder{
+							field: sf.Field,
+							encoder: &unionPtrEncoder{
+								schema:  union,
+								encoder: nil,
+								nullIdx: int64(nullIdx),
+								typeIdx: int64(typeIdx),
+							},
+						})
+						break fieldsFor
+					}
+
+				}
+			}
+			if field.Type().Type() == Ref && field.Type().(*RefSchema).Schema().Name() == rec.name.Name() {
+				recursiveStruct[index] = sf.Field
+				fields = append(fields, &structFieldEncoder{
+					field:   sf.Field,
+					encoder: &nullCodec{},
+				})
+				continue
+			}
+			if field.Type().Type() == Array && field.Type().(*ArraySchema).items.String() == `"`+rec.name.Name()+`"` {
+				//recursiveArrayStruct = append(recursiveArrayStruct, sf.Field)
+				recursiveArrayStruct[index] = sf.Field
+				sliceType := sf.Field[len(sf.Field)-1].Type().(*reflect2.UnsafeSliceType)
+				fields = append(fields, &structFieldEncoder{
+					field: sf.Field,
+					encoder: &arrayEncoder{
+						blockLength: cfg.getBlockLength(),
+						typ:         sliceType,
+						encoder:     nil,
+					},
+				})
+				continue
+			}
 			fields = append(fields, &structFieldEncoder{
 				field:   sf.Field,
 				encoder: encoderOfType(cfg, field.Type(), sf.Field[len(sf.Field)-1].Type()),
@@ -200,7 +244,23 @@ func encoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEnc
 			encoder:    defaultEncoder,
 		})
 	}
-	return &structEncoder{typ: typ, fields: fields}
+	returnEnc := &structEncoder{typ: typ, fields: fields}
+	for index, recursiveType := range recursiveArrayStruct {
+		sliceType := recursiveType[len(recursiveType)-1].Type().(*reflect2.UnsafeSliceType)
+		returnEnc.fields[index].field = recursiveType
+		returnEnc.fields[index].encoder = &arrayEncoder{
+			blockLength: cfg.getBlockLength(),
+			typ:         sliceType,
+			encoder:     returnEnc,
+		}
+	}
+	for index, recursiveType := range recursiveStruct {
+		returnEnc.fields[index].field = recursiveType
+		enc := returnEnc.fields[index].encoder
+		enc.(*unionPtrEncoder).encoder = returnEnc
+
+	}
+	return returnEnc
 }
 
 type structFieldEncoder struct {
