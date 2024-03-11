@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"reflect"
 	"unsafe"
 
@@ -168,8 +169,10 @@ fieldsFor:
 				for _, schemaUnion := range field.Type().(*UnionSchema).Types() {
 					if schemaUnion.Type() == Ref && schemaUnion.(*RefSchema).Schema().Name() == rec.name.Name() {
 						recursiveStruct[index] = sf.Field
+						def := field.Default()
 						fields = append(fields, &structFieldEncoder{
-							field: sf.Field,
+							field:      sf.Field,
+							defaultPtr: reflect2.PtrOf(&def),
 							encoder: &unionPtrEncoder{
 								schema:  union,
 								encoder: nil,
@@ -277,6 +280,7 @@ type structEncoder struct {
 func (e *structEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 	for _, field := range e.fields {
 		// Default case
+
 		if field.field == nil {
 			field.encoder.Encode(field.defaultPtr, w)
 			continue
@@ -299,6 +303,7 @@ func (e *structEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 				fieldPtr = *((*unsafe.Pointer)(fieldPtr))
 			}
 		}
+		log.Print("sadasdadasd", reflect2.TypeOf(field.encoder))
 		field.encoder.Encode(fieldPtr, w)
 
 		if w.Error != nil && !errors.Is(w.Error, io.EOF) {
