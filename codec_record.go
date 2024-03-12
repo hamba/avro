@@ -177,7 +177,7 @@ type structDecoder struct {
 func (d *structDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 	for _, field := range d.fields {
 		// Skip case
-
+		log.Println("    DECODE STRUCT FIELDS ", len(field.field))
 		if field.field == nil {
 			log.Println("    DECODE STRUCT NULL", reflect2.TypeOf(field.decoder))
 			field.decoder.Decode(nil, r)
@@ -187,20 +187,25 @@ func (d *structDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		fieldPtr := ptr
 		for i, f := range field.field {
 			fieldPtr = f.UnsafeGet(fieldPtr)
-			log.Println("    DECODE STRUCT ", field.field, " ", reflect2.TypeOf(field.decoder), " ", f.Type().Kind())
+			log.Println("    DECODE STRUCT ", field.field, " ", reflect2.TypeOf(field.decoder), " ", f.Type().Kind(), " ", f.Type().Kind() == reflect.Ptr, " ", i, " ", len(field.field)-1)
 			if i == len(field.field)-1 {
+				log.Println("    DECODE STRUCT BREAK")
 				break
 			}
 
 			if f.Type().Kind() == reflect.Ptr {
+				log.Println("    DECODE STRUCT PTR =>>> ", *((*unsafe.Pointer)(fieldPtr)))
 				if *((*unsafe.Pointer)(fieldPtr)) == nil {
 					newPtr := f.Type().(*reflect2.UnsafePtrType).Elem().UnsafeNew()
+					log.Println("TTTTTT ", f.Type().(*reflect2.UnsafePtrType).Elem())
 					*((*unsafe.Pointer)(fieldPtr)) = newPtr
 				}
 
 				fieldPtr = *((*unsafe.Pointer)(fieldPtr))
 			}
 		}
+
+		log.Println("    DECODE STRUCT DECODE =>>> ", reflect2.TypeOf(field.decoder), reflect2.TypeOf(fieldPtr))
 		field.decoder.Decode(fieldPtr, r)
 
 		if r.Error != nil && !errors.Is(r.Error, io.EOF) {
