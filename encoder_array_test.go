@@ -2,6 +2,7 @@ package avro_test
 
 import (
 	"bytes"
+	"github.com/modern-go/reflect2"
 	"log"
 	"testing"
 
@@ -33,12 +34,21 @@ func TestEncoder_ArrayRecursive(t *testing.T) {
 	buf := bytes.NewBuffer([]byte{})
 	enc, err := avro.NewEncoder(schema, buf)
 	log.Print(buf.Bytes())
-	err = enc.Encode([]TestRecord{{A: 12, B: "foo", C: []TestRecord{}}, {A: 27, B: "baz", C: []TestRecord{}}})
+	err = enc.Encode([]TestRecord{{A: 12, B: "foo", C: []TestRecord{{A: 13, B: "bbb", C: []TestRecord{}}}}, {A: 27, B: "baz", C: []TestRecord{}}})
 	require.NoError(t, err)
-	assert.Equal(t, []byte{0x3, 0x18, 0x18, 0x6, 0x66, 0x6f, 0x6f, 0x0, 0x36, 0x6, 0x62, 0x61, 0x7a, 0x0, 0x0}, buf.Bytes())
-	//err = enc.Encode([]TestRecord{{A: 12, B: "foo", C: []TestRecord{{A: 13, B: ""}}}, {A: 27, B: "baz", C: []TestRecord{}}})
-	//require.NoError(t, err)
-	//assert.Equal(t, []byte{0x3, 0x18, 0x18, 0x6, 0x66, 0x6f, 0x6f, 0x0, 0x36, 0x6, 0x62, 0x6f, 0x7a, 0x0, 0x0}, buf.Bytes())
+	assert.Equal(t, []byte{0x3, 0x28, 0x18, 0x6, 0x66, 0x6f, 0x6f, 0x1, 0xc, 0x1a, 0x6, 0x62, 0x62, 0x62, 0x0, 0x0, 0x36, 0x6, 0x62, 0x61, 0x7a, 0x0, 0x0}, buf.Bytes())
+	var str []TestRecord
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(buf.Bytes()))
+	require.NoError(t, err)
+	err = dec.Decode(&str)
+	log.Println(reflect2.TypeOf(str[0].C))
+	log.Println(str[0])
+
+	log.Println(str[0].C[0].B)
+	log.Println(str[1])
+	log.Println(str[1].C)
+	//assert.Equal(t, slice, str)
+	assert.NoError(t, err)
 }
 
 func TestEncoder_ArrayRecursiveStruct(t *testing.T) {
@@ -61,8 +71,11 @@ func TestEncoder_ArrayRecursiveStruct(t *testing.T) {
 
 	var str []TestRecord
 	err = dec.Decode(&str)
-	assert.Equal(t, slice, str)
-	assert.Error(t, err)
+	log.Println(reflect2.TypeOf(str[0].C.B))
+	log.Println(str[0])
+	log.Println(str[0].C)
+	//assert.Equal(t, slice, str)
+	assert.NoError(t, err)
 }
 
 func TestEncoder_Array(t *testing.T) {

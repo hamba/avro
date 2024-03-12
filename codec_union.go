@@ -3,6 +3,7 @@ package avro
 import (
 	"errors"
 	"fmt"
+	"log"
 	"reflect"
 	"strings"
 	"unsafe"
@@ -193,7 +194,7 @@ func (d *unionPtrDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		*((*unsafe.Pointer)(ptr)) = nil
 		return
 	}
-
+	log.Println("DECODE ", reflect2.TypeOf(ptr), " ", reflect2.TypeOf(d.decoder))
 	if *((*unsafe.Pointer)(ptr)) == nil {
 		// Create new instance
 		newPtr := d.typ.UnsafeNew()

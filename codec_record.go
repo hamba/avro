@@ -57,10 +57,12 @@ func createEncoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) 
 func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
 	rec := schema.(*RecordSchema)
 	structDesc := describeStruct(cfg.getTagKey(), typ)
-
+	recursiveArrayStruct := map[int][]*reflect2.UnsafeStructField{}
+	recursiveStruct := map[int][]*reflect2.UnsafeStructField{}
 	fields := make([]*structFieldDecoder, 0, len(rec.Fields()))
-
-	for _, field := range rec.Fields() {
+fieldsFor:
+	for index, field := range rec.Fields() {
+		log.Println("     XXXXXX = ", structDesc.Fields.Get(field.Name()).Field)
 		if field.action == FieldIgnore {
 			fields = append(fields, &structFieldDecoder{
 				decoder: createSkipDecoder(field.Type()),
@@ -97,6 +99,46 @@ func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 			}
 		}
 
+		if field.Type().Type() == Union {
+			union := field.Type().(*UnionSchema)
+			for _, schemaUnion := range field.Type().(*UnionSchema).Types() {
+				if schemaUnion.Type() == Ref && schemaUnion.(*RefSchema).Schema().Name() == rec.name.Name() {
+					recursiveStruct[index] = sf.Field
+					fields = append(fields, &structFieldDecoder{
+						field: sf.Field,
+						decoder: &unionPtrDecoder{
+							schema:  union,
+							decoder: nil,
+							typ:     sf.Field[len(sf.Field)-1].Type(),
+						},
+					})
+					continue fieldsFor
+				}
+
+			}
+		}
+		if field.Type().Type() == Ref && field.Type().(*RefSchema).Schema().Name() == rec.name.Name() {
+			recursiveStruct[index] = sf.Field
+			fields = append(fields, &structFieldDecoder{
+				field:   sf.Field,
+				decoder: nil,
+			})
+			continue
+		}
+		if field.Type().Type() == Array && field.Type().(*ArraySchema).items.String() == `"`+rec.name.Name()+`"` {
+			//recursiveArrayStruct = append(recursiveArrayStruct, sf.Field)
+			recursiveArrayStruct[index] = sf.Field
+			sliceType := sf.Field[len(sf.Field)-1].Type().(*reflect2.UnsafeSliceType)
+			fields = append(fields, &structFieldDecoder{
+				field: sf.Field,
+				decoder: &arrayDecoder{
+					typ:     sliceType,
+					decoder: nil,
+				},
+			})
+			continue
+		}
+
 		dec := decoderOfType(cfg, field.Type(), sf.Field[len(sf.Field)-1].Type())
 		fields = append(fields, &structFieldDecoder{
 			field:   sf.Field,
@@ -104,7 +146,22 @@ func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 		})
 	}
 
-	return &structDecoder{typ: typ, fields: fields}
+	returnDec := &structDecoder{typ: typ, fields: fields}
+	for index, recursiveType := range recursiveArrayStruct {
+		sliceType := recursiveType[len(recursiveType)-1].Type().(*reflect2.UnsafeSliceType)
+		returnDec.fields[index].field = recursiveType
+		returnDec.fields[index].decoder = &arrayDecoder{
+			typ:     sliceType,
+			decoder: returnDec,
+		}
+	}
+	for index, recursiveType := range recursiveStruct {
+		returnDec.fields[index].field = recursiveType
+		enc := returnDec.fields[index].decoder
+		enc.(*unionPtrDecoder).decoder = returnDec
+
+	}
+	return returnDec
 }
 
 type structFieldDecoder struct {
@@ -120,7 +177,9 @@ type structDecoder struct {
 func (d *structDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 	for _, field := range d.fields {
 		// Skip case
+
 		if field.field == nil {
+			log.Println("    DECODE STRUCT NULL", reflect2.TypeOf(field.decoder))
 			field.decoder.Decode(nil, r)
 			continue
 		}
@@ -128,7 +187,7 @@ func (d *structDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		fieldPtr := ptr
 		for i, f := range field.field {
 			fieldPtr = f.UnsafeGet(fieldPtr)
-
+			log.Println("    DECODE STRUCT ", field.field, " ", reflect2.TypeOf(field.decoder), " ", f.Type().Kind())
 			if i == len(field.field)-1 {
 				break
 			}
@@ -180,7 +239,7 @@ fieldsFor:
 								typeIdx: int64(typeIdx),
 							},
 						})
-						break fieldsFor
+						continue fieldsFor
 					}
 
 				}
@@ -303,7 +362,6 @@ func (e *structEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 				fieldPtr = *((*unsafe.Pointer)(fieldPtr))
 			}
 		}
-		log.Print("sadasdadasd", reflect2.TypeOf(field.encoder))
 		field.encoder.Encode(fieldPtr, w)
 
 		if w.Error != nil && !errors.Is(w.Error, io.EOF) {
