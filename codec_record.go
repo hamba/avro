@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"reflect"
 	"unsafe"
 
@@ -54,15 +53,22 @@ func createEncoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) 
 	return &errorEncoder{err: fmt.Errorf("avro: %s is unsupported for avro %s", typ.String(), schema.Type())}
 }
 
+func findRecursiveRefUnion(schema *UnionSchema, refName string) bool {
+	for _, schemaUnion := range schema.Types() {
+		if schemaUnion.Type() == Ref && schemaUnion.(*RefSchema).Schema().Name() == refName {
+			return true
+		}
+	}
+	return false
+}
+
 func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
 	rec := schema.(*RecordSchema)
 	structDesc := describeStruct(cfg.getTagKey(), typ)
 	recursiveArrayStruct := map[int][]*reflect2.UnsafeStructField{}
 	recursiveStruct := map[int][]*reflect2.UnsafeStructField{}
 	fields := make([]*structFieldDecoder, 0, len(rec.Fields()))
-fieldsFor:
 	for index, field := range rec.Fields() {
-		log.Println("     XXXXXX = ", structDesc.Fields.Get(field.Name()).Field)
 		if field.action == FieldIgnore {
 			fields = append(fields, &structFieldDecoder{
 				decoder: createSkipDecoder(field.Type()),
@@ -94,27 +100,25 @@ fieldsFor:
 					field:   sf.Field,
 					decoder: createDefaultDecoder(cfg, field, sf.Field[len(sf.Field)-1].Type()),
 				})
-
 				continue
 			}
 		}
 
 		if field.Type().Type() == Union {
 			union := field.Type().(*UnionSchema)
-			for _, schemaUnion := range field.Type().(*UnionSchema).Types() {
-				if schemaUnion.Type() == Ref && schemaUnion.(*RefSchema).Schema().Name() == rec.name.Name() {
-					recursiveStruct[index] = sf.Field
-					fields = append(fields, &structFieldDecoder{
-						field: sf.Field,
-						decoder: &unionPtrDecoder{
-							schema:  union,
-							decoder: nil,
-							typ:     sf.Field[len(sf.Field)-1].Type(),
-						},
-					})
-					continue fieldsFor
-				}
-
+			if findRecursiveRefUnion(union, rec.name.Name()) {
+				recursiveStruct[index] = sf.Field
+				ptrType := sf.Field[len(sf.Field)-1].Type().(*reflect2.UnsafePtrType)
+				elemType := ptrType.Elem()
+				fields = append(fields, &structFieldDecoder{
+					field: sf.Field,
+					decoder: &unionPtrDecoder{
+						schema:  union,
+						decoder: nil,
+						typ:     elemType,
+					},
+				})
+				continue
 			}
 		}
 		if field.Type().Type() == Ref && field.Type().(*RefSchema).Schema().Name() == rec.name.Name() {
@@ -126,13 +130,11 @@ fieldsFor:
 			continue
 		}
 		if field.Type().Type() == Array && field.Type().(*ArraySchema).items.String() == `"`+rec.name.Name()+`"` {
-			//recursiveArrayStruct = append(recursiveArrayStruct, sf.Field)
 			recursiveArrayStruct[index] = sf.Field
-			sliceType := sf.Field[len(sf.Field)-1].Type().(*reflect2.UnsafeSliceType)
 			fields = append(fields, &structFieldDecoder{
 				field: sf.Field,
 				decoder: &arrayDecoder{
-					typ:     sliceType,
+					typ:     nil,
 					decoder: nil,
 				},
 			})
@@ -149,14 +151,12 @@ fieldsFor:
 	returnDec := &structDecoder{typ: typ, fields: fields}
 	for index, recursiveType := range recursiveArrayStruct {
 		sliceType := recursiveType[len(recursiveType)-1].Type().(*reflect2.UnsafeSliceType)
-		returnDec.fields[index].field = recursiveType
 		returnDec.fields[index].decoder = &arrayDecoder{
 			typ:     sliceType,
 			decoder: returnDec,
 		}
 	}
-	for index, recursiveType := range recursiveStruct {
-		returnDec.fields[index].field = recursiveType
+	for index, _ := range recursiveStruct {
 		enc := returnDec.fields[index].decoder
 		enc.(*unionPtrDecoder).decoder = returnDec
 
@@ -177,9 +177,7 @@ type structDecoder struct {
 func (d *structDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 	for _, field := range d.fields {
 		// Skip case
-		log.Println("    DECODE STRUCT FIELDS ", len(field.field))
 		if field.field == nil {
-			log.Println("    DECODE STRUCT NULL", reflect2.TypeOf(field.decoder))
 			field.decoder.Decode(nil, r)
 			continue
 		}
@@ -187,17 +185,13 @@ func (d *structDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		fieldPtr := ptr
 		for i, f := range field.field {
 			fieldPtr = f.UnsafeGet(fieldPtr)
-			log.Println("    DECODE STRUCT ", field.field, " ", reflect2.TypeOf(field.decoder), " ", f.Type().Kind(), " ", f.Type().Kind() == reflect.Ptr, " ", i, " ", len(field.field)-1)
 			if i == len(field.field)-1 {
-				log.Println("    DECODE STRUCT BREAK")
 				break
 			}
 
 			if f.Type().Kind() == reflect.Ptr {
-				log.Println("    DECODE STRUCT PTR =>>> ", *((*unsafe.Pointer)(fieldPtr)))
 				if *((*unsafe.Pointer)(fieldPtr)) == nil {
 					newPtr := f.Type().(*reflect2.UnsafePtrType).Elem().UnsafeNew()
-					log.Println("TTTTTT ", f.Type().(*reflect2.UnsafePtrType).Elem())
 					*((*unsafe.Pointer)(fieldPtr)) = newPtr
 				}
 
@@ -205,7 +199,6 @@ func (d *structDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 			}
 		}
 
-		log.Println("    DECODE STRUCT DECODE =>>> ", reflect2.TypeOf(field.decoder), reflect2.TypeOf(fieldPtr))
 		field.decoder.Decode(fieldPtr, r)
 
 		if r.Error != nil && !errors.Is(r.Error, io.EOF) {
@@ -223,32 +216,30 @@ func encoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEnc
 	recursiveArrayStruct := map[int][]*reflect2.UnsafeStructField{}
 	recursiveStruct := map[int][]*reflect2.UnsafeStructField{}
 	fields := make([]*structFieldEncoder, 0, len(rec.Fields()))
-fieldsFor:
+
 	for index, field := range rec.Fields() {
 		sf := structDesc.Fields.Get(field.Name())
 		if sf != nil {
 			if field.Type().Type() == Union {
 				union := field.Type().(*UnionSchema)
-				nullIdx, typeIdx := union.Indices()
-				for _, schemaUnion := range field.Type().(*UnionSchema).Types() {
-					if schemaUnion.Type() == Ref && schemaUnion.(*RefSchema).Schema().Name() == rec.name.Name() {
-						recursiveStruct[index] = sf.Field
-						def := field.Default()
-						fields = append(fields, &structFieldEncoder{
-							field:      sf.Field,
-							defaultPtr: reflect2.PtrOf(&def),
-							encoder: &unionPtrEncoder{
-								schema:  union,
-								encoder: nil,
-								nullIdx: int64(nullIdx),
-								typeIdx: int64(typeIdx),
-							},
-						})
-						continue fieldsFor
-					}
-
+				if findRecursiveRefUnion(union, rec.name.Name()) {
+					nullIdx, typeIdx := union.Indices()
+					recursiveStruct[index] = sf.Field
+					def := field.Default()
+					fields = append(fields, &structFieldEncoder{
+						field:      sf.Field,
+						defaultPtr: reflect2.PtrOf(&def),
+						encoder: &unionPtrEncoder{
+							schema:  union,
+							encoder: nil,
+							nullIdx: int64(nullIdx),
+							typeIdx: int64(typeIdx),
+						},
+					})
+					continue
 				}
 			}
+
 			if field.Type().Type() == Ref && field.Type().(*RefSchema).Schema().Name() == rec.name.Name() {
 				recursiveStruct[index] = sf.Field
 				fields = append(fields, &structFieldEncoder{
@@ -257,8 +248,8 @@ fieldsFor:
 				})
 				continue
 			}
+
 			if field.Type().Type() == Array && field.Type().(*ArraySchema).items.String() == `"`+rec.name.Name()+`"` {
-				//recursiveArrayStruct = append(recursiveArrayStruct, sf.Field)
 				recursiveArrayStruct[index] = sf.Field
 				sliceType := sf.Field[len(sf.Field)-1].Type().(*reflect2.UnsafeSliceType)
 				fields = append(fields, &structFieldEncoder{

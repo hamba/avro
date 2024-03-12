@@ -2,7 +2,6 @@ package avro
 
 import (
 	"fmt"
-	"log"
 	"math/big"
 	"reflect"
 	"time"
@@ -423,7 +422,6 @@ type stringCodec struct{}
 
 func (c *stringCodec) Decode(ptr unsafe.Pointer, r *Reader) {
 	*((*string)(ptr)) = r.ReadString()
-	log.Print(" STRING =>>>", *((*string)(ptr)))
 }
 
 func (*stringCodec) Encode(ptr unsafe.Pointer, w *Writer) {

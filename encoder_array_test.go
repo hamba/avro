@@ -34,7 +34,8 @@ func TestEncoder_ArrayRecursive(t *testing.T) {
 	buf := bytes.NewBuffer([]byte{})
 	enc, err := avro.NewEncoder(schema, buf)
 	log.Print(buf.Bytes())
-	err = enc.Encode([]TestRecord{{A: 12, B: "foo", C: []TestRecord{{A: 13, B: "bbb", C: []TestRecord{}}}}, {A: 27, B: "baz", C: []TestRecord{}}})
+	objS := []TestRecord{{A: 12, B: "foo", C: []TestRecord{{A: 13, B: "bbb", C: []TestRecord{}}}}, {A: 27, B: "baz", C: []TestRecord{}}}
+	err = enc.Encode(objS)
 	require.NoError(t, err)
 	assert.Equal(t, []byte{0x3, 0x28, 0x18, 0x6, 0x66, 0x6f, 0x6f, 0x1, 0xc, 0x1a, 0x6, 0x62, 0x62, 0x62, 0x0, 0x0, 0x36, 0x6, 0x62, 0x61, 0x7a, 0x0, 0x0}, buf.Bytes())
 	var str []TestRecord
@@ -50,7 +51,33 @@ func TestEncoder_ArrayRecursive(t *testing.T) {
 	//assert.Equal(t, slice, str)
 	assert.NoError(t, err)
 }
+func TestEncoder_ArrayRecursiveStruct2(t *testing.T) {
+	type TestRecord struct {
+		A int64       `avro:"a"`
+		B string      `avro:"b"`
+		C *TestRecord `avro:"c"`
+	}
+	schema := `{"type": "record", "name": "test", "fields" : [{"name": "a", "type": "long"}, {"name": "b", "type": "string"}, {"name": "c", "type": ["test", "null"]}]}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	log.Print(buf.Bytes())
+	slice := TestRecord{A: 12, B: "aaa", C: &TestRecord{A: 13, B: "bbb", C: &TestRecord{A: 44, B: "ccc", C: &TestRecord{A: 55, B: "ddd", C: nil}}}}
+	err = enc.Encode(slice)
+	require.NoError(t, err)
+	p := buf.Bytes()
+	assert.Equal(t, []byte{0x18, 0x6, 0x61, 0x61, 0x61, 0x0, 0x1a, 0x6, 0x62, 0x62, 0x62, 0x0, 0x58, 0x6, 0x63, 0x63, 0x63, 0x0, 0x6e, 0x6, 0x64, 0x64, 0x64, 0x2}, p)
 
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(p))
+	require.NoError(t, err)
+
+	var s TestRecord
+	log.Println(reflect2.TypeOf(dec))
+	err = dec.Decode(&s)
+	log.Println(reflect2.TypeOf(s))
+	log.Println(s.C.C.B)
+	//assert.Equal(t, slice, str)
+	assert.NoError(t, err)
+}
 func TestEncoder_ArrayRecursiveStruct(t *testing.T) {
 	type TestRecord struct {
 		A int64       `avro:"a"`
@@ -76,7 +103,7 @@ func TestEncoder_ArrayRecursiveStruct(t *testing.T) {
 	log.Println(reflect2.TypeOf(s))
 	log.Println(s)
 	aa := s[0].C
-	log.Println(aa.B)
+	log.Println(aa.C.B)
 	//assert.Equal(t, slice, str)
 	assert.NoError(t, err)
 }

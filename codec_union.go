@@ -3,7 +3,6 @@ package avro
 import (
 	"errors"
 	"fmt"
-	"log"
 	"reflect"
 	"strings"
 	"unsafe"
@@ -186,7 +185,6 @@ type unionPtrDecoder struct {
 
 func (d *unionPtrDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 	_, schema := getUnionSchema(d.schema, r)
-	log.Println("DECODE UNION scema ", schema, " ", schema.Type())
 	if schema == nil {
 		return
 	}
@@ -195,11 +193,10 @@ func (d *unionPtrDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		*((*unsafe.Pointer)(ptr)) = nil
 		return
 	}
-	log.Println("DECODE UNION PTR", reflect2.TypeOf(ptr), " ", reflect2.TypeOf(d.decoder), " ", *((*unsafe.Pointer)(ptr)))
+
 	if *((*unsafe.Pointer)(ptr)) == nil {
 		// Create new instance
 		newPtr := d.typ.UnsafeNew()
-		log.Println(reflect2.TypeOf(newPtr))
 		d.decoder.Decode(newPtr, r)
 		*((*unsafe.Pointer)(ptr)) = newPtr
 		return
