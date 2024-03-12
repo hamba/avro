@@ -622,3 +622,23 @@ func TestEncoder_RefStruct(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []byte{0x36, 0x06, 0x66, 0x6f, 0x6f, 0x36, 0x06, 0x66, 0x6f, 0x6f}, buf.Bytes())
 }
+
+func TestEncoder_RefStructRecursiveUnion(t *testing.T) {
+	defer ConfigTeardown()
+
+	type TestRecord struct {
+		A int64       `avro:"a"`
+		B string      `avro:"b"`
+		C *TestRecord `avro:"c"`
+	}
+	schema := `{"type": "record", "name": "test", "fields" : [{"name": "a", "type": "long"}, {"name": "b", "type": "string"}, {"name": "c", "type": ["test", "null"]}]}`
+	buf := bytes.NewBuffer([]byte{})
+
+	enc, err := avro.NewEncoder(schema, buf)
+	slice := TestRecord{A: 12, B: "aaa", C: &TestRecord{A: 13, B: "bbb", C: &TestRecord{A: 44, B: "ccc", C: &TestRecord{A: 55, B: "ddd", C: nil}}}}
+
+	err = enc.Encode(slice)
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x18, 0x6, 0x61, 0x61, 0x61, 0x0, 0x1a, 0x6, 0x62, 0x62, 0x62, 0x0, 0x58, 0x6, 0x63, 0x63, 0x63, 0x0, 0x6e, 0x6, 0x64, 0x64, 0x64, 0x2}, buf.Bytes())
+
+}
