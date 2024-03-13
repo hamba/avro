@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"reflect"
 	"unsafe"
 
@@ -140,8 +141,10 @@ func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 			})
 			continue
 		}
-
+		log.Println("addDecoderToCache => ", schema.String(), schema.CacheFingerprint())
+		cfg.addDecoderToCache(schema.CacheFingerprint(), typ.RType(), &structDecoder{typ: typ, fields: fields})
 		dec := decoderOfType(cfg, field.Type(), sf.Field[len(sf.Field)-1].Type())
+
 		fields = append(fields, &structFieldDecoder{
 			field:   sf.Field,
 			decoder: dec,
@@ -149,6 +152,7 @@ func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 	}
 
 	returnDec := &structDecoder{typ: typ, fields: fields}
+	cfg.addDecoderToCache(schema.CacheFingerprint(), typ.RType(), returnDec)
 	for index, recursiveType := range recursiveArrayStruct {
 		sliceType := recursiveType[len(recursiveType)-1].Type().(*reflect2.UnsafeSliceType)
 		returnDec.fields[index].decoder = &arrayDecoder{
@@ -372,7 +376,8 @@ func (e *structEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 func decoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
 	rec := schema.(*RecordSchema)
 	mapType := typ.(*reflect2.UnsafeMapType)
-
+	recursiveArrayStruct := map[int]reflect2.Type{}
+	recursiveStruct := map[int]reflect2.Type{}
 	fields := make([]recordMapDecoderField, len(rec.Fields()))
 	for i, field := range rec.Fields() {
 		switch field.action {
@@ -392,18 +397,86 @@ func decoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 				continue
 			}
 		}
-
+		typElement, _ := genericReceiver(field.Type())
+		if field.Type().Type() == Union {
+			union := field.Type().(*UnionSchema)
+			if findRecursiveRefUnion(union, rec.name.Name()) {
+				ptrType := typElement.(*reflect2.UnsafePtrType)
+				elemType := ptrType.Elem()
+				recursiveStruct[i] = typElement
+				fields[i] = recordMapDecoderField{
+					name: field.Name(),
+					decoder: &unionPtrDecoder{
+						schema:  union,
+						decoder: nil,
+						typ:     elemType,
+					},
+				}
+				//fields = append(fields, &structFieldDecoder{
+				//	field: sf.Field,
+				//	decoder: &unionPtrDecoder{
+				//		schema:  union,
+				//		decoder: nil,
+				//		typ:     elemType,
+				//	},
+				//})
+				continue
+			}
+		}
+		if field.Type().Type() == Ref && field.Type().(*RefSchema).Schema().Name() == rec.name.Name() {
+			recursiveStruct[i] = typElement
+			fields[i] = recordMapDecoderField{
+				name:    field.Name(),
+				decoder: nil,
+			}
+			//fields = append(fields, &structFieldDecoder{
+			//	field:   field.Name(),
+			//	decoder: nil,
+			//})
+			continue
+		}
+		if field.Type().Type() == Array && field.Type().(*ArraySchema).items.String() == `"`+rec.name.Name()+`"` {
+			recursiveArrayStruct[i] = typElement
+			fields[i] = recordMapDecoderField{
+				name: field.Name(),
+				decoder: &arrayDecoder{
+					typ:     nil,
+					decoder: nil,
+				},
+			}
+			//fields = append(fields, &structFieldDecoder{
+			//	field: field.Name(),
+			//	decoder: &arrayDecoder{
+			//		typ:     nil,
+			//		decoder: nil,
+			//	},
+			//})
+			continue
+		}
 		fields[i] = recordMapDecoderField{
 			name:    field.Name(),
 			decoder: newEfaceDecoder(cfg, field.Type()),
 		}
 	}
 
-	return &recordMapDecoder{
+	returnDec := &recordMapDecoder{
 		mapType:  mapType,
 		elemType: mapType.Elem(),
 		fields:   fields,
 	}
+	for index, recursiveType := range recursiveArrayStruct {
+		sliceType := recursiveType.(*reflect2.UnsafeSliceType)
+		returnDec.fields[index].decoder = &arrayDecoder{
+			typ:     sliceType,
+			decoder: returnDec,
+		}
+	}
+	for index, _ := range recursiveStruct {
+		enc := returnDec.fields[index].decoder
+		enc.(*unionPtrDecoder).decoder = returnDec
+
+	}
+	return returnDec
 }
 
 type recordMapDecoderField struct {

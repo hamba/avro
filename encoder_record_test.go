@@ -2,6 +2,7 @@ package avro_test
 
 import (
 	"bytes"
+	"log"
 	"testing"
 
 	"github.com/hamba/avro/v2"
@@ -641,4 +642,48 @@ func TestEncoder_RefStructRecursiveUnion(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []byte{0x18, 0x6, 0x61, 0x61, 0x61, 0x0, 0x1a, 0x6, 0x62, 0x62, 0x62, 0x0, 0x58, 0x6, 0x63, 0x63, 0x63, 0x0, 0x6e, 0x6, 0x64, 0x64, 0x64, 0x2}, buf.Bytes())
 
+}
+
+func TestEncoder_RefStructRecursiveUnion2(t *testing.T) {
+	defer ConfigTeardown()
+
+	type TestRecordNested struct {
+		A int64  `avro:"a"`
+		B string `avro:"b"`
+		C any    `avro:"c"`
+	}
+
+	type Record struct {
+		D string            `avro:"d"`
+		E *TestRecordNested `avro:"e"`
+	}
+
+	schema := `
+	{
+	  "type": "record",
+	  "name": "test",
+	  "fields": [
+        {"name": "a", "type": "long"}, 
+        {"name": "b","type": "string"},
+		{"name": "c", "type": {"type": "record", "name": "nested", "fields": [{"name": "d", "type": "string"}, {"name": "e", "type": ["test", "null"]}]}}
+	  ]
+	}
+	`
+	buf := bytes.NewBuffer([]byte{})
+	// {'a': 12, 'b': 'aaa', 'c': {'d': 'bbb', 'e': {'a': 44, 'b': 'ccc', 'c': {'d': 'ddd', 'e': {'a': 66, 'b': 'eee', 'c': {'d': 'fff', 'e': None}}}}}}
+	enc, err := avro.NewEncoder(schema, buf)
+	slice := &TestRecordNested{A: 12, B: "aaa", C: &Record{D: "bbb", E: &TestRecordNested{A: 44, B: "ccc", C: &Record{D: "ddd", E: &TestRecordNested{A: 66, B: "eee", C: &Record{D: "fff", E: nil}}}}}}
+
+	err = enc.Encode(slice)
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x18, 0x6, 0x61, 0x61, 0x61, 0x6, 0x62, 0x62, 0x62, 0x0, 0x58, 0x6, 0x63, 0x63, 0x63, 0x6, 0x64, 0x64, 0x64, 0x0, 0x84, 0x1, 0x6, 0x65, 0x65, 0x65, 0x6, 0x66, 0x66, 0x66, 0x2}, buf.Bytes())
+	data := []byte{0x18, 0x6, 0x61, 0x61, 0x61, 0x6, 0x62, 0x62, 0x62, 0x0, 0x58, 0x6, 0x63, 0x63, 0x63, 0x6, 0x64, 0x64, 0x64, 0x0, 0x84, 0x1, 0x6, 0x65, 0x65, 0x65, 0x6, 0x66, 0x66, 0x66, 0x2}
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	got := &TestRecordNested{A: int64(0), B: "", C: &TestRecordNested{}}
+	err = dec.Decode(&got)
+	log.Println(got)
+	require.NoError(t, err)
+	//assert.Equal(t, slice, got)
 }

@@ -2,6 +2,7 @@ package avro
 
 import (
 	"fmt"
+	"log"
 	"math/big"
 	"reflect"
 	"time"
@@ -77,6 +78,13 @@ func (c *frozenConfig) DecoderOf(schema Schema, typ reflect2.Type) ValDecoder {
 }
 
 func decoderOfType(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
+	rtype := typ.RType()
+	log.Println("decoderOfType => ", schema.Type(), schema.CacheFingerprint())
+	decoder := cfg.getDecoderFromCache(schema.CacheFingerprint(), rtype)
+	log.Println("decoderOfType ===> ", decoder, "  ", typ)
+	if decoder != nil {
+		return decoder
+	}
 	if dec := createDecoderOfMarshaler(cfg, schema, typ); dec != nil {
 		return dec
 	}
