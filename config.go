@@ -203,19 +203,19 @@ type cacheKey struct {
 	rtype       uintptr
 }
 
-func (c *frozenConfig) addDecoderToCache(fingerprint [32]byte, dec ValDecoder) {
+func (c *frozenConfig) addDecoderToCache(fingerprint [32]byte, rtype uintptr, dec ValDecoder) {
 	if c.config.DisableCaching {
 		return
 	}
-	key := cacheKey{fingerprint: fingerprint}
+	key := cacheKey{fingerprint: fingerprint, rtype: rtype}
 	c.decoderCache.Store(key, dec)
 }
 
-func (c *frozenConfig) getDecoderFromCache(fingerprint [32]byte) ValDecoder {
+func (c *frozenConfig) getDecoderFromCache(fingerprint [32]byte, rtype uintptr) ValDecoder {
 	if c.config.DisableCaching {
 		return nil
 	}
-	key := cacheKey{fingerprint: fingerprint}
+	key := cacheKey{fingerprint: fingerprint, rtype: rtype}
 	if dec, ok := c.decoderCache.Load(key); ok {
 		return dec.(ValDecoder)
 	}
