@@ -46,7 +46,7 @@ func TestDecoder_RecordStructPtr(t *testing.T) {
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
 	require.NoError(t, err)
 
-	got := &TestRecord{}
+	got := TestRecord{}
 	err = dec.Decode(&got)
 
 	require.NoError(t, err)

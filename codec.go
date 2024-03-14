@@ -2,7 +2,6 @@ package avro
 
 import (
 	"fmt"
-	"log"
 	"math/big"
 	"reflect"
 	"time"
@@ -35,7 +34,7 @@ type ValEncoder interface {
 
 // ReadVal parses Avro value and stores the result in the value pointed to by obj.
 func (r *Reader) ReadVal(schema Schema, obj any) {
-	decoder := r.cfg.getDecoderFromCache(schema.CacheFingerprint(), reflect2.RTypeOf(obj))
+	decoder := r.cfg.getDecoderFromCache(schema.CacheFingerprint())
 	if decoder == nil {
 		typ := reflect2.TypeOf(obj)
 		if typ.Kind() != reflect.Ptr {
@@ -65,26 +64,18 @@ func (w *Writer) WriteVal(schema Schema, val any) {
 }
 
 func (c *frozenConfig) DecoderOf(schema Schema, typ reflect2.Type) ValDecoder {
-	rtype := typ.RType()
-	decoder := c.getDecoderFromCache(schema.CacheFingerprint(), rtype)
+	decoder := c.getDecoderFromCache(schema.CacheFingerprint())
 	if decoder != nil {
 		return decoder
 	}
 
 	ptrType := typ.(*reflect2.UnsafePtrType)
 	decoder = decoderOfType(c, schema, ptrType.Elem())
-	c.addDecoderToCache(schema.CacheFingerprint(), rtype, decoder)
+	c.addDecoderToCache(schema.CacheFingerprint(), decoder)
 	return decoder
 }
 
 func decoderOfType(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
-	rtype := typ.RType()
-	log.Println("decoderOfType => ", schema.Type(), schema.CacheFingerprint())
-	decoder := cfg.getDecoderFromCache(schema.CacheFingerprint(), rtype)
-	log.Println("decoderOfType ===> ", decoder, "  ", typ)
-	if decoder != nil {
-		return decoder
-	}
 	if dec := createDecoderOfMarshaler(cfg, schema, typ); dec != nil {
 		return dec
 	}

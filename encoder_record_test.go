@@ -681,7 +681,7 @@ func TestEncoder_RefStructRecursiveUnion2(t *testing.T) {
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
 	require.NoError(t, err)
 
-	got := &TestRecordNested{A: int64(0), B: "", C: &TestRecordNested{}}
+	got := &TestRecordNested{}
 	err = dec.Decode(&got)
 	log.Println(got)
 	require.NoError(t, err)

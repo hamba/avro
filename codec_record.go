@@ -54,17 +54,27 @@ func createEncoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) 
 	return &errorEncoder{err: fmt.Errorf("avro: %s is unsupported for avro %s", typ.String(), schema.Type())}
 }
 
-func findRecursiveRefUnion(schema *UnionSchema, refName string) bool {
+func findRecursiveRefUnion(cfg *frozenConfig, schema *UnionSchema, refName string) (ValDecoder, bool) {
 	for _, schemaUnion := range schema.Types() {
+		typElementUnion, _ := genericReceiver(schemaUnion)
+		if typElementUnion != nil && cfg.getDecoderFromCache(schemaUnion.Fingerprint()) != nil {
+			return cfg.getDecoderFromCache(schemaUnion.Fingerprint()), true
+		}
 		if schemaUnion.Type() == Ref && schemaUnion.(*RefSchema).Schema().Name() == refName {
-			return true
+			return nil, true
 		}
 	}
-	return false
+	return nil, false
 }
 
 func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
 	rec := schema.(*RecordSchema)
+	returnDec := &structDecoder{
+		typ:    typ,
+		fields: []*structFieldDecoder{},
+	}
+	log.Println("=========> ADD TO CACHE ", schema.Fingerprint(), *returnDec)
+	cfg.addDecoderToCache(schema.Fingerprint(), returnDec)
 	structDesc := describeStruct(cfg.getTagKey(), typ)
 	recursiveArrayStruct := map[int][]*reflect2.UnsafeStructField{}
 	recursiveStruct := map[int][]*reflect2.UnsafeStructField{}
@@ -107,7 +117,16 @@ func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 
 		if field.Type().Type() == Union {
 			union := field.Type().(*UnionSchema)
-			if findRecursiveRefUnion(union, rec.name.Name()) {
+			//typElement, _ := genericReceiver(field.Type())
+			nestedDec, check := findRecursiveRefUnion(cfg, union, rec.name.Name())
+			if nestedDec != nil {
+				a, _ := decoderOfResolvedUnion(cfg, field.Type())
+				fields = append(fields, &structFieldDecoder{
+					field:   sf.Field,
+					decoder: a,
+				})
+				continue
+			} else if check {
 				recursiveStruct[index] = sf.Field
 				ptrType := sf.Field[len(sf.Field)-1].Type().(*reflect2.UnsafePtrType)
 				elemType := ptrType.Elem()
@@ -141,18 +160,15 @@ func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 			})
 			continue
 		}
-		log.Println("addDecoderToCache => ", schema.String(), schema.CacheFingerprint())
-		cfg.addDecoderToCache(schema.CacheFingerprint(), typ.RType(), &structDecoder{typ: typ, fields: fields})
-		dec := decoderOfType(cfg, field.Type(), sf.Field[len(sf.Field)-1].Type())
 
+		dec := decoderOfType(cfg, field.Type(), sf.Field[len(sf.Field)-1].Type())
 		fields = append(fields, &structFieldDecoder{
 			field:   sf.Field,
 			decoder: dec,
 		})
 	}
-
-	returnDec := &structDecoder{typ: typ, fields: fields}
-	cfg.addDecoderToCache(schema.CacheFingerprint(), typ.RType(), returnDec)
+	returnDec.fields = fields
+	returnDec.typ = typ
 	for index, recursiveType := range recursiveArrayStruct {
 		sliceType := recursiveType[len(recursiveType)-1].Type().(*reflect2.UnsafeSliceType)
 		returnDec.fields[index].decoder = &arrayDecoder{
@@ -165,6 +181,8 @@ func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 		enc.(*unionPtrDecoder).decoder = returnDec
 
 	}
+	log.Println("=========> ADD AGAIN TO CACHE ", schema.Fingerprint(), *returnDec)
+	//cfg.addDecoderToCache(schema.Fingerprint(), returnDec)
 	return returnDec
 }
 
@@ -226,7 +244,8 @@ func encoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEnc
 		if sf != nil {
 			if field.Type().Type() == Union {
 				union := field.Type().(*UnionSchema)
-				if findRecursiveRefUnion(union, rec.name.Name()) {
+				_, check := findRecursiveRefUnion(cfg, union, rec.name.Name())
+				if check {
 					nullIdx, typeIdx := union.Indices()
 					recursiveStruct[index] = sf.Field
 					def := field.Default()
@@ -400,7 +419,19 @@ func decoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 		typElement, _ := genericReceiver(field.Type())
 		if field.Type().Type() == Union {
 			union := field.Type().(*UnionSchema)
-			if findRecursiveRefUnion(union, rec.name.Name()) {
+			nestedDec, check := findRecursiveRefUnion(cfg, union, rec.name.Name())
+			a, _ := decoderOfResolvedUnion(cfg, field.Type())
+			if nestedDec != nil {
+				ptrType := typElement.(*reflect2.UnsafeMapType)
+				elemType := ptrType.Elem()
+				log.Println("XXXXXXXX", elemType.Kind())
+				fields[i] = recordMapDecoderField{
+					name:    field.Name(),
+					decoder: a,
+				}
+				continue
+			} else if check {
+
 				ptrType := typElement.(*reflect2.UnsafePtrType)
 				elemType := ptrType.Elem()
 				recursiveStruct[i] = typElement
@@ -412,14 +443,6 @@ func decoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 						typ:     elemType,
 					},
 				}
-				//fields = append(fields, &structFieldDecoder{
-				//	field: sf.Field,
-				//	decoder: &unionPtrDecoder{
-				//		schema:  union,
-				//		decoder: nil,
-				//		typ:     elemType,
-				//	},
-				//})
 				continue
 			}
 		}
@@ -429,10 +452,6 @@ func decoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 				name:    field.Name(),
 				decoder: nil,
 			}
-			//fields = append(fields, &structFieldDecoder{
-			//	field:   field.Name(),
-			//	decoder: nil,
-			//})
 			continue
 		}
 		if field.Type().Type() == Array && field.Type().(*ArraySchema).items.String() == `"`+rec.name.Name()+`"` {
@@ -444,13 +463,6 @@ func decoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 					decoder: nil,
 				},
 			}
-			//fields = append(fields, &structFieldDecoder{
-			//	field: field.Name(),
-			//	decoder: &arrayDecoder{
-			//		typ:     nil,
-			//		decoder: nil,
-			//	},
-			//})
 			continue
 		}
 		fields[i] = recordMapDecoderField{
