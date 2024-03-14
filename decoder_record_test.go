@@ -2,7 +2,6 @@ package avro_test
 
 import (
 	"bytes"
-	"log"
 	"testing"
 
 	"github.com/hamba/avro/v2"
@@ -448,9 +447,8 @@ func TestDecoder_RefStructNestedRecursiveUnion(t *testing.T) {
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
 	require.NoError(t, err)
 
-	got := &TestRecordNested{}
+	got := TestRecordNested{}
 	err = dec.Decode(&got)
 	require.NoError(t, err)
-	log.Print(got.C)
 	//assert.Equal(t, rec, got)
 }
