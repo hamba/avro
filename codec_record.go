@@ -73,7 +73,6 @@ func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 		typ:    typ,
 		fields: []*structFieldDecoder{},
 	}
-	log.Println("=========> ADD TO CACHE ", schema.Fingerprint(), *returnDec)
 	cfg.addDecoderToCache(schema.Fingerprint(), returnDec)
 	structDesc := describeStruct(cfg.getTagKey(), typ)
 	recursiveArrayStruct := map[int][]*reflect2.UnsafeStructField{}
