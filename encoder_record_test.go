@@ -671,8 +671,14 @@ func TestEncoder_RefStructRecursiveUnion2(t *testing.T) {
 	`
 	buf := bytes.NewBuffer([]byte{})
 	// {'a': 12, 'b': 'aaa', 'c': {'d': 'bbb', 'e': {'a': 44, 'b': 'ccc', 'c': {'d': 'ddd', 'e': {'a': 66, 'b': 'eee', 'c': {'d': 'fff', 'e': None}}}}}}
+	rec1 := map[string]interface{}{
+		"d": "bbb",
+		"e": &TestRecordNested{A: 44, B: "ccc", C: map[string]interface{}{
+			"d": "ddd", "e": &TestRecordNested{A: 66, B: "eee", C: map[string]interface{}{"d": "fff", "e": nil}},
+		}},
+	}
 	enc, err := avro.NewEncoder(schema, buf)
-	slice := &TestRecordNested{A: 12, B: "aaa", C: &Record{D: "bbb", E: &TestRecordNested{A: 44, B: "ccc", C: &Record{D: "ddd", E: &TestRecordNested{A: 66, B: "eee", C: &Record{D: "fff", E: nil}}}}}}
+	slice := &TestRecordNested{A: 12, B: "aaa", C: rec1}
 
 	err = enc.Encode(slice)
 	require.NoError(t, err)
