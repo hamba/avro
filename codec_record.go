@@ -65,6 +65,7 @@ func findRecursiveRefUnion(cfg *frozenConfig, schema *UnionSchema, refName strin
 	}
 	return false, false
 }
+
 func findRecursiveRefUnion2(cfg *frozenConfig, schema *UnionSchema, refName string, nested ValDecoder) (ValDecoder, error) {
 	union := schema
 
@@ -106,6 +107,7 @@ func findRecursiveRefUnion2(cfg *frozenConfig, schema *UnionSchema, refName stri
 		decoders: decoders,
 	}, nil
 }
+
 func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
 	rec := schema.(*RecordSchema)
 	returnDec := &structDecoder{
@@ -213,10 +215,9 @@ func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 			decoder: returnDec,
 		}
 	}
-	for index, _ := range recursiveStruct {
+	for index := range recursiveStruct {
 		enc := returnDec.fields[index].decoder
 		enc.(*unionPtrDecoder).decoder = returnDec
-
 	}
 	return returnDec
 }
@@ -390,7 +391,6 @@ func encoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEnc
 		returnEnc.fields[index].field = recursiveType
 		enc := returnEnc.fields[index].encoder
 		enc.(*unionPtrEncoder).encoder = returnEnc
-
 	}
 	return returnEnc
 }
@@ -498,7 +498,6 @@ func decoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 				}
 				continue
 			}
-
 		}
 		if field.Type().Type() == Ref && field.Type().(*RefSchema).Schema().Name() == rec.name.Name() {
 			recursiveStruct[i] = typElement
@@ -533,10 +532,9 @@ func decoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 			decoder: returnDec,
 		}
 	}
-	for index, _ := range recursiveStruct {
+	for index := range recursiveStruct {
 		enc := returnDec.fields[index].decoder
 		enc.(*unionPtrDecoder).decoder = returnDec
-
 	}
 	return returnDec
 }
