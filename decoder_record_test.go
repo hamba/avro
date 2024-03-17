@@ -429,7 +429,7 @@ func TestDecoder_RefStructNestedRecursiveUnion(t *testing.T) {
 		B string  `avro:"b"`
 		C *Record `avro:"c"`
 	}
-
+	//avro.Register("test", &TestRecordNested{})
 	schema := `
 	{
 	  "type": "record",
@@ -446,9 +446,10 @@ func TestDecoder_RefStructNestedRecursiveUnion(t *testing.T) {
 	data := []byte{0x18, 0x6, 0x61, 0x61, 0x61, 0x6, 0x62, 0x62, 0x62, 0x0, 0x58, 0x6, 0x63, 0x63, 0x63, 0x6, 0x64, 0x64, 0x64, 0x0, 0x84, 0x1, 0x6, 0x65, 0x65, 0x65, 0x6, 0x66, 0x66, 0x66, 0x2}
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
 	require.NoError(t, err)
+	rec := map[string]interface{}{"a": int64(12), "b": "aaa", "c": map[string]interface{}{"d": "bbb", "e": map[string]interface{}{"a": int64(44), "b": "ccc", "c": map[string]interface{}{"d": "ddd", "e": map[string]interface{}{"a": int64(66), "b": "eee", "c": map[string]interface{}{"d": "fff", "e": nil}}}}}}
 
-	got := TestRecordNested{}
+	got := map[string]interface{}{}
 	err = dec.Decode(&got)
 	require.NoError(t, err)
-	//assert.Equal(t, rec, got)
+	assert.Equal(t, rec, got)
 }

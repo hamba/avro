@@ -112,6 +112,7 @@ func TestDecoder_ArraySliceOfStructRecursiveUnion(t *testing.T) {
 	var s []TestRecord
 	err = dec.Decode(&s)
 	assert.NoError(t, err)
+	//log.Print(s)
 	assert.Equal(t, slice, s)
 }
 

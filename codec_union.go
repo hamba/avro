@@ -244,7 +244,12 @@ func decoderOfResolvedUnion(cfg *frozenConfig, schema Schema) (ValDecoder, error
 	decoders := make([]ValDecoder, len(union.Types()))
 	for i, schema := range union.Types() {
 		name := unionResolutionName(schema)
-
+		typElementUnion, _ := genericReceiver(schema)
+		if typElementUnion != nil && cfg.getDecoderFromCache(schema.Fingerprint(), typElementUnion.RType()) != nil {
+			decoders[i] = cfg.getDecoderFromCache(schema.Fingerprint(), typElementUnion.RType())
+			types[i] = typElementUnion
+			continue
+		}
 		typ, err := cfg.resolver.Type(name)
 		if err != nil {
 			if cfg.config.UnionResolutionError {
