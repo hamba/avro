@@ -46,11 +46,11 @@ func TestDecoder_RecordStructPtr(t *testing.T) {
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
 	require.NoError(t, err)
 
-	got := &TestRecord{}
+	got := TestRecord{}
 	err = dec.Decode(&got)
 
 	require.NoError(t, err)
-	assert.Equal(t, &TestRecord{A: 27, B: "foo"}, got)
+	assert.Equal(t, TestRecord{A: 27, B: "foo"}, got)
 }
 
 func TestDecoder_RecordStructPtrNil(t *testing.T) {
@@ -414,4 +414,42 @@ func TestDecoder_RefStructRecursiveUnion(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, record, recordOrigin)
 
+}
+
+func TestDecoder_RefStructNestedRecursiveUnion(t *testing.T) {
+	defer ConfigTeardown()
+
+	type Record struct {
+		D string `avro:"d"`
+		E any    `avro:"e"`
+	}
+
+	type TestRecordNested struct {
+		A int64   `avro:"a"`
+		B string  `avro:"b"`
+		C *Record `avro:"c"`
+	}
+	//avro.Register("test", &TestRecordNested{})
+	schema := `
+	{
+	  "type": "record",
+	  "name": "test",
+	  "fields": [
+        {"name": "a", "type": "long"}, 
+        {"name": "b","type": "string"},
+		{"name": "c", "type": {"type": "record", "name": "nested", "fields": [{"name": "d", "type": "string"}, {"name": "e", "type": ["test", "null"]}]}}
+	  ]
+	}
+	`
+	//rec := &TestRecordNested{A: 12, B: "aaa", C: &Record{D: "bbb", E: &TestRecordNested{A: 44, B: "ccc", C: &Record{D: "ddd", E: &TestRecordNested{A: 66, B: "eee", C: &Record{D: "fff", E: nil}}}}}}
+
+	data := []byte{0x18, 0x6, 0x61, 0x61, 0x61, 0x6, 0x62, 0x62, 0x62, 0x0, 0x58, 0x6, 0x63, 0x63, 0x63, 0x6, 0x64, 0x64, 0x64, 0x0, 0x84, 0x1, 0x6, 0x65, 0x65, 0x65, 0x6, 0x66, 0x66, 0x66, 0x2}
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+	rec := map[string]interface{}{"a": int64(12), "b": "aaa", "c": map[string]interface{}{"d": "bbb", "e": map[string]interface{}{"a": int64(44), "b": "ccc", "c": map[string]interface{}{"d": "ddd", "e": map[string]interface{}{"a": int64(66), "b": "eee", "c": map[string]interface{}{"d": "fff", "e": nil}}}}}}
+
+	got := map[string]interface{}{}
+	err = dec.Decode(&got)
+	require.NoError(t, err)
+	assert.Equal(t, rec, got)
 }
