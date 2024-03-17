@@ -66,48 +66,6 @@ func findRecursiveRefUnion(cfg *frozenConfig, schema *UnionSchema, refName strin
 	return false, false
 }
 
-func findRecursiveRefUnion2(cfg *frozenConfig, schema *UnionSchema, refName string, nested ValDecoder) (ValDecoder, error) {
-	union := schema
-
-	types := make([]reflect2.Type, len(union.Types()))
-	decoders := make([]ValDecoder, len(union.Types()))
-	for i, schema := range union.Types() {
-		name := unionResolutionName(schema)
-		typElementUnion, _ := genericReceiver(schema)
-		if typElementUnion != nil && cfg.getDecoderFromCache(schema.Fingerprint(), typElementUnion.RType()) != nil {
-			decoders[i] = cfg.getDecoderFromCache(schema.Fingerprint(), typElementUnion.RType())
-			types[i] = typElementUnion
-			continue
-		}
-		typ, err := cfg.resolver.Type(name)
-		if err != nil {
-			if cfg.config.UnionResolutionError {
-				return nil, err
-			}
-
-			if cfg.config.PartialUnionTypeResolution {
-				decoders[i] = nil
-				types[i] = nil
-				continue
-			}
-
-			decoders = []ValDecoder{}
-			types = []reflect2.Type{}
-			break
-		}
-		decoder := decoderOfType(cfg, schema, typ)
-		decoders[i] = decoder
-		types[i] = typ
-	}
-
-	return &unionResolvedDecoder{
-		cfg:      cfg,
-		schema:   union,
-		types:    types,
-		decoders: decoders,
-	}, nil
-}
-
 func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
 	rec := schema.(*RecordSchema)
 	returnDec := &structDecoder{
