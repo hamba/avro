@@ -2,7 +2,6 @@ package avro_test
 
 import (
 	"bytes"
-	"log"
 	"testing"
 
 	"github.com/hamba/avro/v2"
@@ -677,15 +676,11 @@ func TestEncoder_RefStructNestedRecursiveUnion(t *testing.T) {
 	err = enc.Encode(rec)
 	require.NoError(t, err)
 	assert.Equal(t, data, buf.Bytes())
-	avro.Register("test", &TestRecordNested{})
-	avro.Register("nested", &Record{})
-	rec2 := map[string]interface{}{"a": int64(12), "b": "aaa", "c": map[string]interface{}{"d": "bbb", "e": map[string]interface{}{"a": int64(44), "b": "ccc", "c": map[string]interface{}{"d": "ddd", "e": map[string]interface{}{"a": int64(66), "b": "eee", "c": map[string]interface{}{"d": "fff", "e": nil}}}}}}
+	recMap := map[string]interface{}{"a": int64(12), "b": "aaa", "c": map[string]interface{}{"d": "bbb", "e": map[string]interface{}{"a": int64(44), "b": "ccc", "c": map[string]interface{}{"d": "ddd", "e": map[string]interface{}{"a": int64(66), "b": "eee", "c": map[string]interface{}{"d": "fff", "e": nil}}}}}}
 
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
 	got := map[string]interface{}{}
 	err = dec.Decode(&got)
 	require.NoError(t, err)
-	assert.Equal(t, rec, got)
-	log.Print(got)
-	assert.Equal(t, rec2, got)
+	assert.Equal(t, recMap, got)
 }

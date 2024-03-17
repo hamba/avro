@@ -155,15 +155,15 @@ func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 		}
 		if field.Type().Type() == Union {
 			union := field.Type().(*UnionSchema)
-			check, check2 := findRecursiveRefUnion(cfg, union, rec.name.Name())
-			if check {
-				a, _ := decoderOfResolvedUnion(cfg, union)
+			firstCheck, secondCheck := findRecursiveRefUnion(cfg, union, rec.name.Name())
+			if firstCheck {
+				dec, _ := decoderOfResolvedUnion(cfg, union)
 				fields = append(fields, &structFieldDecoder{
 					field:   sf.Field,
-					decoder: a,
+					decoder: dec,
 				})
 				continue
-			} else if check2 {
+			} else if secondCheck {
 				recursiveStruct[index] = sf.Field
 				ptrType := sf.Field[len(sf.Field)-1].Type().(*reflect2.UnsafePtrType)
 				elemType := ptrType.Elem()
@@ -280,8 +280,8 @@ func encoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEnc
 			typElement, _ := genericReceiver(field.Type())
 			if field.Type().Type() == Union {
 				union := field.Type().(*UnionSchema)
-				check, check2 := findRecursiveRefUnion(cfg, union, rec.name.Name())
-				if check {
+				firstCheck, secondCheck := findRecursiveRefUnion(cfg, union, rec.name.Name())
+				if firstCheck {
 					a := encoderOfResolverUnion(cfg, union, typElement)
 					nullIdx, typeIdx := union.Indices()
 					def := field.Default()
@@ -296,7 +296,7 @@ func encoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEnc
 						},
 					})
 					continue
-				} else if check2 {
+				} else if secondCheck {
 					nullIdx, typeIdx := union.Indices()
 					recursiveStruct[index] = sf.Field
 					def := field.Default()
