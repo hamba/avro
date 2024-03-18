@@ -11,7 +11,7 @@ import (
 )
 
 func createDecoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
-	if dec := cfg.getDecoderFromCache(schema.Fingerprint(), typ.RType()); dec != nil {
+	if dec := cfg.getDecoderFromCache(schema.CacheFingerprint(), typ.RType()); dec != nil {
 		return dec
 	}
 	switch typ.Kind() {
@@ -38,7 +38,7 @@ func createDecoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) 
 }
 
 func createEncoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncoder {
-	if dec := cfg.getEncoderFromCache(schema.CacheFingerprint(), typ.RType()); dec != nil {
+	if dec := cfg.getEncoderFromCache(schema.Fingerprint(), typ.RType()); dec != nil {
 		return dec
 	}
 	switch typ.Kind() {
