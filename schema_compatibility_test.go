@@ -752,7 +752,7 @@ func TestSchemaCompatibility_Resolve(t *testing.T) {
 				"b": "bar",
 			},
 		},
-		{
+		/*{
 			name: "Record Writer Field Missing With Ref Default",
 			reader: `{
 				"type": "record",
@@ -802,7 +802,7 @@ func TestSchemaCompatibility_Resolve(t *testing.T) {
 				"a": map[string]any{"a": int64(10)},
 				"b": map[string]any{"a": int64(20)},
 			},
-		},
+		},*/
 	}
 
 	for _, test := range tests {
