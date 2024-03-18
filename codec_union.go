@@ -3,7 +3,6 @@ package avro
 import (
 	"errors"
 	"fmt"
-	"log"
 	"reflect"
 	"strings"
 	"unsafe"
@@ -262,7 +261,7 @@ func decoderOfResolvedUnion(cfg *frozenConfig, schema Schema) (ValDecoder, error
 			types = []reflect2.Type{}
 			break
 		}
-		log.Println("=>=>=>=>=>=", cfg.getDecoderFromCache(schema.Fingerprint()))
+
 		decoder := decoderOfType(cfg, schema, typ)
 		decoders[i] = decoder
 		types[i] = typ
