@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"reflect"
 	"unsafe"
 
@@ -12,7 +11,6 @@ import (
 )
 
 func createDecoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
-	log.Println(" GET DEC RECORD ", schema.String(), " ", typ.RType(), " ", cfg.getDecoderFromCache(schema.Fingerprint(), typ.RType()))
 	if dec := cfg.getDecoderFromCache(schema.Fingerprint(), typ.RType()); dec != nil {
 		return dec
 	}
@@ -40,8 +38,7 @@ func createDecoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) 
 }
 
 func createEncoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncoder {
-	log.Println(" GET ENC RECORD ", schema.String(), " ", typ.RType(), " ", cfg.getDecoderFromCache(schema.Fingerprint(), typ.RType()))
-	if dec := cfg.getEncoderFromCache(schema.Fingerprint(), typ.RType()); dec != nil {
+	if dec := cfg.getEncoderFromCache(schema.CacheFingerprint(), typ.RType()); dec != nil {
 		return dec
 	}
 	switch typ.Kind() {
@@ -66,8 +63,7 @@ func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 	rec := schema.(*RecordSchema)
 	structDesc := describeStruct(cfg.getTagKey(), typ)
 	returnDec := &structDecoder{typ: typ, fields: nil}
-	log.Println(" ADD DEC STRUCT ", schema.String(), " ", typ.RType())
-	cfg.addDecoderToCache(schema.Fingerprint(), typ.RType(), returnDec)
+	cfg.addDecoderToCache(schema.CacheFingerprint(), typ.RType(), returnDec)
 	fields := make([]*structFieldDecoder, 0, len(rec.Fields()))
 
 	for _, field := range rec.Fields() {
@@ -114,7 +110,7 @@ func decoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 		})
 	}
 	returnDec.fields = fields
-	cfg.removeDecoderToCache(schema.Fingerprint(), typ.RType())
+	cfg.removeDecoderFromCache(schema.CacheFingerprint(), typ.RType())
 	return returnDec
 }
 
@@ -214,7 +210,7 @@ func encoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEnc
 		})
 	}
 	returnEnc.fields = fields
-	cfg.removeEncoderToCache(schema.Fingerprint(), typ.RType())
+	cfg.removeEncoderFromCache(schema.Fingerprint(), typ.RType())
 	return returnEnc
 }
 
@@ -273,8 +269,7 @@ func decoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 		elemType: mapType.Elem(),
 		fields:   nil,
 	}
-	log.Println(" ADD DEC RECORD ", schema.String(), " ", typ.RType())
-	cfg.addDecoderToCache(schema.Fingerprint(), typ.RType(), returnDec)
+	cfg.addDecoderToCache(schema.CacheFingerprint(), typ.RType(), returnDec)
 	fields := make([]*recordMapDecoderField, len(rec.Fields()))
 	for i, field := range rec.Fields() {
 		switch field.action {
@@ -301,7 +296,7 @@ func decoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDec
 		}
 	}
 	returnDec.fields = fields
-	cfg.removeDecoderToCache(schema.Fingerprint(), typ.RType())
+	cfg.removeDecoderFromCache(schema.CacheFingerprint(), typ.RType())
 	return returnDec
 }
 
@@ -373,7 +368,7 @@ func encoderOfRecord(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEnc
 		}
 	}
 	returnEnc.fields = fields
-	cfg.removeEncoderToCache(schema.Fingerprint(), typ.RType())
+	cfg.removeEncoderFromCache(schema.Fingerprint(), typ.RType())
 	return returnEnc
 }
 

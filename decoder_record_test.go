@@ -50,7 +50,7 @@ func TestDecoder_RecordStructPtr(t *testing.T) {
 	err = dec.Decode(&got)
 
 	require.NoError(t, err)
-	assert.Equal(t, &TestRecord{A: 27, B: "foo"}, got)
+	assert.Equal(t, TestRecord{A: 27, B: "foo"}, got)
 }
 
 func TestDecoder_RecordStructPtrNil(t *testing.T) {

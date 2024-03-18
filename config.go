@@ -203,7 +203,7 @@ type cacheKey struct {
 	rtype       uintptr
 }
 
-func (c *frozenConfig) removeDecoderToCache(fingerprint [32]byte, rtype uintptr) {
+func (c *frozenConfig) removeDecoderFromCache(fingerprint [32]byte, rtype uintptr) {
 	if c.config.DisableCaching {
 		return
 	}
@@ -231,7 +231,7 @@ func (c *frozenConfig) getDecoderFromCache(fingerprint [32]byte, rtype uintptr) 
 	return nil
 }
 
-func (c *frozenConfig) removeEncoderToCache(fingerprint [32]byte, rtype uintptr) {
+func (c *frozenConfig) removeEncoderFromCache(fingerprint [32]byte, rtype uintptr) {
 	if c.config.DisableCaching {
 		return
 	}
