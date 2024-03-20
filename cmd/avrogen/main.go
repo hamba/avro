@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"go/format"
@@ -111,11 +112,11 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 
 func validateOpts(nargs int, cfg config) error {
 	if nargs < 1 {
-		return fmt.Errorf("at least one schema is required")
+		return errors.New("at least one schema is required")
 	}
 
 	if cfg.Pkg == "" {
-		return fmt.Errorf("a package is required")
+		return errors.New("a package is required")
 	}
 
 	return nil
