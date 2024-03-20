@@ -38,7 +38,7 @@ jobs:
         with:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
           skip-pkg-cache: true
-          args: --go ${{ matrix.go-version }}
+          args: --go 1.20
 
       - name: Run tests
         run: go test -covermode=count -coverprofile=coverage.out ./...
