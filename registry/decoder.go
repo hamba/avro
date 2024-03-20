@@ -3,6 +3,7 @@ package registry
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 
 	"github.com/hamba/avro/v2"
@@ -43,7 +44,7 @@ func NewDecoder(client *Client, opts ...DecoderFunc) *Decoder {
 // https://docs.confluent.io/3.2.0/schema-registry/docs/serializer-formatter.html#wire-format.
 func (d *Decoder) Decode(ctx context.Context, data []byte, v any) error {
 	if len(data) < 6 {
-		return fmt.Errorf("data too short")
+		return errors.New("data too short")
 	}
 
 	id, err := extractSchemaID(data)
@@ -61,7 +62,7 @@ func (d *Decoder) Decode(ctx context.Context, data []byte, v any) error {
 
 func extractSchemaID(data []byte) (int, error) {
 	if len(data) < 5 {
-		return 0, fmt.Errorf("data too short")
+		return 0, errors.New("data too short")
 	}
 	if data[0] != 0 {
 		return 0, fmt.Errorf("invalid magic byte: %x", data[0])
