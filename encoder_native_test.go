@@ -626,6 +626,19 @@ func TestEncoder_Duration_TimeMicros(t *testing.T) {
 	assert.Equal(t, []byte{0x86, 0xEA, 0xC8, 0xE9, 0x97, 0x07}, buf.Bytes())
 }
 
+func TestEncoder_Duration_InvalidLogicalType(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"long","logicalType":"timestamp-micros"}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode(123456789123 * time.Microsecond)
+
+	assert.Error(t, err)
+}
+
 func TestEncoder_DurationInvalidSchema(t *testing.T) {
 	defer ConfigTeardown()
 
