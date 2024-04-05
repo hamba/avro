@@ -77,11 +77,15 @@ func createDecoderOfNative(schema *PrimitiveSchema, typ reflect2.Type) ValDecode
 				convert: createLongConverter(schema.encodedType),
 			}
 
-		case st == Long:
+		case st == Long && lt == "":
 			if resolved {
 				return &longConvCodec[int64]{convert: createLongConverter(schema.encodedType)}
 			}
 			return &longCodec[int64]{}
+
+		case lt != "":
+			return &errorDecoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s and logicalType %s",
+				typ.String(), schema.Type(), lt)}
 
 		default:
 			break
@@ -169,6 +173,7 @@ func createDecoderOfNative(schema *PrimitiveSchema, typ reflect2.Type) ValDecode
 	return &errorDecoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s", typ.String(), schema.Type())}
 }
 
+//nolint:maintidx // Splitting this would not make it simpler.
 func createEncoderOfNative(schema Schema, typ reflect2.Type) ValEncoder {
 	switch typ.Kind() {
 	case reflect.Bool:
@@ -228,10 +233,17 @@ func createEncoderOfNative(schema Schema, typ reflect2.Type) ValEncoder {
 		switch {
 		case st == Int && lt == TimeMillis: // time.Duration
 			return &timeMillisCodec{}
+
 		case st == Long && lt == TimeMicros: // time.Duration
 			return &timeMicrosCodec{}
-		case st == Long:
+
+		case st == Long && lt == "":
 			return &longCodec[int64]{}
+
+		case lt != "":
+			return &errorEncoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s and logicalType %s",
+				typ.String(), schema.Type(), lt)}
+
 		default:
 			break
 		}

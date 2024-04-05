@@ -641,6 +641,20 @@ func TestDecoder_Duration_TimeMicros(t *testing.T) {
 	assert.Equal(t, 123456789123*time.Microsecond, got)
 }
 
+func TestDecoder_Duration_InvalidLogicalType(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x86, 0xEA, 0xC8, 0xE9, 0x97, 0x07}
+	schema := `{"type":"long","logicalType":"timestamp-micros"}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	var got time.Duration
+	err = dec.Decode(&got)
+
+	assert.Error(t, err)
+}
+
 func TestDecoder_DurationInvalidSchema(t *testing.T) {
 	defer ConfigTeardown()
 
