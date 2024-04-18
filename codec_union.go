@@ -18,20 +18,22 @@ func createDecoderOfUnion(cfg *frozenConfig, schema Schema, typ reflect2.Type) V
 			break
 		}
 		return decoderOfMapUnion(cfg, schema, typ)
-
+	case reflect.Slice:
+		if !schema.(*UnionSchema).Nullable() {
+			break
+		}
+		return decoderOfNullableUnion(cfg, schema, typ)
 	case reflect.Ptr:
 		if !schema.(*UnionSchema).Nullable() {
 			break
 		}
-		return decoderOfPtrUnion(cfg, schema, typ)
-
+		return decoderOfNullableUnion(cfg, schema, typ)
 	case reflect.Interface:
 		if _, ok := typ.(*reflect2.UnsafeIFaceType); !ok {
 			dec, err := decoderOfResolvedUnion(cfg, schema)
 			if err != nil {
 				return &errorDecoder{err: fmt.Errorf("avro: problem resolving decoder for Avro %s: %w", schema.Type(), err)}
 			}
-
 			return dec
 		}
 	}
@@ -47,14 +49,17 @@ func createEncoderOfUnion(cfg *frozenConfig, schema Schema, typ reflect2.Type) V
 			break
 		}
 		return encoderOfMapUnion(cfg, schema, typ)
-
+	case reflect.Slice:
+		if !schema.(*UnionSchema).Nullable() {
+			break
+		}
+		return encoderOfNullableUnion(cfg, schema, typ)
 	case reflect.Ptr:
 		if !schema.(*UnionSchema).Nullable() {
 			break
 		}
-		return encoderOfPtrUnion(cfg, schema, typ)
+		return encoderOfNullableUnion(cfg, schema, typ)
 	}
-
 	return encoderOfResolverUnion(cfg, schema, typ)
 }
 
@@ -163,27 +168,39 @@ func (e *mapUnionEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 	encoder.Encode(elemPtr, w)
 }
 
-func decoderOfPtrUnion(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
+func decoderOfNullableUnion(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
 	union := schema.(*UnionSchema)
 	_, typeIdx := union.Indices()
-	ptrType := typ.(*reflect2.UnsafePtrType)
-	elemType := ptrType.Elem()
-	decoder := decoderOfType(cfg, union.Types()[typeIdx], elemType)
 
-	return &unionPtrDecoder{
+	var (
+		baseTyp reflect2.Type
+		isPtr   bool
+	)
+	switch v := typ.(type) {
+	case *reflect2.UnsafePtrType:
+		baseTyp = v.Elem()
+		isPtr = true
+	case *reflect2.UnsafeSliceType:
+		baseTyp = v
+	}
+	decoder := decoderOfType(cfg, union.Types()[typeIdx], baseTyp)
+
+	return &unionNullableDecoder{
 		schema:  union,
-		typ:     elemType,
+		typ:     baseTyp,
+		isPtr:   isPtr,
 		decoder: decoder,
 	}
 }
 
-type unionPtrDecoder struct {
+type unionNullableDecoder struct {
 	schema  *UnionSchema
 	typ     reflect2.Type
+	isPtr   bool
 	decoder ValDecoder
 }
 
-func (d *unionPtrDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
+func (d *unionNullableDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 	_, schema := getUnionSchema(d.schema, r)
 	if schema == nil {
 		return
@@ -194,47 +211,79 @@ func (d *unionPtrDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		return
 	}
 
+	// Handle the non-ptr case separately.
+	if !d.isPtr {
+		if d.typ.UnsafeIsNil(ptr) {
+			// Create a new instance.
+			newPtr := d.typ.UnsafeNew()
+			d.decoder.Decode(newPtr, r)
+			d.typ.UnsafeSet(ptr, newPtr)
+			return
+		}
+
+		// Reuse the existing instance.
+		d.decoder.Decode(ptr, r)
+		return
+	}
+
 	if *((*unsafe.Pointer)(ptr)) == nil {
-		// Create new instance
+		// Create new instance.
 		newPtr := d.typ.UnsafeNew()
 		d.decoder.Decode(newPtr, r)
 		*((*unsafe.Pointer)(ptr)) = newPtr
 		return
 	}
 
-	// Reuse existing instance
+	// Reuse existing instance.
 	d.decoder.Decode(*((*unsafe.Pointer)(ptr)), r)
 }
 
-func encoderOfPtrUnion(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncoder {
+func encoderOfNullableUnion(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncoder {
 	union := schema.(*UnionSchema)
 	nullIdx, typeIdx := union.Indices()
-	ptrType := typ.(*reflect2.UnsafePtrType)
-	encoder := encoderOfType(cfg, union.Types()[typeIdx], ptrType.Elem())
 
-	return &unionPtrEncoder{
+	var (
+		baseTyp reflect2.Type
+		isPtr   bool
+	)
+	switch v := typ.(type) {
+	case *reflect2.UnsafePtrType:
+		baseTyp = v.Elem()
+		isPtr = true
+	case *reflect2.UnsafeSliceType:
+		baseTyp = v
+	}
+	encoder := encoderOfType(cfg, union.Types()[typeIdx], baseTyp)
+
+	return &unionNullableEncoder{
 		schema:  union,
 		encoder: encoder,
+		isPtr:   isPtr,
 		nullIdx: int64(nullIdx),
 		typeIdx: int64(typeIdx),
 	}
 }
 
-type unionPtrEncoder struct {
+type unionNullableEncoder struct {
 	schema  *UnionSchema
 	encoder ValEncoder
+	isPtr   bool
 	nullIdx int64
 	typeIdx int64
 }
 
-func (e *unionPtrEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
+func (e *unionNullableEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 	if *((*unsafe.Pointer)(ptr)) == nil {
 		w.WriteLong(e.nullIdx)
 		return
 	}
 
 	w.WriteLong(e.typeIdx)
-	e.encoder.Encode(*((*unsafe.Pointer)(ptr)), w)
+	newPtr := ptr
+	if e.isPtr {
+		newPtr = *((*unsafe.Pointer)(ptr))
+	}
+	e.encoder.Encode(newPtr, w)
 }
 
 func decoderOfResolvedUnion(cfg *frozenConfig, schema Schema) (ValDecoder, error) {
