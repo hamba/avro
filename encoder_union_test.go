@@ -256,6 +256,36 @@ func TestEncoder_UnionPtrNotNullable(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestEncoder_UnionNullableSlice(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `["null", "bytes"]`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	b := []byte("foo")
+	err = enc.Encode(b)
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x02, 0x06, 0x66, 0x6F, 0x6F}, buf.Bytes())
+}
+
+func TestEncoder_UnionNullableSliceNull(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `["null", "bytes"]`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	var b []byte
+	err = enc.Encode(b)
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x00}, buf.Bytes())
+}
+
 func TestEncoder_UnionInterface(t *testing.T) {
 	defer ConfigTeardown()
 

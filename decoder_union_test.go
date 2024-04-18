@@ -182,17 +182,17 @@ func TestDecoder_UnionPtrReversed(t *testing.T) {
 func TestDecoder_UnionPtrReuseInstance(t *testing.T) {
 	defer ConfigTeardown()
 
-	avro.Register("test", &TestRecord{})
-
 	data := []byte{0x02, 0x36, 0x06, 0x66, 0x6F, 0x6F}
 	schema := `["null", {"type": "record", "name": "test", "fields" : [{"name": "a", "type": "long"}, {"name": "b", "type": "string"}]}]`
 	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
 
-	got := &TestRecord{}
+	var original TestRecord
+	got := &original
 	err := dec.Decode(&got)
 
 	require.NoError(t, err)
 	assert.IsType(t, &TestRecord{}, got)
+	assert.Same(t, &original, got)
 	assert.Equal(t, int64(27), got.A)
 	assert.Equal(t, "foo", got.B)
 }
@@ -223,6 +223,50 @@ func TestDecoder_UnionPtrReversedNull(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Nil(t, got)
+}
+
+func TestDecoder_UnionNullableSlice(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x02, 0x06, 0x66, 0x6F, 0x6F}
+	schema := `["null", "bytes"]`
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	var got []byte
+	err := dec.Decode(&got)
+
+	want := []byte("foo")
+	require.NoError(t, err)
+	assert.Equal(t, want, got)
+}
+
+func TestDecoder_UnionNullableSliceNull(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x00}
+	schema := `["null", "bytes"]`
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	var got []byte
+	err := dec.Decode(&got)
+
+	require.NoError(t, err)
+	assert.Nil(t, got)
+}
+
+func TestDecoder_UnionNullableSliceNotNullButEmpty(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x02, 0x00}
+	schema := `["null", "bytes"]`
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	var got []byte
+	err := dec.Decode(&got)
+
+	require.NoError(t, err)
+	assert.NotNil(t, got)
+	assert.Empty(t, got)
 }
 
 func TestDecoder_UnionPtrInvalidSchema(t *testing.T) {

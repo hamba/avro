@@ -184,7 +184,7 @@ func encoderOfStruct(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEnc
 				defaultType := reflect2.TypeOf(&def)
 				fields = append(fields, &structFieldEncoder{
 					defaultPtr: reflect2.PtrOf(&def),
-					encoder:    encoderOfPtrUnion(cfg, field.Type(), defaultType),
+					encoder:    encoderOfNullableUnion(cfg, field.Type(), defaultType),
 				})
 				continue
 			}
