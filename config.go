@@ -9,8 +9,11 @@ import (
 )
 
 const (
-	defaultMaxByteSliceSize  = 1_048_576 // 1 MiB
-	defaultMaxSliceAllocSize = -1
+	defaultMaxByteSliceSize = 1_048_576 // 1 MiB
+	// Max allocation size for an array due to the limit in number of bits in a heap address:
+	// https://github.com/golang/go/blob/7f76c00fc5678fa782708ba8fece63750cb89d03/src/runtime/malloc.go#L183
+	maxAllocSize             = int(1 << 48)
+	defaultMaxSliceAllocSize = maxAllocSize
 )
 
 // DefaultConfig is the default API.
@@ -274,10 +277,6 @@ func (c *frozenConfig) getMaxByteSliceSize() int {
 	}
 	return size
 }
-
-// Max allocation size for an array due to the limit in number of bits in a heap address:
-// https://github.com/golang/go/blob/7f76c00fc5678fa782708ba8fece63750cb89d03/src/runtime/malloc.go#L183
-var maxAllocSize = int(1 << 48)
 
 func (c *frozenConfig) getMaxSliceAllocSize() int {
 	size := c.config.MaxSliceAllocSize
