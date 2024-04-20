@@ -8,8 +8,10 @@ import (
 	"github.com/modern-go/reflect2"
 )
 
-const defaultMaxByteSliceSize = 1_048_576 // 1 MiB
-const defaultMaxSliceAllocSize = -1
+const (
+	defaultMaxByteSliceSize  = 1_048_576 // 1 MiB
+	defaultMaxSliceAllocSize = -1
+)
 
 // DefaultConfig is the default API.
 var DefaultConfig = Config{}.Freeze()
