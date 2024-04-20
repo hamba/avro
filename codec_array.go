@@ -39,10 +39,6 @@ type arrayDecoder struct {
 	decoder ValDecoder
 }
 
-// Max allocation size for an array due to the limit in number of bits in a heap address:
-// https://github.com/golang/go/blob/7f76c00fc5678fa782708ba8fece63750cb89d03/src/runtime/malloc.go#L183
-var maxAllocSize = uint64(1 << 48)
-
 func (d *arrayDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 	var size int
 	sliceType := d.typ
@@ -55,10 +51,12 @@ func (d *arrayDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 
 		start := size
 		size += int(l)
-		if size > int(maxAllocSize) {
-			r.ReportError("decode array", "size exceeded max allocation size")
+
+		if size > r.cfg.getMaxSliceAllocSize() {
+			r.ReportError("decode array", "size is greater than `Config.MaxSliceAllocSize`")
 			return
 		}
+
 		sliceType.UnsafeGrow(ptr, size)
 
 		for i := start; i < size; i++ {

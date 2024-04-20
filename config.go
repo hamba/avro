@@ -8,7 +8,12 @@ import (
 	"github.com/modern-go/reflect2"
 )
 
-const defaultMaxByteSliceSize = 1_048_576 // 1 MiB
+const (
+	defaultMaxByteSliceSize = 1_048_576 // 1 MiB
+	// Max allocation size for an array due to the limit in number of bits in a heap address:
+	// https://github.com/golang/go/blob/7f76c00fc5678fa782708ba8fece63750cb89d03/src/runtime/malloc.go#L183
+	maxAllocSize = int(1 << 48)
+)
 
 // DefaultConfig is the default API.
 var DefaultConfig = Config{}.Freeze()
@@ -49,6 +54,11 @@ type Config struct {
 	// MaxByteSliceSize is the maximum size of `bytes` or `string` types the Reader will create, defaulting to 1MiB.
 	// If this size is exceeded, the Reader returns an error. This can be disabled by setting a negative number.
 	MaxByteSliceSize int
+
+	// MaxSliceAllocSize is the maximum size that the decoder will allocate, set to the max heap
+	// allocation size by default.
+	// If this size is exceeded, the decoder returns an error.
+	MaxSliceAllocSize int
 }
 
 // Freeze makes the configuration immutable.
@@ -263,6 +273,14 @@ func (c *frozenConfig) getMaxByteSliceSize() int {
 	size := c.config.MaxByteSliceSize
 	if size == 0 {
 		return defaultMaxByteSliceSize
+	}
+	return size
+}
+
+func (c *frozenConfig) getMaxSliceAllocSize() int {
+	size := c.config.MaxSliceAllocSize
+	if size > maxAllocSize || size <= 0 {
+		return maxAllocSize
 	}
 	return size
 }
