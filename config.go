@@ -53,8 +53,9 @@ type Config struct {
 	// If this size is exceeded, the Reader returns an error. This can be disabled by setting a negative number.
 	MaxByteSliceSize int
 
-	// MaxSliceAllocSize is the maximum size that the decoder will allocate, disabled by default.
-	// If this size is exceeded, the decoder returns an error. This can be disabled by setting a negative number.
+	// MaxSliceAllocSize is the maximum size that the decoder will allocate, set to the max heap
+	// allocation size by default.
+	// If this size is exceeded, the decoder returns an error.
 	MaxSliceAllocSize int
 }
 
@@ -274,10 +275,14 @@ func (c *frozenConfig) getMaxByteSliceSize() int {
 	return size
 }
 
+// Max allocation size for an array due to the limit in number of bits in a heap address:
+// https://github.com/golang/go/blob/7f76c00fc5678fa782708ba8fece63750cb89d03/src/runtime/malloc.go#L183
+var maxAllocSize = int(1 << 48)
+
 func (c *frozenConfig) getMaxSliceAllocSize() int {
 	size := c.config.MaxSliceAllocSize
-	if size == 0 {
-		return defaultMaxSliceAllocSize
+	if size > maxAllocSize || size <= 0 {
+		return maxAllocSize
 	}
 	return size
 }
