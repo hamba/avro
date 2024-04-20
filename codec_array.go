@@ -59,6 +59,12 @@ func (d *arrayDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 			r.ReportError("decode array", "size exceeded max allocation size")
 			return
 		}
+
+		if max := r.cfg.getMaxSliceAllocSize(); max > 0 && size > max {
+			r.ReportError("decode array", "size is greater than `Config.MaxSliceAllocSize`")
+			return
+		}
+
 		sliceType.UnsafeGrow(ptr, size)
 
 		for i := start; i < size; i++ {

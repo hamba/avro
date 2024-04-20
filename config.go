@@ -9,6 +9,7 @@ import (
 )
 
 const defaultMaxByteSliceSize = 1_048_576 // 1 MiB
+const defaultMaxSliceAllocSize = -1
 
 // DefaultConfig is the default API.
 var DefaultConfig = Config{}.Freeze()
@@ -49,6 +50,10 @@ type Config struct {
 	// MaxByteSliceSize is the maximum size of `bytes` or `string` types the Reader will create, defaulting to 1MiB.
 	// If this size is exceeded, the Reader returns an error. This can be disabled by setting a negative number.
 	MaxByteSliceSize int
+
+	// MaxSliceAllocSize is the maximum size that the decoder will allocate, disabled by default.
+	// If this size is exceeded, the decoder returns an error. This can be disabled by setting a negative number.
+	MaxSliceAllocSize int
 }
 
 // Freeze makes the configuration immutable.
@@ -263,6 +268,14 @@ func (c *frozenConfig) getMaxByteSliceSize() int {
 	size := c.config.MaxByteSliceSize
 	if size == 0 {
 		return defaultMaxByteSliceSize
+	}
+	return size
+}
+
+func (c *frozenConfig) getMaxSliceAllocSize() int {
+	size := c.config.MaxSliceAllocSize
+	if size == 0 {
+		return defaultMaxSliceAllocSize
 	}
 	return size
 }
