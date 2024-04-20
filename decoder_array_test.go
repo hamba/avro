@@ -78,3 +78,16 @@ func TestDecoder_ArraySliceItemError(t *testing.T) {
 
 	assert.Error(t, err)
 }
+
+func TestDecoder_ArrayMaxAllocationError(t *testing.T) {
+	defer ConfigTeardown()
+	data := []byte{0x2, 0x0, 0xe9, 0xe9, 0xe9, 0xe9, 0xe9, 0xe9, 0xe9, 0xe9, 0x0}
+	schema := `{"type":"array", "items": { "type": "boolean" }}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	var got []bool
+	err = dec.Decode(&got)
+
+	assert.Error(t, err)
+}
