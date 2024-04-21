@@ -174,6 +174,7 @@ func (r *Reader) ReadInt() int32 {
 		// We ran out of buffer and are not at the end of the int,
 		// Read more into the buffer.
 		if !r.loadMore() {
+			r.Error = fmt.Errorf("reading int %w", r.Error)
 			return 0
 		}
 	}
@@ -216,6 +217,7 @@ func (r *Reader) ReadLong() int64 {
 		// We ran out of buffer and are not at the end of the long,
 		// Read more into the buffer.
 		if !r.loadMore() {
+			r.Error = fmt.Errorf("reading long %w", r.Error)
 			return 0
 		}
 	}
