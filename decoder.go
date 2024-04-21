@@ -1,7 +1,6 @@
 package avro
 
 import (
-	"errors"
 	"io"
 )
 
@@ -36,10 +35,10 @@ func (d *Decoder) Decode(obj any) error {
 
 	d.r.ReadVal(d.s, obj)
 
-	if errors.Is(d.r.Error, io.EOF) {
+	//nolint:errorlint // Only direct EOF errors should be discarded.
+	if d.r.Error == io.EOF {
 		return nil
 	}
-
 	return d.r.Error
 }
 

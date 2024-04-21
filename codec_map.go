@@ -72,6 +72,10 @@ func (d *mapDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 			keyPtr := reflect2.PtrOf(r.ReadString())
 			elemPtr := d.elemType.UnsafeNew()
 			d.decoder.Decode(elemPtr, r)
+			if r.Error != nil {
+				r.Error = fmt.Errorf("reading map[string]%s: %w", d.elemType.String(), r.Error)
+				return
+			}
 
 			d.mapType.UnsafeSetIndex(ptr, keyPtr, elemPtr)
 		}

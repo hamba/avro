@@ -39,6 +39,19 @@ func TestDecoder_MapMap(t *testing.T) {
 	assert.Equal(t, map[string]string{"foo": "foo"}, got)
 }
 
+func TestDecoder_MapMapShortRead(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x02, 0x06, 0x66, 0x6F, 0x6F, 0x06, 0x06}
+	schema := `{"type":"map", "values": "string"}`
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	var got map[string]string
+	err := dec.Decode(&got)
+
+	assert.Error(t, err)
+}
+
 func TestDecoder_MapMapOfStruct(t *testing.T) {
 	defer ConfigTeardown()
 

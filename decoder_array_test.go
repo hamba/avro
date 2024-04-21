@@ -37,6 +37,19 @@ func TestDecoder_ArraySlice(t *testing.T) {
 	assert.Equal(t, []int{27, 28}, got)
 }
 
+func TestDecoder_ArraySliceShortRead(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x04}
+	schema := `{"type":"array", "items": "int"}`
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	var got []int
+	err := dec.Decode(&got)
+
+	assert.Error(t, err)
+}
+
 func TestDecoder_ArraySliceOfStruct(t *testing.T) {
 	defer ConfigTeardown()
 

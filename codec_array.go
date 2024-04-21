@@ -62,8 +62,8 @@ func (d *arrayDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		for i := start; i < size; i++ {
 			elemPtr := sliceType.UnsafeGetIndex(ptr, i)
 			d.decoder.Decode(elemPtr, r)
-			if r.Error != nil && !errors.Is(r.Error, io.EOF) {
-				r.Error = fmt.Errorf("%s: %w", d.typ.String(), r.Error)
+			if r.Error != nil {
+				r.Error = fmt.Errorf("reading %s: %w", d.typ.String(), r.Error)
 				return
 			}
 		}
