@@ -106,3 +106,17 @@ func TestDecoder_ArrayExceedMaxSliceAllocationConfig(t *testing.T) {
 
 	assert.Error(t, err)
 }
+
+func TestDecoder_ArrayEof(t *testing.T) {
+
+	// 10 (long) gets encoded to 0x14
+	data := []byte{0x14}
+	schema := `{"type":"array", "items": { "type": "boolean" }}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	var got []bool
+	err = dec.Decode(&got)
+	assert.True(t, dec.IsEof())
+	assert.NoError(t, err)
+}

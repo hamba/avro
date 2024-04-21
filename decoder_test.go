@@ -79,6 +79,7 @@ func TestDecoder_DecodeEOFDoesntReturnError(t *testing.T) {
 	err := dec.Decode(&i)
 
 	assert.NoError(t, err)
+	assert.True(t, dec.IsEof())
 }
 
 func TestUnmarshal(t *testing.T) {
