@@ -49,7 +49,7 @@ func Unmarshal(schema Schema, data []byte, v any) error {
 	return DefaultConfig.Unmarshal(schema, data, v)
 }
 
-// Whether the decoder's reader has reached EOF.
-func (d *Decoder) IsEof() bool {
-	return d.r.Error == io.EOF
+// IsEOF returns Whether the decoder's reader has reached EOF.
+func (d *Decoder) IsEOF() bool {
+	return errors.Is(d.r.Error, io.EOF)
 }

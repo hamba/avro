@@ -117,6 +117,6 @@ func TestDecoder_ArrayEof(t *testing.T) {
 
 	var got []bool
 	err = dec.Decode(&got)
-	assert.True(t, dec.IsEof())
+	assert.True(t, dec.IsEOF())
 	assert.NoError(t, err)
 }
