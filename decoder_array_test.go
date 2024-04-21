@@ -93,6 +93,7 @@ func TestDecoder_ArrayMaxAllocationError(t *testing.T) {
 }
 
 func TestDecoder_ArrayExceedMaxSliceAllocationConfig(t *testing.T) {
+	defer ConfigTeardown()
 	avro.DefaultConfig = avro.Config{MaxSliceAllocSize: 5}.Freeze()
 
 	// 10 (long) gets encoded to 0x14
@@ -108,7 +109,6 @@ func TestDecoder_ArrayExceedMaxSliceAllocationConfig(t *testing.T) {
 }
 
 func TestDecoder_ArrayEof(t *testing.T) {
-
 	// 10 (long) gets encoded to 0x14
 	data := []byte{0x14}
 	schema := `{"type":"array", "items": { "type": "boolean" }}`
