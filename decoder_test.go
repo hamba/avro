@@ -68,19 +68,6 @@ func TestDecoder_DecodeNilPtr(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestDecoder_DecodeEOFDoesntReturnError(t *testing.T) {
-	defer ConfigTeardown()
-
-	data := []byte{0xE2}
-	schema := "int"
-	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
-
-	var i int
-	err := dec.Decode(&i)
-
-	assert.NoError(t, err)
-}
-
 func TestUnmarshal(t *testing.T) {
 	defer ConfigTeardown()
 

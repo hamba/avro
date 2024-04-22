@@ -109,6 +109,17 @@ func (r *Reader) readByte() byte {
 	return b
 }
 
+// Peek returns the next byte in the buffer.
+// The Reader Error will be io.EOF if no next byte exists.
+func (r *Reader) Peek() byte {
+	if r.head == r.tail {
+		if !r.loadMore() {
+			return 0
+		}
+	}
+	return r.buf[r.head]
+}
+
 // Read reads data into the given bytes.
 func (r *Reader) Read(b []byte) {
 	size := len(b)
@@ -117,6 +128,7 @@ func (r *Reader) Read(b []byte) {
 	for read < size {
 		if r.head == r.tail {
 			if !r.loadMore() {
+				r.Error = io.ErrUnexpectedEOF
 				return
 			}
 		}
@@ -138,6 +150,8 @@ func (r *Reader) ReadBool() bool {
 }
 
 // ReadInt reads an Int from the Reader.
+//
+//nolint:dupl
 func (r *Reader) ReadInt() int32 {
 	if r.Error != nil {
 		return 0
@@ -174,12 +188,15 @@ func (r *Reader) ReadInt() int32 {
 		// We ran out of buffer and are not at the end of the int,
 		// Read more into the buffer.
 		if !r.loadMore() {
+			r.Error = fmt.Errorf("reading int: %w", r.Error)
 			return 0
 		}
 	}
 }
 
 // ReadLong reads a Long from the Reader.
+//
+//nolint:dupl
 func (r *Reader) ReadLong() int64 {
 	if r.Error != nil {
 		return 0
@@ -216,6 +233,7 @@ func (r *Reader) ReadLong() int64 {
 		// We ran out of buffer and are not at the end of the long,
 		// Read more into the buffer.
 		if !r.loadMore() {
+			r.Error = fmt.Errorf("reading long: %w", r.Error)
 			return 0
 		}
 	}

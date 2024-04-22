@@ -114,9 +114,16 @@ func (d *Decoder) Error() error {
 }
 
 func (d *Decoder) readBlock() int64 {
+	_ = d.reader.Peek()
+	if errors.Is(d.reader.Error, io.EOF) {
+		// There is no next block
+		return 0
+	}
+
 	count := d.reader.ReadLong()
 	size := d.reader.ReadLong()
 
+	// Read the blocks data
 	if count > 0 {
 		data := make([]byte, size)
 		d.reader.Read(data)
@@ -129,6 +136,7 @@ func (d *Decoder) readBlock() int64 {
 		d.resetReader.Reset(data)
 	}
 
+	// Read the sync.
 	var sync [16]byte
 	d.reader.Read(sync[:])
 	if d.sync != sync && !errors.Is(d.reader.Error, io.EOF) {

@@ -194,7 +194,7 @@ func TestDecoder_SkipRecord(t *testing.T) {
 func TestDecoder_SkipRef(t *testing.T) {
 	defer ConfigTeardown()
 
-	data := []byte{0x02, 0x66, 0x06, 0x66, 0x6f, 0x6f}
+	data := []byte{0x02, 0x66, 0x06, 0x66, 0x6f, 0x6f, 0x02, 0x66}
 	schema := `{
 	"type": "record",
 	"name": "test",
