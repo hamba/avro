@@ -117,6 +117,7 @@ func (r *Reader) Read(b []byte) {
 	for read < size {
 		if r.head == r.tail {
 			if !r.loadMore() {
+				r.Error = io.ErrUnexpectedEOF
 				return
 			}
 		}
@@ -174,6 +175,7 @@ func (r *Reader) ReadInt() int32 {
 		// We ran out of buffer and are not at the end of the int,
 		// Read more into the buffer.
 		if !r.loadMore() {
+			r.Error = io.ErrUnexpectedEOF
 			return 0
 		}
 	}
@@ -216,6 +218,7 @@ func (r *Reader) ReadLong() int64 {
 		// We ran out of buffer and are not at the end of the long,
 		// Read more into the buffer.
 		if !r.loadMore() {
+			r.Error = io.ErrUnexpectedEOF
 			return 0
 		}
 	}
@@ -247,9 +250,6 @@ func (r *Reader) ReadBytes() []byte {
 // ReadString reads a String from the Reader.
 func (r *Reader) ReadString() string {
 	b := r.readBytes("string")
-	if r.Error != nil {
-		r.Error = fmt.Errorf("reading string: %w", r.Error)
-	}
 
 	if len(b) == 0 {
 		return ""
@@ -288,6 +288,7 @@ func (r *Reader) readBytes(op string) []byte {
 	}
 
 	buf := make([]byte, size)
+
 	r.Read(buf)
 	return buf
 }
