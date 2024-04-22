@@ -359,6 +359,20 @@ func TestDecoder_String(t *testing.T) {
 	assert.Equal(t, "foo", str)
 }
 
+func TestDecoder_StringEOF(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x08}
+	schema := "string"
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	var str string
+	err = dec.Decode(&str)
+
+	require.Error(t, err)
+}
+
 func TestDecoder_StringInvalidSchema(t *testing.T) {
 	defer ConfigTeardown()
 

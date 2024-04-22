@@ -247,6 +247,10 @@ func (r *Reader) ReadBytes() []byte {
 // ReadString reads a String from the Reader.
 func (r *Reader) ReadString() string {
 	b := r.readBytes("string")
+	if r.Error != nil {
+		r.Error = fmt.Errorf("reading string: %w", r.Error)
+	}
+
 	if len(b) == 0 {
 		return ""
 	}
