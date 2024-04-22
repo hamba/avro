@@ -69,6 +69,20 @@ func TestDecoder_Int(t *testing.T) {
 	assert.Equal(t, 27, i)
 }
 
+func TestDecoder_IntShortRead(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0xe6}
+	schema := "int"
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	var i int
+	err = dec.Decode(&i)
+
+	assert.Error(t, err)
+}
+
 func TestDecoder_IntInvalidSchema(t *testing.T) {
 	defer ConfigTeardown()
 
@@ -272,6 +286,20 @@ func TestDecoder_Int64(t *testing.T) {
 	assert.Equal(t, int64(27), i)
 }
 
+func TestDecoder_Int64ShortRead(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0xe6}
+	schema := "long"
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	var i int64
+	err = dec.Decode(&i)
+
+	assert.Error(t, err)
+}
+
 func TestDecoder_Int64InvalidSchema(t *testing.T) {
 	defer ConfigTeardown()
 
@@ -359,6 +387,20 @@ func TestDecoder_String(t *testing.T) {
 	assert.Equal(t, "foo", str)
 }
 
+func TestDecoder_StringShortRead(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x08}
+	schema := "string"
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	var str string
+	err = dec.Decode(&str)
+
+	require.Error(t, err)
+}
+
 func TestDecoder_StringInvalidSchema(t *testing.T) {
 	defer ConfigTeardown()
 
@@ -386,6 +428,20 @@ func TestDecoder_Bytes(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, []byte{0xEC, 0xAB, 0x44, 0x00}, b)
+}
+
+func TestDecoder_BytesShortRead(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x08, 0xEC}
+	schema := "bytes"
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	var b []byte
+	err = dec.Decode(&b)
+
+	assert.Error(t, err)
 }
 
 func TestDecoder_BytesInvalidSchema(t *testing.T) {

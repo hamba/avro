@@ -3,6 +3,7 @@ package avro_test
 import (
 	"bytes"
 	"errors"
+	"io"
 	"strconv"
 	"testing"
 
@@ -44,6 +45,28 @@ func TestReader_ReportErrorExistingError(t *testing.T) {
 	assert.Equal(t, err, r.Error)
 }
 
+func TestReader_Peek(t *testing.T) {
+	r := (&avro.Reader{}).Reset([]byte{0x36})
+
+	b := r.Peek()
+
+	i := r.ReadInt()
+
+	require.NoError(t, r.Error)
+	assert.Equal(t, byte(0x36), b)
+	assert.Equal(t, int32(27), i)
+}
+
+func TestReader_PeekNoData(t *testing.T) {
+	r := (&avro.Reader{}).Reset([]byte{0x36})
+
+	_ = r.ReadInt()
+
+	_ = r.Peek()
+
+	assert.ErrorIs(t, r.Error, io.EOF)
+}
+
 func TestReader_ReadPastBuffer(t *testing.T) {
 	r := (&avro.Reader{}).Reset([]byte{0xE2})
 
@@ -77,7 +100,7 @@ func TestReader_Read(t *testing.T) {
 		},
 		{
 			name:    "eof",
-			data:    []byte{0xAC}, // io.EOF
+			data:    []byte{0xAC}, // io.ErrUnexpectedEOF
 			want:    []byte{0xAC, 0x00, 0x00, 0x00, 0x00, 0x00},
 			wantErr: require.Error,
 		},
@@ -124,7 +147,7 @@ func TestReader_ReadBool(t *testing.T) {
 		},
 		{
 			name:    "eof",
-			data:    []byte(nil), // io.EOF
+			data:    []byte(nil), // io.ErrUnexpectedEOF
 			want:    false,
 			wantErr: require.Error,
 		},
