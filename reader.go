@@ -139,6 +139,8 @@ func (r *Reader) ReadBool() bool {
 }
 
 // ReadInt reads an Int from the Reader.
+//
+//nolint:dupl // Not the same as ReadLong
 func (r *Reader) ReadInt() int32 {
 	if r.Error != nil {
 		return 0
@@ -182,6 +184,8 @@ func (r *Reader) ReadInt() int32 {
 }
 
 // ReadLong reads a Long from the Reader.
+//
+//nolint:dupl // Not the same as ReadInt
 func (r *Reader) ReadLong() int64 {
 	if r.Error != nil {
 		return 0
