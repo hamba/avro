@@ -393,3 +393,39 @@ func TestDecoder_RefStruct(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, want, got)
 }
+
+func TestDecoder_RecordFieldEOF(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte("010\xf8\xf1\xc600000\xbcֱ00000\U00014e5800000\xb0\xa6\xfd\xbf0000000000\xcf00000\xa6܇\xd200000\x96\x9b\xf9\xae00000\xf4\xf3\xce\xf600000\xa8\xe3\xe1\xad00000\x86\xd8Ԛ00000\xde00000\xf200000\xa50000000000\xd600000\x9e\xeb\xf8\xfa00000\x96\xa4\xe3\x9500000\xf2\xa9\xcc\xfb00000\xa0\xb8\xe1\xad00000\xf8\xb3\xac\xaa00000\xaa\xc3\xf6\xcc00000\x88\x87\xc800000\xf2\xef00000\xc3000009000000\xbe\x80\xdd\xce00000Ȋ\xea\xee00000\xba\xa4\x8a\xe600000\x86\xca\xc0\xc70000000000\xff00000ܮ\x8c\xf500000\xac\x97Ď00000\xb0\xac\x97\xad00000\xb4\xb8\xc0\x8900000\xa6\xb5\xf9\xce0000000000\xbc00000\xf4\xf8\x98\xc500000\x9a\x82\xa6\xc500000\xb2뵿00000\xea\xa3ݍ00000\xa8\xa5\xd1\xdf00000آ\xbe\xb500000\x900000000000\x9c\xea\x90\xdc00000\xdc\xe8\xba\xed00000\xfeɻ\xb700000溂\xa000000\xe6\xf4\x95\x8700000\x86\x96\xc9\xd2000000000000000000000000000000000000000000000000000000000000000000000000000000000\xf1\xeb00000\xf6ˑ\xf0")
+	schema := `{
+		"items": {
+		  "items": {
+			"fields": [
+			  {
+				"name": "A",
+				"type": {
+					"type": "int"
+				}
+			  },
+			  {
+				"nAme": "A",
+				"tYpe": {
+					"type": "float"
+				}
+			  }
+			],
+			"name": "A",
+			"type": "record"
+		  },
+		  "type": "array"
+		},
+		"type": "array"
+	  }`
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	var got any
+	err := dec.Decode(&got)
+
+	assert.Error(t, err)
+}

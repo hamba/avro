@@ -307,6 +307,9 @@ func (d *recordMapDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 	for _, field := range d.fields {
 		elemPtr := d.elemType.UnsafeNew()
 		field.decoder.Decode(elemPtr, r)
+		if r.Error != nil {
+			break
+		}
 		if field.skip {
 			continue
 		}
