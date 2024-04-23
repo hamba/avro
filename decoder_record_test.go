@@ -409,7 +409,7 @@ func TestDecoder_RecordFieldEOF(t *testing.T) {
 				}
 			  },
 			  {
-				"nAme": "A",
+				"name": "A",
 				"tYpe": {
 					"type": "float"
 				}
