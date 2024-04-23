@@ -254,6 +254,18 @@ func TestReader_ReadInt(t *testing.T) {
 	}
 }
 
+func TestReader_ReadIntShortReadAcrossBuffer(t *testing.T) {
+	data := []byte{0xe2, 0xa2, 0xf3, 0xad}
+	r := avro.NewReader(bytes.NewReader(data), 3)
+
+	_ = r.ReadInt()
+
+	assert.NotPanics(t, func() {
+		b := make([]byte, 3)
+		r.Read(b)
+	})
+}
+
 func TestReader_ReadLong(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -357,6 +369,18 @@ func TestReader_ReadLong(t *testing.T) {
 			assert.Equal(t, test.want, got)
 		})
 	}
+}
+
+func TestReader_ReadLongShortReadAcrossBuffer(t *testing.T) {
+	data := []byte{0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
+	r := avro.NewReader(bytes.NewReader(data), 8)
+
+	_ = r.ReadLong()
+
+	assert.NotPanics(t, func() {
+		b := make([]byte, 3)
+		r.Read(b)
+	})
 }
 
 func TestReader_ReadFloat(t *testing.T) {
