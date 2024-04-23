@@ -171,20 +171,22 @@ func (r *Reader) ReadInt() int32 {
 		}
 
 		// Consume what it is in the buffer.
-		for i, b := range r.buf[r.head:tail] {
+		var i int
+		for _, b := range r.buf[r.head:tail] {
 			v |= uint32(b&0x7f) << s
 			if b&0x80 == 0 {
 				r.head += i + 1
 				return int32((v >> 1) ^ -(v & 1))
 			}
 			s += 7
-			n++
+			i++
 		}
 		if n >= maxIntBufSize {
 			r.ReportError("ReadInt", "int overflow")
 			return 0
 		}
-		r.head += n
+		r.head += i
+		n += i
 
 		// We ran out of buffer and are not at the end of the int,
 		// Read more into the buffer.
@@ -216,20 +218,22 @@ func (r *Reader) ReadLong() int64 {
 		}
 
 		// Consume what it is in the buffer.
-		for i, b := range r.buf[r.head:tail] {
+		var i int
+		for _, b := range r.buf[r.head:tail] {
 			v |= uint64(b&0x7f) << s
 			if b&0x80 == 0 {
 				r.head += i + 1
 				return int64((v >> 1) ^ -(v & 1))
 			}
 			s += 7
-			n++
+			i++
 		}
 		if n >= maxLongBufSize {
 			r.ReportError("ReadLong", "int overflow")
 			return 0
 		}
-		r.head += n
+		r.head += i
+		n += i
 
 		// We ran out of buffer and are not at the end of the long,
 		// Read more into the buffer.
