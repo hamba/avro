@@ -54,6 +54,20 @@ func TestDecoder_BoolInvalidSchema(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestDecoder_BoolEof(t *testing.T) {
+	defer ConfigTeardown()
+
+	data := []byte{0x4}
+	schema := `{"fields":[{"name":"B","type":{"type":"int"}},{"name":"A","type":{"type":"boolean"}}],"name":"foo","type":"record"}`
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	var b any
+	err = dec.Decode(&b)
+
+	assert.Error(t, err)
+}
+
 func TestDecoder_Int(t *testing.T) {
 	defer ConfigTeardown()
 

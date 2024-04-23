@@ -99,6 +99,7 @@ func (r *Reader) loadMore() bool {
 func (r *Reader) readByte() byte {
 	if r.head == r.tail {
 		if !r.loadMore() {
+			r.Error = io.ErrUnexpectedEOF
 			return 0
 		}
 	}
