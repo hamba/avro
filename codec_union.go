@@ -453,7 +453,7 @@ func (e *unionResolverEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 func getUnionSchema(schema *UnionSchema, r *Reader) (int, Schema) {
 	types := schema.Types()
 
-	idx := int(r.ReadLong())
+	idx := int(r.ReadInt())
 	if idx < 0 || idx > len(types)-1 {
 		r.ReportError("decode union type", "unknown union type")
 		return 0, nil
