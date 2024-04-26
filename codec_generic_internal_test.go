@@ -174,7 +174,7 @@ func TestGenericDecode(t *testing.T) {
 			wantErr: require.NoError,
 		},
 		{
-			name: "Union haha",
+			name: "Union Zero Index",
 			// 0x80 represents 128. So the bytes below will result in 0
 			// as a result of zig-zag encoding.
 			data:    []byte{0x80, 0x80, 0x80, 0x80, 0x30},
