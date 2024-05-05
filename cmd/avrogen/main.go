@@ -16,6 +16,8 @@ import (
 )
 
 type config struct {
+	TemplateFileName string
+
 	Pkg         string
 	Out         string
 	Tags        string
@@ -38,6 +40,7 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 	flgs.BoolVar(&cfg.FullName, "fullname", false, "Use the full name of the Record schema to create the struct name.")
 	flgs.BoolVar(&cfg.Encoders, "encoders", false, "Generate encoders for the structs.")
 	flgs.StringVar(&cfg.Initialisms, "initialisms", "", "Custom initialisms <VAL>[,...] for struct and field names.")
+	flgs.StringVar(&cfg.TemplateFileName, "templateFileName", "", "Override output template with one loaded from file.")
 	flgs.Usage = func() {
 		_, _ = fmt.Fprintln(stderr, "Usage: avrogen [options] schemas")
 		_, _ = fmt.Fprintln(stderr, "Options:")
@@ -64,10 +67,17 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
+	template, err := loadTemplate(cfg.TemplateFileName)
+	if err != nil {
+		_, _ = fmt.Fprintln(stderr, "Error: "+err.Error())
+		return 1
+	}
+
 	opts := []gen.OptsFunc{
 		gen.WithFullName(cfg.FullName),
 		gen.WithEncoders(cfg.Encoders),
 		gen.WithInitialisms(initialisms),
+		gen.WithTemplate(string(template)),
 	}
 	g := gen.NewGenerator(cfg.Pkg, tags, opts...)
 	for _, file := range flgs.Args() {
@@ -86,7 +96,7 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 	}
 	formatted, err := format.Source(buf.Bytes())
 	if err != nil {
-		_, _ = fmt.Fprintf(stderr, "Error: could not format code: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "Error: generated code \n%s\n could not be formatted: %v\n", buf.String(), err)
 		return 3
 	}
 
@@ -171,4 +181,11 @@ func parseInitialisms(raw string) ([]string, error) {
 	}
 
 	return result, nil
+}
+
+func loadTemplate(templateFileName string) ([]byte, error) {
+	if templateFileName == "" {
+		return nil, nil
+	}
+	return os.ReadFile(filepath.Clean(templateFileName))
 }
