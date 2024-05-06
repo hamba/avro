@@ -356,6 +356,8 @@ func TestIsValidDefault(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, ok := isValidDefault(test.schemaFn(), test.def)
 
 			assert.Equal(t, test.wantOk, ok)
@@ -451,6 +453,8 @@ func TestSchema_IsPromotable(t *testing.T) {
 	for i, test := range tests {
 		test := test
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			t.Parallel()
+
 			ok := isPromotable(test.writerTyp, test.readerType)
 
 			assert.Equal(t, test.want, ok)
@@ -526,6 +530,8 @@ func TestSchema_IsNative(t *testing.T) {
 	for i, test := range tests {
 		test := test
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			t.Parallel()
+
 			ok := isNative(test.typ)
 			assert.Equal(t, test.wantOk, ok)
 		})
@@ -632,6 +638,8 @@ func TestEnumSchema_GetSymbol(t *testing.T) {
 	for i, test := range tests {
 		test := test
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			t.Parallel()
+
 			got, ok := test.schemaFn().Symbol(test.idx)
 			assert.Equal(t, test.wantOk, ok)
 			if ok {

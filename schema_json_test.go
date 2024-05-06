@@ -283,10 +283,12 @@ func TestSchema_JSON(t *testing.T) {
 	for i, test := range tests {
 		test := test
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			s, err := avro.Parse(test.input)
+			t.Parallel()
+
+			schema, err := avro.ParseWithCache(test.input, "", &avro.SchemaCache{})
 			require.NoError(t, err)
 
-			b, err := json.Marshal(s)
+			b, err := json.Marshal(schema)
 
 			require.NoError(t, err)
 			assert.Equal(t, test.json, string(b))

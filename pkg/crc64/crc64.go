@@ -4,8 +4,11 @@ package crc64
 
 import (
 	"hash"
-	"sync"
 )
+
+func init() {
+	buildTable()
+}
 
 // Size is the of a CRC-64 checksum in bytes.
 const Size = 8
@@ -28,14 +31,7 @@ func makeTable() *Table {
 	return t
 }
 
-var (
-	tableBuildOnce sync.Once
-	crc64Table     *Table
-)
-
-func buildTableOnce() {
-	tableBuildOnce.Do(buildTable)
-}
+var crc64Table *Table
 
 func buildTable() {
 	crc64Table = makeTable()
@@ -49,8 +45,6 @@ type digest struct {
 // New creates a new hash.Hash64 computing the Avro CRC-64 checksum.
 // Its Sum method will lay the value out in big-endian byte order.
 func New() hash.Hash64 {
-	buildTableOnce()
-
 	return &digest{
 		crc: Empty,
 		tab: crc64Table,
@@ -90,4 +84,14 @@ func (d *digest) Sum64() uint64 {
 func (d *digest) Sum(in []byte) []byte {
 	s := d.Sum64()
 	return append(in, byte(s>>56), byte(s>>48), byte(s>>40), byte(s>>32), byte(s>>24), byte(s>>16), byte(s>>8), byte(s))
+}
+
+// Sum returns the MD5 checksum of the data.
+func Sum(data []byte) [Size]byte {
+	d := digest{crc: Empty, tab: crc64Table}
+	d.Reset()
+	_, _ = d.Write(data)
+	s := d.Sum64()
+	//nolint:lll
+	return [Size]byte{byte(s >> 56), byte(s >> 48), byte(s >> 40), byte(s >> 32), byte(s >> 24), byte(s >> 16), byte(s >> 8), byte(s)}
 }

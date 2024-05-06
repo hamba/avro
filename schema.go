@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"hash"
 	"sort"
 	"strconv"
 	"strings"
@@ -95,12 +94,6 @@ const (
 	MD5       FingerprintType = "MD5"
 	SHA256    FingerprintType = "SHA256"
 )
-
-var fingerprinters = map[FingerprintType]hash.Hash{
-	CRC64Avro: crc64.New(),
-	MD5:       md5.New(),
-	SHA256:    sha256.New(),
-}
 
 // SchemaCache is a cache of schemas.
 type SchemaCache struct {
@@ -290,14 +283,23 @@ func (f *fingerprinter) FingerprintUsing(typ FingerprintType, stringer fmt.Strin
 		return v.([]byte), nil
 	}
 
-	h, ok := fingerprinters[typ]
-	if !ok {
+	data := []byte(stringer.String())
+
+	var fingerprint []byte
+	switch typ {
+	case CRC64Avro:
+		h := crc64.Sum(data)
+		fingerprint = h[:]
+	case MD5:
+		h := md5.Sum(data)
+		fingerprint = h[:]
+	case SHA256:
+		h := sha256.Sum256(data)
+		fingerprint = h[:]
+	default:
 		return nil, fmt.Errorf("avro: unknown fingerprint algorithm %s", typ)
 	}
 
-	h.Reset()
-	_, _ = h.Write([]byte(stringer.String()))
-	fingerprint := h.Sum(make([]byte, 0, h.Size()))
 	f.cache.Store(typ, fingerprint)
 	return fingerprint, nil
 }

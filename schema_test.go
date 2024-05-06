@@ -150,11 +150,13 @@ func TestPrimitiveSchema(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.schema, func(t *testing.T) {
-			s, err := avro.Parse(test.schema)
+			t.Parallel()
+
+			schema, err := avro.ParseWithCache(test.schema, "", &avro.SchemaCache{})
 
 			require.NoError(t, err)
-			assert.Equal(t, test.want, s.Type())
-			assert.Equal(t, test.wantFingerprint, s.Fingerprint())
+			assert.Equal(t, test.want, schema.Type())
+			assert.Equal(t, test.wantFingerprint, schema.Fingerprint())
 		})
 	}
 }
@@ -257,11 +259,13 @@ func TestRecordSchema(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			s, err := avro.Parse(test.schema)
+			t.Parallel()
+
+			schema, err := avro.ParseWithCache(test.schema, "", &avro.SchemaCache{})
 
 			test.wantErr(t, err)
-			if s != nil {
-				assert.Equal(t, avro.Record, s.Type())
+			if schema != nil {
+				assert.Equal(t, avro.Record, schema.Type())
 			}
 		})
 	}
@@ -315,13 +319,14 @@ func TestErrorRecordSchema(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 
-			s, err := avro.Parse(test.schema)
+			schema, err := avro.ParseWithCache(test.schema, "", &avro.SchemaCache{})
 
 			test.wantErr(t, err)
 			if test.wantSchema {
-				assert.Equal(t, avro.Record, s.Type())
-				recSchema := s.(*avro.RecordSchema)
+				assert.Equal(t, avro.Record, schema.Type())
+				recSchema := schema.(*avro.RecordSchema)
 				assert.True(t, recSchema.IsError())
 			}
 		})
@@ -429,7 +434,9 @@ func TestRecordSchema_ValidatesDefault(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			_, err := avro.Parse(test.schema)
+			t.Parallel()
+
+			_, err := avro.ParseWithCache(test.schema, "", &avro.SchemaCache{})
 
 			test.wantErr(t, err)
 		})
@@ -477,11 +484,13 @@ func TestRecordSchema_ValidatesOrder(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			s, err := avro.Parse(test.schema)
+			t.Parallel()
+
+			schema, err := avro.ParseWithCache(test.schema, "", &avro.SchemaCache{})
 
 			test.wantErr(t, err)
 			if test.want != "" {
-				rs := s.(*avro.RecordSchema)
+				rs := schema.(*avro.RecordSchema)
 				require.Len(t, rs.Fields(), 1)
 				assert.Equal(t, test.want, rs.Fields()[0].Order())
 			}
@@ -666,7 +675,9 @@ func TestEnumSchema(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			schema, err := avro.Parse(test.schema)
+			t.Parallel()
+
+			schema, err := avro.ParseWithCache(test.schema, "", &avro.SchemaCache{})
 
 			test.wantErr(t, err)
 			if test.wantName != "" {
@@ -719,7 +730,9 @@ func TestArraySchema(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			got, err := avro.Parse(test.schema)
+			t.Parallel()
+
+			got, err := avro.ParseWithCache(test.schema, "", &avro.SchemaCache{})
 
 			test.wantErr(t, err)
 			assert.Equal(t, test.want, got)
@@ -765,7 +778,9 @@ func TestMapSchema(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			got, err := avro.Parse(test.schema)
+			t.Parallel()
+
+			got, err := avro.ParseWithCache(test.schema, "", &avro.SchemaCache{})
 
 			test.wantErr(t, err)
 			assert.Equal(t, test.want, got)
@@ -827,12 +842,14 @@ func TestUnionSchema(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			s, err := avro.Parse(test.schema)
+			t.Parallel()
+
+			schema, err := avro.ParseWithCache(test.schema, "", &avro.SchemaCache{})
 
 			test.wantErr(t, err)
 			if test.wantFingerprint != [32]byte{} {
-				assert.Equal(t, avro.Union, s.Type())
-				assert.Equal(t, test.wantFingerprint, s.Fingerprint())
+				assert.Equal(t, avro.Union, schema.Type())
+				assert.Equal(t, test.wantFingerprint, schema.Fingerprint())
 			}
 		})
 	}
@@ -864,10 +881,12 @@ func TestUnionSchema_Indices(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			s, err := avro.Parse(test.schema)
+			t.Parallel()
+
+			schema, err := avro.ParseWithCache(test.schema, "", &avro.SchemaCache{})
 
 			require.NoError(t, err)
-			null, typ := s.(*avro.UnionSchema).Indices()
+			null, typ := schema.(*avro.UnionSchema).Indices()
 			assert.Equal(t, test.want[0], null)
 			assert.Equal(t, test.want[1], typ)
 		})
@@ -929,7 +948,9 @@ func TestFixedSchema(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			schema, err := avro.Parse(test.schema)
+			t.Parallel()
+
+			schema, err := avro.ParseWithCache(test.schema, "", &avro.SchemaCache{})
 
 			test.wantErr(t, err)
 			if test.wantFingerprint != [32]byte{} {
@@ -1129,9 +1150,11 @@ func TestSchema_LogicalTypes(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			schema, err := avro.Parse(test.schema)
+			t.Parallel()
 
+			schema, err := avro.ParseWithCache(test.schema, "", &avro.SchemaCache{})
 			require.NoError(t, err)
+
 			assert.Equal(t, test.wantType, schema.Type())
 
 			lts, ok := schema.(avro.LogicalTypeSchema)
@@ -1228,7 +1251,11 @@ func TestSchema_FingerprintUsing(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			schema := avro.MustParse(test.schema)
+			t.Parallel()
+
+			schema, err := avro.ParseWithCache(test.schema, "", &avro.SchemaCache{})
+			require.NoError(t, err)
+
 			got, err := schema.FingerprintUsing(test.typ)
 
 			require.NoError(t, err)

@@ -269,7 +269,9 @@ func TestSchema_Canonical(t *testing.T) {
 	for i, test := range tests {
 		test := test
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			s, err := avro.Parse(test.input)
+			t.Parallel()
+
+			s, err := avro.ParseWithCache(test.input, "", &avro.SchemaCache{})
 
 			require.NoError(t, err)
 			assert.Equal(t, test.canonical, s.String())
