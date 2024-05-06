@@ -7,6 +7,7 @@ import (
 
 	"github.com/hamba/avro/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewSchemaCompatibility(t *testing.T) {
@@ -243,11 +244,15 @@ func TestSchemaCompatibility_Compatible(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			r := avro.MustParse(test.reader)
-			w := avro.MustParse(test.writer)
+			t.Parallel()
+
+			r, err := avro.ParseWithCache(test.reader, "", &avro.SchemaCache{})
+			require.NoError(t, err)
+			w, err := avro.ParseWithCache(test.writer, "", &avro.SchemaCache{})
+			require.NoError(t, err)
 			sc := avro.NewSchemaCompatibility()
 
-			err := sc.Compatible(r, w)
+			err = sc.Compatible(r, w)
 
 			test.wantErr(t, err)
 		})
@@ -808,8 +813,12 @@ func TestSchemaCompatibility_Resolve(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			r := avro.MustParse(test.reader)
-			w := avro.MustParse(test.writer)
+			t.Parallel()
+
+			r, err := avro.ParseWithCache(test.reader, "", &avro.SchemaCache{})
+			require.NoError(t, err)
+			w, err := avro.ParseWithCache(test.writer, "", &avro.SchemaCache{})
+			require.NoError(t, err)
 			sc := avro.NewSchemaCompatibility()
 
 			b, err := avro.Marshal(w, test.value)
