@@ -6,8 +6,7 @@ package {{ .PackageName }}
 {{ if len .Imports }}
 	import (
 	{{- range .Imports }}
-		{{ if eq . "" }}
-		{{ else }}"{{ . }}"{{end}}
+		"{{ . }}"
 	{{- end }}
 	)
 {{ end }}

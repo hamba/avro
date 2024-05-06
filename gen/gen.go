@@ -6,13 +6,14 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"go/format"
 	"io"
+	"maps"
 	"strings"
 	"text/template"
 
 	"github.com/ettle/strcase"
 	"github.com/hamba/avro/v2"
+	"golang.org/x/tools/imports"
 )
 
 // Config configures the code generation.
@@ -82,7 +83,7 @@ func StructFromSchema(schema avro.Schema, w io.Writer, cfg Config) error {
 		return err
 	}
 
-	formatted, err := format.Source(buf.Bytes())
+	formatted, err := imports.Process("", buf.Bytes(), nil)
 	if err != nil {
 		return fmt.Errorf("generated code \n%s\n could not be formatted: %w", buf.String(), err)
 	}
@@ -149,10 +150,13 @@ type Generator struct {
 
 // NewGenerator returns a generator.
 func NewGenerator(pkg string, tags map[string]TagStyle, opts ...OptsFunc) *Generator {
+	clonedTags := maps.Clone(tags)
+	delete(clonedTags, "avro")
+
 	g := &Generator{
 		template: outputTemplate,
 		pkg:      pkg,
-		tags:     tags,
+		tags:     clonedTags,
 	}
 
 	for _, opt := range opts {
@@ -295,7 +299,6 @@ func (g *Generator) resolveLogicalSchema(logicalType avro.LogicalType) string {
 }
 
 func (g *Generator) newField(name, typ, avroFieldDoc, avroFieldName string) field {
-	delete(g.tags, "avro")
 	return field{
 		Name:          name,
 		Type:          typ,
@@ -337,12 +340,6 @@ func (g *Generator) Write(w io.Writer) error {
 		return err
 	}
 
-	imports := g.imports
-	if len(g.thirdPartyImports) > 0 {
-		imports = append(imports, "")
-		imports = append(imports, g.thirdPartyImports...)
-	}
-
 	data := struct {
 		WithEncoders      bool
 		PackageName       string
@@ -352,7 +349,7 @@ func (g *Generator) Write(w io.Writer) error {
 	}{
 		WithEncoders: g.encoders,
 		PackageName:  g.pkg,
-		Imports:      imports,
+		Imports:      append(g.imports, g.thirdPartyImports...),
 		Typedefs:     g.typedefs,
 	}
 	return parsed.Execute(w, data)

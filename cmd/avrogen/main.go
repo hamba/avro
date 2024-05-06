@@ -5,7 +5,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"go/format"
 	"io"
 	"os"
 	"path/filepath"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/hamba/avro/v2"
 	"github.com/hamba/avro/v2/gen"
+	"golang.org/x/tools/imports"
 )
 
 type config struct {
@@ -94,7 +94,7 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stderr, "Error: could not generate code: %v\n", err)
 		return 3
 	}
-	formatted, err := format.Source(buf.Bytes())
+	formatted, err := imports.Process("", buf.Bytes(), nil)
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "Error: generated code \n%s\n could not be formatted: %v\n", buf.String(), err)
 		return 3
