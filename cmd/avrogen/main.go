@@ -5,7 +5,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"go/format"
 	"io"
 	"os"
 	"path/filepath"
@@ -13,9 +12,12 @@ import (
 
 	"github.com/hamba/avro/v2"
 	"github.com/hamba/avro/v2/gen"
+	"golang.org/x/tools/imports"
 )
 
 type config struct {
+	TemplateFileName string
+
 	Pkg         string
 	Out         string
 	Tags        string
@@ -38,6 +40,7 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 	flgs.BoolVar(&cfg.FullName, "fullname", false, "Use the full name of the Record schema to create the struct name.")
 	flgs.BoolVar(&cfg.Encoders, "encoders", false, "Generate encoders for the structs.")
 	flgs.StringVar(&cfg.Initialisms, "initialisms", "", "Custom initialisms <VAL>[,...] for struct and field names.")
+	flgs.StringVar(&cfg.TemplateFileName, "templateFileName", "", "Override output template with one loaded from file.")
 	flgs.Usage = func() {
 		_, _ = fmt.Fprintln(stderr, "Usage: avrogen [options] schemas")
 		_, _ = fmt.Fprintln(stderr, "Options:")
@@ -64,10 +67,17 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
+	template, err := loadTemplate(cfg.TemplateFileName)
+	if err != nil {
+		_, _ = fmt.Fprintln(stderr, "Error: "+err.Error())
+		return 1
+	}
+
 	opts := []gen.OptsFunc{
 		gen.WithFullName(cfg.FullName),
 		gen.WithEncoders(cfg.Encoders),
 		gen.WithInitialisms(initialisms),
+		gen.WithTemplate(string(template)),
 	}
 	g := gen.NewGenerator(cfg.Pkg, tags, opts...)
 	for _, file := range flgs.Args() {
@@ -84,30 +94,37 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stderr, "Error: could not generate code: %v\n", err)
 		return 3
 	}
-	formatted, err := format.Source(buf.Bytes())
+	formatted, err := imports.Process("", buf.Bytes(), nil)
 	if err != nil {
-		_, _ = fmt.Fprintf(stderr, "Error: could not format code: %v\n", err)
+		_ = writeOut(cfg.Out, stdout, buf.Bytes())
+		_, _ = fmt.Fprintf(stderr, "Error: generated code could not be formatted: %v\n", err)
 		return 3
 	}
 
+	err = writeOut(cfg.Out, stdout, formatted)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
+		return 4
+	}
+	return 0
+}
+
+func writeOut(filename string, stdout io.Writer, bytes []byte) error {
 	writer := stdout
-	if cfg.Out != "" {
-		file, err := os.Create(cfg.Out)
+	if filename != "" {
+		file, err := os.Create(filepath.Clean(filename))
 		if err != nil {
-			_, _ = fmt.Fprintf(stderr, "Error: could not create output file: %v\n", err)
-			return 4
+			return fmt.Errorf("could not create output file: %w", err)
 		}
 		defer func() { _ = file.Close() }()
 
 		writer = file
 	}
 
-	if _, err := writer.Write(formatted); err != nil {
-		_, _ = fmt.Fprintf(stderr, "Error: could not write code: %v\n", err)
-		return 4
+	if _, err := writer.Write(bytes); err != nil {
+		return fmt.Errorf("could not write code: %w", err)
 	}
-
-	return 0
+	return nil
 }
 
 func validateOpts(nargs int, cfg config) error {
@@ -171,4 +188,11 @@ func parseInitialisms(raw string) ([]string, error) {
 	}
 
 	return result, nil
+}
+
+func loadTemplate(templateFileName string) ([]byte, error) {
+	if templateFileName == "" {
+		return nil, nil
+	}
+	return os.ReadFile(filepath.Clean(templateFileName))
 }
