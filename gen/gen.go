@@ -85,7 +85,8 @@ func StructFromSchema(schema avro.Schema, w io.Writer, cfg Config) error {
 
 	formatted, err := imports.Process("", buf.Bytes(), nil)
 	if err != nil {
-		return fmt.Errorf("generated code \n%s\n could not be formatted: %w", buf.String(), err)
+		_, _ = w.Write(buf.Bytes())
+		return fmt.Errorf("generated code could not be formatted: %w", err)
 	}
 
 	_, err = w.Write(formatted)

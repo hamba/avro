@@ -96,28 +96,35 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 	}
 	formatted, err := imports.Process("", buf.Bytes(), nil)
 	if err != nil {
-		_, _ = fmt.Fprintf(stderr, "Error: generated code \n%s\n could not be formatted: %v\n", buf.String(), err)
+		_ = writeOut(cfg.Out, stdout, buf.Bytes())
+		_, _ = fmt.Fprintf(stderr, "Error: generated code could not be formatted: %v\n", err)
 		return 3
 	}
 
+	err = writeOut(cfg.Out, stdout, formatted)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
+		return 4
+	}
+	return 0
+}
+
+func writeOut(filename string, stdout io.Writer, bytes []byte) error {
 	writer := stdout
-	if cfg.Out != "" {
-		file, err := os.Create(cfg.Out)
+	if filename != "" {
+		file, err := os.Create(filepath.Clean(filename))
 		if err != nil {
-			_, _ = fmt.Fprintf(stderr, "Error: could not create output file: %v\n", err)
-			return 4
+			return fmt.Errorf("could not create output file: %w", err)
 		}
 		defer func() { _ = file.Close() }()
 
 		writer = file
 	}
 
-	if _, err := writer.Write(formatted); err != nil {
-		_, _ = fmt.Fprintf(stderr, "Error: could not write code: %v\n", err)
-		return 4
+	if _, err := writer.Write(bytes); err != nil {
+		return fmt.Errorf("could not write code: %w", err)
 	}
-
-	return 0
+	return nil
 }
 
 func validateOpts(nargs int, cfg config) error {
