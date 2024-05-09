@@ -5,4 +5,5 @@ package testpkg
 // Test is a generated struct.
 type Test struct {
 	SomeString string `avro:"someString"`
+	SomeInt    int    `avro:"someInt"`
 }

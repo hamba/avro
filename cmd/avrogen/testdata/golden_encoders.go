@@ -9,9 +9,10 @@ import (
 // Test is a generated struct.
 type Test struct {
 	SomeString string `avro:"someString"`
+	SomeInt    int    `avro:"someInt"`
 }
 
-var schemaTest = avro.MustParse(`{"name":"a.b.test","type":"record","fields":[{"name":"someString","type":"string"}]}`)
+var schemaTest = avro.MustParse(`{"name":"a.b.test","type":"record","fields":[{"name":"someString","type":"string"},{"name":"someInt","type":"int"}]}`)
 
 // Schema returns the schema for Test.
 func (o *Test) Schema() avro.Schema {
