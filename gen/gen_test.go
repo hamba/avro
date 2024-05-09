@@ -93,6 +93,24 @@ func TestStruct_HandlesAdditionalInitialisms(t *testing.T) {
 	assert.Contains(t, lines, "type CIDOverHTTPRecord struct {")
 }
 
+func TestStruct_HandlesStrictTypes(t *testing.T) {
+	schema := `{
+  "type": "record",
+  "name": "test",
+  "fields": [
+    { "name": "someString", "type": "int" }
+  ]
+}`
+	gc := gen.Config{
+		PackageName: "Something",
+		StrictTypes: true,
+	}
+
+	_, lines := generate(t, schema, gc)
+
+	assert.Contains(t, lines, "SomeString int32 `avro:\"someString\"`")
+}
+
 func TestStruct_ConfigurableFieldTags(t *testing.T) {
 	schema := `{
   "type": "record",

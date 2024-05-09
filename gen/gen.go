@@ -22,6 +22,7 @@ type Config struct {
 	Tags        map[string]TagStyle
 	FullName    bool
 	Encoders    bool
+	StrictTypes bool
 	Initialisms []string
 }
 
@@ -44,15 +45,20 @@ const (
 //go:embed output_template.tmpl
 var outputTemplate string
 
-var primitiveMappings = map[avro.Type]string{
-	"string":  "string",
-	"bytes":   "[]byte",
-	"int":     "int",
-	"long":    "int64",
-	"float":   "float32",
-	"double":  "float64",
-	"boolean": "bool",
-}
+var (
+	primitiveMappings = map[avro.Type]string{
+		"string":  "string",
+		"bytes":   "[]byte",
+		"int":     "int",
+		"long":    "int64",
+		"float":   "float32",
+		"double":  "float64",
+		"boolean": "bool",
+	}
+	strictTypeMappings = map[string]string{
+		"int": "int32",
+	}
+)
 
 // Struct generates Go structs based on the schema and writes them to w.
 func Struct(s string, w io.Writer, cfg Config) error {
@@ -74,6 +80,7 @@ func StructFromSchema(schema avro.Schema, w io.Writer, cfg Config) error {
 		WithFullName(cfg.FullName),
 		WithEncoders(cfg.Encoders),
 		WithInitialisms(cfg.Initialisms),
+		WithStrictTypes(cfg.StrictTypes),
 	}
 	g := NewGenerator(strcase.ToSnake(cfg.PackageName), cfg.Tags, opts...)
 	g.Parse(rec)
@@ -133,6 +140,13 @@ func WithTemplate(template string) OptsFunc {
 	}
 }
 
+// WithStrictTypes configures the generator to use strict type sizes.
+func WithStrictTypes(b bool) OptsFunc {
+	return func(g *Generator) {
+		g.strictTypes = b
+	}
+}
+
 // Generator generates Go structs from schemas.
 type Generator struct {
 	template    string
@@ -140,6 +154,7 @@ type Generator struct {
 	tags        map[string]TagStyle
 	fullName    bool
 	encoders    bool
+	strictTypes bool
 	initialisms []string
 
 	imports           []string
@@ -200,6 +215,11 @@ func (g *Generator) generate(schema avro.Schema) string {
 		typ := primitiveMappings[s.Type()]
 		if ls := s.Logical(); ls != nil {
 			typ = g.resolveLogicalSchema(ls.Type())
+		}
+		if g.strictTypes {
+			if newTyp, ok := strictTypeMappings[typ]; ok {
+				typ = newTyp
+			}
 		}
 		return typ
 	case *avro.ArraySchema:
