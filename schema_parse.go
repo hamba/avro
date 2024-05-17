@@ -85,6 +85,10 @@ func ParseBytesWithCache(schema []byte, namespace string, cache *SchemaCache) (S
 	return derefSchema(s), nil
 }
 
+func serializeType(schema Schema, cache *SchemaCache) string {
+	return schema.Resolve(cache)
+}
+
 func parseType(namespace string, v any, seen seenCache, cache *SchemaCache) (Schema, error) {
 	switch val := v.(type) {
 	case nil:
