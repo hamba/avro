@@ -136,6 +136,9 @@ type Schema interface {
 	// String returns the canonical form of the schema.
 	String() string
 
+	// Resolve returns the resolved canonical form of the schema.
+	Resolve(cache *SchemaCache) string
+
 	// Fingerprint returns the SHA256 fingerprint of the schema.
 	Fingerprint() [32]byte
 
@@ -492,6 +495,11 @@ func (s *PrimitiveSchema) String() string {
 	return `{"type":"` + string(s.typ) + `",` + s.logical.String() + `}`
 }
 
+// Resolve returns the resolved form of the schema.
+func (s *PrimitiveSchema) Resolve(_ *SchemaCache) string {
+	return s.String()
+}
+
 // MarshalJSON marshals the schema to json.
 func (s *PrimitiveSchema) MarshalJSON() ([]byte, error) {
 	if s.logical == nil && len(s.props) == 0 {
@@ -609,8 +617,48 @@ func (s *RecordSchema) String() string {
 	if len(fields) > 0 {
 		fields = fields[:len(fields)-1]
 	}
+	if len(s.Namespace()) == 0 {
+		return `{"name":"` + s.FullName() + `","type":"` + typ + `","fields":[` + fields + `]}`
+	} else {
+		return `{"namespace":"` + s.Namespace() + `","name":"` + s.Name() + `","type":"` + typ + `","fields":[` + fields + `]}`
+	}
+}
 
-	return `{"name":"` + s.FullName() + `","type":"` + typ + `","fields":[` + fields + `]}`
+// Resolve returns the resolved form of the schema.
+func (s *RecordSchema) Resolve(cache *SchemaCache) string {
+	typ := "record"
+	if s.isError {
+		typ = "error"
+	}
+
+	fields := ""
+	for _, f := range s.fields {
+		switch lookup := f.typ.(type) {
+		case *RefSchema:
+			switch found := lookup.actual.(type) {
+			case *RecordSchema:
+				if strings.Contains(found.full, ".") {
+					fields += `{"name":"` + f.Name() + `","type":` + found.Resolve(cache) + `},`
+				} else {
+					fields += f.String() + ","
+				}
+			default:
+				fields += f.String() + ","
+			}
+		default:
+			fields += f.String() + ","
+		}
+	}
+	if len(fields) > 0 {
+		fields = fields[:len(fields)-1]
+	}
+
+	if len(s.Namespace()) == 0 {
+		return `{"name":"` + s.FullName() + `","type":"` + typ + `","fields":[` + fields + `]}`
+	} else {
+		return `{"namespace":"` + s.Namespace() + `","name":"` + s.Name() + `","type":"` + typ + `","fields":[` + fields + `]}`
+	}
+
 }
 
 // MarshalJSON marshals the schema to json.
@@ -966,8 +1014,17 @@ func (s *EnumSchema) String() string {
 	if len(symbols) > 0 {
 		symbols = symbols[:len(symbols)-1]
 	}
+	if len(s.Namespace()) == 0 {
+		return `{"name":"` + s.FullName() + `","type":"enum","symbols":[` + symbols + `]}`
+	} else {
+		return `{"namespace":"` + s.Namespace() + `","name":"` + s.Name() + `","type":"enum","symbols":[` + symbols + `]}`
+	}
 
-	return `{"name":"` + s.FullName() + `","type":"enum","symbols":[` + symbols + `]}`
+}
+
+// Resolve returns the resolved form of the schema.
+func (s *EnumSchema) Resolve(_ *SchemaCache) string {
+	return s.String()
 }
 
 // MarshalJSON marshals the schema to json.
@@ -1060,6 +1117,11 @@ func (s *ArraySchema) String() string {
 	return `{"type":"array","items":` + s.items.String() + `}`
 }
 
+// Resolve returns the resolved form of the schema.
+func (s *ArraySchema) Resolve(_ *SchemaCache) string {
+	return s.String()
+}
+
 // MarshalJSON marshals the schema to json.
 func (s *ArraySchema) MarshalJSON() ([]byte, error) {
 	buf := new(bytes.Buffer)
@@ -1128,6 +1190,11 @@ func (s *MapSchema) Values() Schema {
 // String returns the canonical form of the schema.
 func (s *MapSchema) String() string {
 	return `{"type":"map","values":` + s.values.String() + `}`
+}
+
+// Resolve returns the resolved form of the schema.
+func (s *MapSchema) Resolve(_ *SchemaCache) string {
+	return s.String()
 }
 
 // MarshalJSON marshals the schema to json.
@@ -1242,6 +1309,19 @@ func (s *UnionSchema) String() string {
 	return `[` + types + `]`
 }
 
+// Resolve returns the resolved form of the schema.
+func (s *UnionSchema) Resolve(cache *SchemaCache) string {
+	types := ""
+	for _, typ := range s.types {
+		types += typ.Resolve(cache) + ","
+	}
+	if len(types) > 0 {
+		types = types[:len(types)-1]
+	}
+
+	return `[` + types + `]`
+}
+
 // MarshalJSON marshals the schema to json.
 func (s *UnionSchema) MarshalJSON() ([]byte, error) {
 	return jsoniter.Marshal(s.types)
@@ -1323,7 +1403,12 @@ func (s *FixedSchema) String() string {
 		logical = "," + s.logical.String()
 	}
 
-	return `{"name":"` + s.FullName() + `","type":"fixed","size":` + size + logical + `}`
+	return `{"namespace":"` + s.Namespace() + `","name":"` + s.Name() + `","type":"fixed","size":` + size + logical + `}`
+}
+
+// Resolve returns the resolved form of the schema.
+func (s *FixedSchema) Resolve(_ *SchemaCache) string {
+	return s.String()
 }
 
 // MarshalJSON marshals the schema to json.
@@ -1386,6 +1471,11 @@ func (s *NullSchema) String() string {
 	return `"null"`
 }
 
+// Resolve returns the resolved form of the schema.
+func (s *NullSchema) Resolve(_ *SchemaCache) string {
+	return s.String()
+}
+
 // MarshalJSON marshals the schema to json.
 func (s *NullSchema) MarshalJSON() ([]byte, error) {
 	return []byte(`"null"`), nil
@@ -1431,6 +1521,11 @@ func (s *RefSchema) Schema() NamedSchema {
 // String returns the canonical form of the schema.
 func (s *RefSchema) String() string {
 	return `"` + s.actual.FullName() + `"`
+}
+
+// Resolve returns the resolved form of the schema.
+func (s *RefSchema) Resolve(cache *SchemaCache) string {
+	return s.actual.Resolve(cache)
 }
 
 // MarshalJSON marshals the schema to json.
