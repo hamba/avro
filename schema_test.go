@@ -41,6 +41,15 @@ func TestParseFiles(t *testing.T) {
 	assert.Equal(t, avro.String, s.Type())
 }
 
+func TestSerialize(t *testing.T) {
+	s, err := avro.ParseFiles("testdata/superhero-part1.avsc", "testdata/superhero-part2.avsc")
+
+	data := avro.Serialize(s)
+	n, err := avro.Parse(data)
+	require.NoError(t, err)
+	assert.Equal(t, avro.Record, n.Type())
+}
+
 func TestParseFiles_FileDoesntExist(t *testing.T) {
 	_, err := avro.ParseFiles("test.something")
 
