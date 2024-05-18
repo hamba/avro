@@ -239,6 +239,12 @@ func TestSchemaCompatibility_Compatible(t *testing.T) {
 			writer:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": "test"}]}`,
 			wantErr: assert.NoError,
 		},
+		{
+			name:    "Comparison with different namespaces",
+			writer:  `{"type":"record", "name":"Obj", "namespace": "ns", "fields":[{"name": "a", "type": "int"}]}`,
+			reader:  `{"type":"record", "name":"Obj", "fields":[{"name": "a", "type": "int"}]}`,
+			wantErr: assert.NoError,
+		},
 	}
 
 	for _, test := range tests {
