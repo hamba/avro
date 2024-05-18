@@ -478,6 +478,21 @@ func TestSchemaCompatibility_Resolve(t *testing.T) {
 			want:  [3]byte{'f', 'o', 'o'},
 		},
 		{
+			name: "different namespaces",
+			reader: `{
+				"type": "fixed",
+				"name": "Record",
+				"size": 3
+			}`,
+			writer: `{
+				"type": "fixed",
+				"name": "ns.Record",
+				"size": 3
+			}`,
+			value: [3]byte{'f', 'o', 'o'},
+			want:  [3]byte{'f', 'o', 'o'},
+		},
+		{
 			name:   "Union Match",
 			reader: `["int", "long", "string"]`,
 			writer: `["string", "int", "long"]`,

@@ -179,7 +179,7 @@ func (c *SchemaCompatibility) match(reader, writer Schema) error {
 }
 
 func (c *SchemaCompatibility) checkSchemaName(reader, writer NamedSchema) error {
-	if reader.FullName() != writer.FullName() {
+	if reader.Name() != writer.Name() {
 		if c.contains(reader.Aliases(), writer.FullName()) {
 			return nil
 		}
