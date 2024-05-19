@@ -19,6 +19,7 @@ type config struct {
 	TemplateFileName string
 
 	Pkg         string
+	PkgDoc      string
 	Out         string
 	Tags        string
 	FullName    bool
@@ -36,6 +37,7 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 	flgs := flag.NewFlagSet("avrogen", flag.ExitOnError)
 	flgs.SetOutput(stderr)
 	flgs.StringVar(&cfg.Pkg, "pkg", "", "The package name of the output file.")
+	flgs.StringVar(&cfg.PkgDoc, "pkgdoc", "", "The package doc comment to output.")
 	flgs.StringVar(&cfg.Out, "o", "", "The output file path to write to instead of stdout.")
 	flgs.StringVar(&cfg.Tags, "tags", "", "The additional field tags <tag-name>:{snake|camel|upper-camel|kebab}>[,...]")
 	flgs.BoolVar(&cfg.FullName, "fullname", false, "Use the full name of the Record schema to create the struct name.")
@@ -77,6 +79,7 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 
 	opts := []gen.OptsFunc{
 		gen.WithFullName(cfg.FullName),
+		gen.WithPackageDoc(cfg.PkgDoc),
 		gen.WithEncoders(cfg.Encoders),
 		gen.WithInitialisms(initialisms),
 		gen.WithTemplate(string(template)),

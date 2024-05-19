@@ -1,10 +1,12 @@
 {
   "type": "record",
   "name": "test",
+  "doc": "Test represents a golden record",
   "namespace": "a.b",
   "fields": [
     {
       "name": "aString",
+      "doc": "aString is just a string",
       "type": "string"
     },
     {

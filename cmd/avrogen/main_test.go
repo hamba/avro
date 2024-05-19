@@ -65,7 +65,7 @@ func TestAvroGen_RequiredFlags(t *testing.T) {
 func TestAvroGen_GeneratesSchemaStdout(t *testing.T) {
 	var buf bytes.Buffer
 
-	args := []string{"avrogen", "-pkg", "testpkg", "testdata/schema.avsc"}
+	args := []string{"avrogen", "-pkg", "testpkg", "-pkgdoc", "package testpkg is generated from schema.avsc", "testdata/schema.avsc"}
 	gotCode := realMain(args, &buf, io.Discard)
 	require.Equal(t, 0, gotCode)
 
@@ -80,7 +80,7 @@ func TestAvroGen_GeneratesSchema(t *testing.T) {
 	t.Cleanup(func() { _ = os.RemoveAll(path) })
 
 	file := filepath.Join(path, "test.go")
-	args := []string{"avrogen", "-pkg", "testpkg", "-o", file, "testdata/schema.avsc"}
+	args := []string{"avrogen", "-o", file, "-pkg", "testpkg", "-pkgdoc", "package testpkg is generated from schema.avsc", "testdata/schema.avsc"}
 	gotCode := realMain(args, io.Discard, io.Discard)
 	require.Equal(t, 0, gotCode)
 
