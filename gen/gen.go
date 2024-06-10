@@ -147,7 +147,7 @@ func WithStrictTypes(b bool) OptsFunc {
 	}
 }
 
-// WithPackageDoc configures the generator to use output the given text as a package doc comment.
+// WithPackageDoc configures the generator to output the given text as a package doc comment.
 func WithPackageDoc(text string) OptsFunc {
 	return func(g *Generator) {
 		g.pkgdoc = text
