@@ -11,6 +11,7 @@
     },
     {
       "name": "aBoolean",
+      "doc": "aBoolean is just a boolean.",
       "type": "boolean"
     },
     {

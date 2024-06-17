@@ -186,10 +186,11 @@ func (o *Record2InNullableUnion) Marshal() ([]byte, error) {
 	return avro.Marshal(o.Schema(), o)
 }
 
-// Test represents a golden record
+// Test represents a golden record.
 type Test struct {
-	// aString is just a string
-	AString                         string                 `avro:"aString"`
+	// aString is just a string.
+	AString string `avro:"aString"`
+	// aBoolean is just a boolean.
 	ABoolean                        bool                   `avro:"aBoolean"`
 	AnInt                           int                    `avro:"anInt"`
 	AFloat                          float32                `avro:"aFloat"`

@@ -10,6 +10,7 @@ import (
 	"maps"
 	"strings"
 	"text/template"
+	"unicode/utf8"
 
 	"github.com/ettle/strcase"
 	"github.com/hamba/avro/v2"
@@ -150,8 +151,18 @@ func WithStrictTypes(b bool) OptsFunc {
 // WithPackageDoc configures the generator to output the given text as a package doc comment.
 func WithPackageDoc(text string) OptsFunc {
 	return func(g *Generator) {
-		g.pkgdoc = text
+		g.pkgdoc = ensureTrailingPeriod(text)
 	}
+}
+
+func ensureTrailingPeriod(text string) string {
+	if text == "" {
+		return text
+	}
+	if last, _ := utf8.DecodeLastRuneInString(text); last == '.' {
+		return text
+	}
+	return text + "."
 }
 
 // Generator generates Go structs from schemas.
@@ -332,7 +343,7 @@ func (g *Generator) newField(name, typ, doc, avroFieldName string) field {
 		Name:          name,
 		Type:          typ,
 		AvroFieldName: avroFieldName,
-		Doc:           doc,
+		Doc:           ensureTrailingPeriod(doc),
 		Tags:          g.tags,
 	}
 }
@@ -396,7 +407,7 @@ type typedef struct {
 func newType(name string, doc string, fields []field, schema string) typedef {
 	return typedef{
 		Name:   name,
-		Doc:    doc,
+		Doc:    ensureTrailingPeriod(doc),
 		Fields: fields,
 		Schema: schema,
 	}

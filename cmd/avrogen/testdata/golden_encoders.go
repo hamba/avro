@@ -6,9 +6,9 @@ import (
 	"github.com/hamba/avro/v2"
 )
 
-// Test is a test struct
+// Test is a test struct.
 type Test struct {
-	// SomeString is a string
+	// SomeString is a string.
 	SomeString string `avro:"someString"`
 	SomeInt    int    `avro:"someInt"`
 }
