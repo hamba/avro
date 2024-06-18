@@ -404,7 +404,7 @@ type typedef struct {
 	Schema string
 }
 
-func newType(name string, doc string, fields []field, schema string) typedef {
+func newType(name, doc string, fields []field, schema string) typedef {
 	return typedef{
 		Name:   name,
 		Doc:    ensureTrailingPeriod(doc),
