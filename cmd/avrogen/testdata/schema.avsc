@@ -2,8 +2,9 @@
   "type": "record",
   "name": "test",
   "namespace": "a.b",
+  "doc": "Test is a test struct",
   "fields": [
-    { "name": "someString", "type": "string" },
+    { "name": "someString", "type": "string", "doc": "SomeString is a string" },
     { "name": "someInt", "type": "int" }
   ]
 }

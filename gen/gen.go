@@ -10,6 +10,7 @@ import (
 	"maps"
 	"strings"
 	"text/template"
+	"unicode/utf8"
 
 	"github.com/ettle/strcase"
 	"github.com/hamba/avro/v2"
@@ -147,10 +148,28 @@ func WithStrictTypes(b bool) OptsFunc {
 	}
 }
 
+// WithPackageDoc configures the generator to output the given text as a package doc comment.
+func WithPackageDoc(text string) OptsFunc {
+	return func(g *Generator) {
+		g.pkgdoc = ensureTrailingPeriod(text)
+	}
+}
+
+func ensureTrailingPeriod(text string) string {
+	if text == "" {
+		return text
+	}
+	if last, _ := utf8.DecodeLastRuneInString(text); last == '.' {
+		return text
+	}
+	return text + "."
+}
+
 // Generator generates Go structs from schemas.
 type Generator struct {
 	template    string
 	pkg         string
+	pkgdoc      string
 	tags        map[string]TagStyle
 	fullName    bool
 	encoders    bool
@@ -257,7 +276,7 @@ func (g *Generator) resolveRecordSchema(schema *avro.RecordSchema) string {
 
 	typeName := g.resolveTypeName(schema)
 	if !g.hasTypeDef(typeName) {
-		g.typedefs = append(g.typedefs, newType(typeName, fields, schema.String()))
+		g.typedefs = append(g.typedefs, newType(typeName, schema.Doc(), fields, schema.String()))
 	}
 	return typeName
 }
@@ -319,12 +338,12 @@ func (g *Generator) resolveLogicalSchema(logicalType avro.LogicalType) string {
 	return typ
 }
 
-func (g *Generator) newField(name, typ, avroFieldDoc, avroFieldName string) field {
+func (g *Generator) newField(name, typ, doc, avroFieldName string) field {
 	return field{
 		Name:          name,
 		Type:          typ,
 		AvroFieldName: avroFieldName,
-		AvroFieldDoc:  avroFieldDoc,
+		Doc:           ensureTrailingPeriod(doc),
 		Tags:          g.tags,
 	}
 }
@@ -364,12 +383,14 @@ func (g *Generator) Write(w io.Writer) error {
 	data := struct {
 		WithEncoders      bool
 		PackageName       string
+		PackageDoc        string
 		Imports           []string
 		ThirdPartyImports []string
 		Typedefs          []typedef
 	}{
 		WithEncoders: g.encoders,
 		PackageName:  g.pkg,
+		PackageDoc:   g.pkgdoc,
 		Imports:      append(g.imports, g.thirdPartyImports...),
 		Typedefs:     g.typedefs,
 	}
@@ -378,13 +399,15 @@ func (g *Generator) Write(w io.Writer) error {
 
 type typedef struct {
 	Name   string
+	Doc    string
 	Fields []field
 	Schema string
 }
 
-func newType(name string, fields []field, schema string) typedef {
+func newType(name, doc string, fields []field, schema string) typedef {
 	return typedef{
 		Name:   name,
+		Doc:    ensureTrailingPeriod(doc),
 		Fields: fields,
 		Schema: schema,
 	}
@@ -393,7 +416,7 @@ func newType(name string, fields []field, schema string) typedef {
 type field struct {
 	Name          string
 	Type          string
+	Doc           string
 	AvroFieldName string
-	AvroFieldDoc  string
 	Tags          map[string]TagStyle
 }
