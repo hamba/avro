@@ -377,7 +377,13 @@ func (p properties) marshalPropertiesToJSON(buf *bytes.Buffer) error {
 		if err != nil {
 			return err
 		}
-		buf.WriteString(`,"` + k + `":`)
+		kk, err := jsoniter.Marshal(k)
+		if err != nil {
+			return err
+		}
+		buf.WriteString(`,`)
+		buf.Write(kk)
+		buf.WriteString(`:`)
 		buf.Write(vv)
 	}
 	return nil
@@ -626,7 +632,12 @@ func (s *RecordSchema) MarshalJSON() ([]byte, error) {
 		buf.Write(aliasesJSON)
 	}
 	if s.doc != "" {
-		buf.WriteString(`,"doc":"` + s.doc + `"`)
+		docJSON, err := jsoniter.Marshal(s.doc)
+		if err != nil {
+			return nil, err
+		}
+		buf.WriteString(`,"doc":`)
+		buf.Write(docJSON)
 	}
 	if s.isError {
 		buf.WriteString(`,"type":"error"`)
@@ -818,7 +829,12 @@ func (f *Field) MarshalJSON() ([]byte, error) {
 		buf.Write(aliasesJSON)
 	}
 	if f.doc != "" {
-		buf.WriteString(`,"doc":"` + f.doc + `"`)
+		docJSON, err := jsoniter.Marshal(f.doc)
+		if err != nil {
+			return nil, err
+		}
+		buf.WriteString(`,"doc":`)
+		buf.Write(docJSON)
 	}
 	typeJSON, err := jsoniter.Marshal(f.typ)
 	if err != nil {
@@ -983,7 +999,12 @@ func (s *EnumSchema) MarshalJSON() ([]byte, error) {
 		buf.Write(aliasesJSON)
 	}
 	if s.doc != "" {
-		buf.WriteString(`,"doc":"` + s.doc + `"`)
+		docJSON, err := jsoniter.Marshal(s.doc)
+		if err != nil {
+			return nil, err
+		}
+		buf.WriteString(`,"doc":`)
+		buf.Write(docJSON)
 	}
 	buf.WriteString(`,"type":"enum"`)
 	symbolsJSON, err := jsoniter.Marshal(s.symbols)

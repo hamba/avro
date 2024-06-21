@@ -152,6 +152,10 @@ func TestSchema_JSON(t *testing.T) {
 			json:  `{"name":"foo","doc":"Useful info","type":"record","fields":[]}`,
 		},
 		{
+			input: `{"fields":[], "type":"record", "name":"foo", "doc":"Useful info\n on multiple \n lines"}`,
+			json:  `{"name":"foo","doc":"Useful info\n on multiple \n lines","type":"record","fields":[]}`,
+		},
+		{
 			input: `{"fields":[], "type":"record", "name":"foo", "aliases":["foo","bar"]}`,
 			json:  `{"name":"foo","aliases":["foo","bar"],"type":"record","fields":[]}`,
 		},
@@ -162,6 +166,10 @@ func TestSchema_JSON(t *testing.T) {
 		{
 			input: `{"fields":[], "property-foo": "value-bar", "type":"record", "name":"foo", "doc":"foo", "aliases":["foo","bar"]}`,
 			json:  `{"name":"foo","aliases":["foo","bar"],"doc":"foo","type":"record","fields":[],"property-foo":"value-bar"}`,
+		},
+		{
+			input: `{"fields":[], "property\"foo": "value-bar", "type":"record", "name":"foo", "doc":"foo", "aliases":["foo","bar"]}`,
+			json:  `{"name":"foo","aliases":["foo","bar"],"doc":"foo","type":"record","fields":[],"property\"foo":"value-bar"}`,
 		},
 		{
 			input: `{"fields":[{"type":{"type":"boolean"}, "name":"f1"}], "type":"record", "name":"foo"}`,
