@@ -19,7 +19,6 @@ func TestReader_ReadNext(t *testing.T) {
 		want    any
 		wantErr require.ErrorAssertionFunc
 	}{
-
 		{
 			name:    "Bool",
 			data:    []byte{0x01},

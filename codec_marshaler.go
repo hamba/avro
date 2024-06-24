@@ -12,7 +12,7 @@ var (
 	textUnmarshalerType = reflect2.TypeOfPtr((*encoding.TextUnmarshaler)(nil)).Elem()
 )
 
-func createDecoderOfMarshaler(_ *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
+func createDecoderOfMarshaler(schema Schema, typ reflect2.Type) ValDecoder {
 	if typ.Implements(textUnmarshalerType) && schema.Type() == String {
 		return &textMarshalerCodec{typ}
 	}
@@ -25,7 +25,7 @@ func createDecoderOfMarshaler(_ *frozenConfig, schema Schema, typ reflect2.Type)
 	return nil
 }
 
-func createEncoderOfMarshaler(_ *frozenConfig, schema Schema, typ reflect2.Type) ValEncoder {
+func createEncoderOfMarshaler(schema Schema, typ reflect2.Type) ValEncoder {
 	if typ.Implements(textMarshalerType) && schema.Type() == String {
 		return &textMarshalerCodec{
 			typ: typ,

@@ -18,7 +18,6 @@ func TestGenericDecode(t *testing.T) {
 		want    any
 		wantErr require.ErrorAssertionFunc
 	}{
-
 		{
 			name:    "Bool",
 			data:    []byte{0x01},
@@ -228,7 +227,7 @@ func TestGenericDecode(t *testing.T) {
 
 			typ, err := genericReceiver(schema)
 			require.NoError(t, err)
-			dec := decoderOfType(DefaultConfig.(*frozenConfig), schema, typ)
+			dec := decoderOfType(newDecoderContext(DefaultConfig.(*frozenConfig)), schema, typ)
 
 			got := genericDecode(typ, dec, r)
 

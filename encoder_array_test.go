@@ -64,6 +64,42 @@ func TestEncoder_ArrayOfStruct(t *testing.T) {
 	assert.Equal(t, []byte{0x03, 0x14, 0x36, 0x06, 0x66, 0x6f, 0x6f, 0x36, 0x06, 0x66, 0x6f, 0x6f, 0x0}, buf.Bytes())
 }
 
+func TestEncoder_ArrayRecursiveStruct(t *testing.T) {
+	defer ConfigTeardown()
+
+	type record struct {
+		A int      `avro:"a"`
+		B []record `avro:"b"`
+	}
+
+	schema := `{
+	  "type": "record",
+	  "name": "test",
+	  "fields": [
+		{
+		  "name": "a",
+		  "type": "int"
+		},
+		{
+		  "name": "b",
+		  "type": {
+			"type": "array",
+			"items": "test"
+		  }
+		}
+	  ]
+	}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	assert.NoError(t, err)
+
+	rec := record{A: 1, B: []record{{A: 2}, {A: 3}}}
+	err = enc.Encode(rec)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []byte{0x2, 0x3, 0x8, 0x4, 0x0, 0x6, 0x0, 0x0}, buf.Bytes())
+}
+
 func TestEncoder_ArrayError(t *testing.T) {
 	defer ConfigTeardown()
 

@@ -1185,7 +1185,6 @@ func TestSchema_FingerprintUsing(t *testing.T) {
 		typ    avro.FingerprintType
 		want   []byte
 	}{
-
 		{
 			name:   "Null CRC64",
 			schema: "null",

@@ -295,6 +295,38 @@ func TestDecoder_UnionPtrNotNullable(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestDecoder_UnionPtrRecursiveType(t *testing.T) {
+	defer ConfigTeardown()
+
+	type record struct {
+		A int     `avro:"a"`
+		B *record `avro:"b"`
+	}
+
+	data := []byte{0x02, 0x02, 0x04, 0x0}
+	schema := `{
+		"type": "record",
+		"name": "test",
+		"fields" : [
+			{"name": "a", "type": "int"},
+			{"name": "b", "type": [null, "test"]}
+		]
+	}`
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	var got record
+	err := dec.Decode(&got)
+
+	require.NoError(t, err)
+	want := record{
+		A: 1,
+		B: &record{
+			A: 2,
+		},
+	}
+	assert.Equal(t, want, got)
+}
+
 func TestDecoder_UnionInterface(t *testing.T) {
 	defer ConfigTeardown()
 

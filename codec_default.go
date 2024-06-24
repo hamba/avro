@@ -7,13 +7,14 @@ import (
 	"github.com/modern-go/reflect2"
 )
 
-func createDefaultDecoder(cfg *frozenConfig, field *Field, typ reflect2.Type) ValDecoder {
+func createDefaultDecoder(d *decoderContext, field *Field, typ reflect2.Type) ValDecoder {
+	cfg := d.cfg
 	fn := func(def any) ([]byte, error) {
 		defaultType := reflect2.TypeOf(def)
 		if defaultType == nil {
 			defaultType = reflect2.TypeOf((*null)(nil))
 		}
-		defaultEncoder := encoderOfType(cfg, field.Type(), defaultType)
+		defaultEncoder := encoderOfType(newEncoderContext(cfg), field.Type(), defaultType)
 		if defaultType.LikePtr() {
 			defaultEncoder = &onePtrEncoder{defaultEncoder}
 		}
@@ -37,7 +38,7 @@ func createDefaultDecoder(cfg *frozenConfig, field *Field, typ reflect2.Type) Va
 	}
 	return &defaultDecoder{
 		data:    b,
-		decoder: decoderOfType(cfg, field.Type(), typ),
+		decoder: decoderOfType(d, field.Type(), typ),
 	}
 }
 
