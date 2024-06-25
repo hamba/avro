@@ -199,7 +199,7 @@ func encoderOfType(e *encoderContext, schema Schema, typ reflect2.Type) ValEncod
 	case String, Bytes, Int, Long, Float, Double, Boolean, Null:
 		return createEncoderOfNative(schema, typ)
 	case Record:
-		key := cacheKey{fingerprint: schema.CacheFingerprint(), rtype: typ.RType()}
+		key := cacheKey{fingerprint: schema.Fingerprint(), rtype: typ.RType()}
 		defEnc := &deferEncoder{}
 		e.encoders[key] = defEnc
 		defEnc.encoder = createEncoderOfRecord(e, schema.(*RecordSchema), typ)
