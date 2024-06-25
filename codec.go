@@ -205,7 +205,7 @@ func encoderOfType(e *encoderContext, schema Schema, typ reflect2.Type) ValEncod
 		defEnc.encoder = createEncoderOfRecord(e, schema.(*RecordSchema), typ)
 		return defEnc.encoder
 	case Ref:
-		key := cacheKey{fingerprint: schema.(*RefSchema).Schema().CacheFingerprint(), rtype: typ.RType()}
+		key := cacheKey{fingerprint: schema.(*RefSchema).Schema().Fingerprint(), rtype: typ.RType()}
 		if enc, f := e.encoders[key]; f {
 			return enc
 		}
