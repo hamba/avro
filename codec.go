@@ -132,13 +132,13 @@ func decoderOfType(d *decoderContext, schema Schema, typ reflect2.Type) ValDecod
 	case String, Bytes, Int, Long, Float, Double, Boolean:
 		return createDecoderOfNative(schema.(*PrimitiveSchema), typ)
 	case Record:
-		key := cacheKey{fingerprint: schema.Fingerprint(), rtype: typ.RType()}
+		key := cacheKey{fingerprint: schema.CacheFingerprint(), rtype: typ.RType()}
 		defDec := &deferDecoder{}
 		d.decoders[key] = defDec
 		defDec.decoder = createDecoderOfRecord(d, schema.(*RecordSchema), typ)
 		return defDec.decoder
 	case Ref:
-		key := cacheKey{fingerprint: schema.(*RefSchema).Schema().Fingerprint(), rtype: typ.RType()}
+		key := cacheKey{fingerprint: schema.(*RefSchema).Schema().CacheFingerprint(), rtype: typ.RType()}
 		if dec, f := d.decoders[key]; f {
 			return dec
 		}
@@ -199,13 +199,13 @@ func encoderOfType(e *encoderContext, schema Schema, typ reflect2.Type) ValEncod
 	case String, Bytes, Int, Long, Float, Double, Boolean, Null:
 		return createEncoderOfNative(schema, typ)
 	case Record:
-		key := cacheKey{fingerprint: schema.Fingerprint(), rtype: typ.RType()}
+		key := cacheKey{fingerprint: schema.CacheFingerprint(), rtype: typ.RType()}
 		defEnc := &deferEncoder{}
 		e.encoders[key] = defEnc
 		defEnc.encoder = createEncoderOfRecord(e, schema.(*RecordSchema), typ)
 		return defEnc.encoder
 	case Ref:
-		key := cacheKey{fingerprint: schema.(*RefSchema).Schema().Fingerprint(), rtype: typ.RType()}
+		key := cacheKey{fingerprint: schema.(*RefSchema).Schema().CacheFingerprint(), rtype: typ.RType()}
 		if enc, f := e.encoders[key]; f {
 			return enc
 		}
