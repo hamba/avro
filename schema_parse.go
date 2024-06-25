@@ -20,9 +20,19 @@ func Parse(schema string) (Schema, error) {
 	return ParseBytes([]byte(schema))
 }
 
+// Serialize serializes a schema object.
+func Serialize(schema Schema) string {
+	return SerializeWithCache(schema, DefaultSchemaCache)
+}
+
 // ParseWithCache parses a schema string using the given namespace and schema cache.
 func ParseWithCache(schema, namespace string, cache *SchemaCache) (Schema, error) {
 	return ParseBytesWithCache([]byte(schema), namespace, cache)
+}
+
+// SerializeWithCache serializes a schema using the given namespace and schema cache.
+func SerializeWithCache(schema Schema, cache *SchemaCache) string {
+	return serializeType(schema, cache)
 }
 
 // MustParse parses a schema string, panicing if there is an error.
@@ -73,6 +83,10 @@ func ParseBytesWithCache(schema []byte, namespace string, cache *SchemaCache) (S
 		return nil, err
 	}
 	return derefSchema(s), nil
+}
+
+func serializeType(schema Schema, cache *SchemaCache) string {
+	return schema.Resolve(cache)
 }
 
 func parseType(namespace string, v any, seen seenCache, cache *SchemaCache) (Schema, error) {
