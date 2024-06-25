@@ -143,6 +143,7 @@ func TestDecoder_FixedUint64_Full(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, uint64(math.MaxUint64), got)
 }
+
 func TestDecoder_FixedUint64_Simple(t *testing.T) {
 	defer ConfigTeardown()
 

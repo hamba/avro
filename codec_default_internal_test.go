@@ -342,7 +342,6 @@ func TestDecoder_DefaultEnum(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, TestRecord{B: "bar", A: "foo"}, got)
-
 	})
 
 	t.Run("TextUnmarshaler", func(t *testing.T) {

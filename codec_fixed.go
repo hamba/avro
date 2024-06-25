@@ -10,8 +10,7 @@ import (
 	"github.com/modern-go/reflect2"
 )
 
-func createDecoderOfFixed(schema Schema, typ reflect2.Type) ValDecoder {
-	fixed := schema.(*FixedSchema)
+func createDecoderOfFixed(fixed *FixedSchema, typ reflect2.Type) ValDecoder {
 	switch typ.Kind() {
 	case reflect.Array:
 		arrayType := typ.(reflect2.ArrayType)
@@ -21,7 +20,6 @@ func createDecoderOfFixed(schema Schema, typ reflect2.Type) ValDecoder {
 		return &fixedCodec{arrayType: typ.(*reflect2.UnsafeArrayType)}
 
 	case reflect.Uint64:
-		fixed := schema.(*FixedSchema)
 		if fixed.Size() != 8 {
 			break
 		}
@@ -44,23 +42,20 @@ func createDecoderOfFixed(schema Schema, typ reflect2.Type) ValDecoder {
 	}
 
 	return &errorDecoder{
-		err: fmt.Errorf("avro: %s is unsupported for Avro %s, size=%d", typ.String(), schema.Type(), fixed.Size()),
+		err: fmt.Errorf("avro: %s is unsupported for Avro %s, size=%d", typ.String(), fixed.Type(), fixed.Size()),
 	}
 }
 
-func createEncoderOfFixed(schema Schema, typ reflect2.Type) ValEncoder {
-	fixed := schema.(*FixedSchema)
+func createEncoderOfFixed(fixed *FixedSchema, typ reflect2.Type) ValEncoder {
 	switch typ.Kind() {
 	case reflect.Array:
 		arrayType := typ.(reflect2.ArrayType)
-		fixed := schema.(*FixedSchema)
 		if arrayType.Elem().Kind() != reflect.Uint8 || arrayType.Len() != fixed.Size() {
 			break
 		}
 		return &fixedCodec{arrayType: typ.(*reflect2.UnsafeArrayType)}
 
 	case reflect.Uint64:
-		fixed := schema.(*FixedSchema)
 		if fixed.Size() != 8 {
 			break
 		}
@@ -92,7 +87,7 @@ func createEncoderOfFixed(schema Schema, typ reflect2.Type) ValEncoder {
 	}
 
 	return &errorEncoder{
-		err: fmt.Errorf("avro: %s is unsupported for Avro %s, size=%d", typ.String(), schema.Type(), fixed.Size()),
+		err: fmt.Errorf("avro: %s is unsupported for Avro %s, size=%d", typ.String(), fixed.Type(), fixed.Size()),
 	}
 }
 

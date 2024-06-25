@@ -104,7 +104,6 @@ func TestIsValidDefault(t *testing.T) {
 		want     any
 		wantOk   bool
 	}{
-
 		{
 			name: "Null",
 			schemaFn: func() Schema {

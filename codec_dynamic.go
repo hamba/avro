@@ -13,9 +13,9 @@ type efaceDecoder struct {
 	dec    ValDecoder
 }
 
-func newEfaceDecoder(cfg *frozenConfig, schema Schema) *efaceDecoder {
+func newEfaceDecoder(d *decoderContext, schema Schema) *efaceDecoder {
 	typ, _ := genericReceiver(schema)
-	dec := decoderOfType(cfg, schema, typ)
+	dec := decoderOfType(d, schema, typ)
 
 	return &efaceDecoder{
 		schema: schema,

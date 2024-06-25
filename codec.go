@@ -71,48 +71,88 @@ func (c *frozenConfig) DecoderOf(schema Schema, typ reflect2.Type) ValDecoder {
 	}
 
 	ptrType := typ.(*reflect2.UnsafePtrType)
-	decoder = decoderOfType(c, schema, ptrType.Elem())
+	decoder = decoderOfType(newDecoderContext(c), schema, ptrType.Elem())
 	c.addDecoderToCache(schema.CacheFingerprint(), rtype, decoder)
 	return decoder
 }
 
-func decoderOfType(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValDecoder {
-	if dec := createDecoderOfMarshaler(cfg, schema, typ); dec != nil {
+type deferDecoder struct {
+	decoder ValDecoder
+}
+
+func (d *deferDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
+	d.decoder.Decode(ptr, r)
+}
+
+type deferEncoder struct {
+	encoder ValEncoder
+}
+
+func (d *deferEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
+	d.encoder.Encode(ptr, w)
+}
+
+type decoderContext struct {
+	cfg      *frozenConfig
+	decoders map[cacheKey]ValDecoder
+}
+
+func newDecoderContext(cfg *frozenConfig) *decoderContext {
+	return &decoderContext{
+		cfg:      cfg,
+		decoders: make(map[cacheKey]ValDecoder),
+	}
+}
+
+type encoderContext struct {
+	cfg      *frozenConfig
+	encoders map[cacheKey]ValEncoder
+}
+
+func newEncoderContext(cfg *frozenConfig) *encoderContext {
+	return &encoderContext{
+		cfg:      cfg,
+		encoders: make(map[cacheKey]ValEncoder),
+	}
+}
+
+func decoderOfType(d *decoderContext, schema Schema, typ reflect2.Type) ValDecoder {
+	if dec := createDecoderOfMarshaler(schema, typ); dec != nil {
 		return dec
 	}
 
-	// Handle eface case when it isnt a union
+	// Handle eface (empty interface) case when it isn't a union
 	if typ.Kind() == reflect.Interface && schema.Type() != Union {
 		if _, ok := typ.(*reflect2.UnsafeIFaceType); !ok {
-			return newEfaceDecoder(cfg, schema)
+			return newEfaceDecoder(d, schema)
 		}
 	}
 
 	switch schema.Type() {
 	case String, Bytes, Int, Long, Float, Double, Boolean:
 		return createDecoderOfNative(schema.(*PrimitiveSchema), typ)
-
 	case Record:
-		return createDecoderOfRecord(cfg, schema, typ)
-
+		key := cacheKey{fingerprint: schema.CacheFingerprint(), rtype: typ.RType()}
+		defDec := &deferDecoder{}
+		d.decoders[key] = defDec
+		defDec.decoder = createDecoderOfRecord(d, schema.(*RecordSchema), typ)
+		return defDec.decoder
 	case Ref:
-		return decoderOfType(cfg, schema.(*RefSchema).Schema(), typ)
-
+		key := cacheKey{fingerprint: schema.(*RefSchema).Schema().CacheFingerprint(), rtype: typ.RType()}
+		if dec, f := d.decoders[key]; f {
+			return dec
+		}
+		return decoderOfType(d, schema.(*RefSchema).Schema(), typ)
 	case Enum:
-		return createDecoderOfEnum(schema, typ)
-
+		return createDecoderOfEnum(schema.(*EnumSchema), typ)
 	case Array:
-		return createDecoderOfArray(cfg, schema, typ)
-
+		return createDecoderOfArray(d, schema.(*ArraySchema), typ)
 	case Map:
-		return createDecoderOfMap(cfg, schema, typ)
-
+		return createDecoderOfMap(d, schema.(*MapSchema), typ)
 	case Union:
-		return createDecoderOfUnion(cfg, schema, typ)
-
+		return createDecoderOfUnion(d, schema.(*UnionSchema), typ)
 	case Fixed:
-		return createDecoderOfFixed(schema, typ)
-
+		return createDecoderOfFixed(schema.(*FixedSchema), typ)
 	default:
 		// It is impossible to get here with a valid schema
 		return &errorDecoder{err: fmt.Errorf("avro: schema type %s is unsupported", schema.Type())}
@@ -130,7 +170,7 @@ func (c *frozenConfig) EncoderOf(schema Schema, typ reflect2.Type) ValEncoder {
 		return encoder
 	}
 
-	encoder = encoderOfType(c, schema, typ)
+	encoder = encoderOfType(newEncoderContext(c), schema, typ)
 	if typ.LikePtr() {
 		encoder = &onePtrEncoder{encoder}
 	}
@@ -146,8 +186,8 @@ func (e *onePtrEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 	e.enc.Encode(noescape(unsafe.Pointer(&ptr)), w)
 }
 
-func encoderOfType(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncoder {
-	if enc := createEncoderOfMarshaler(cfg, schema, typ); enc != nil {
+func encoderOfType(e *encoderContext, schema Schema, typ reflect2.Type) ValEncoder {
+	if enc := createEncoderOfMarshaler(schema, typ); enc != nil {
 		return enc
 	}
 
@@ -158,28 +198,28 @@ func encoderOfType(cfg *frozenConfig, schema Schema, typ reflect2.Type) ValEncod
 	switch schema.Type() {
 	case String, Bytes, Int, Long, Float, Double, Boolean, Null:
 		return createEncoderOfNative(schema, typ)
-
 	case Record:
-		return createEncoderOfRecord(cfg, schema, typ)
-
+		key := cacheKey{fingerprint: schema.Fingerprint(), rtype: typ.RType()}
+		defEnc := &deferEncoder{}
+		e.encoders[key] = defEnc
+		defEnc.encoder = createEncoderOfRecord(e, schema.(*RecordSchema), typ)
+		return defEnc.encoder
 	case Ref:
-		return encoderOfType(cfg, schema.(*RefSchema).Schema(), typ)
-
+		key := cacheKey{fingerprint: schema.(*RefSchema).Schema().Fingerprint(), rtype: typ.RType()}
+		if enc, f := e.encoders[key]; f {
+			return enc
+		}
+		return encoderOfType(e, schema.(*RefSchema).Schema(), typ)
 	case Enum:
-		return createEncoderOfEnum(schema, typ)
-
+		return createEncoderOfEnum(schema.(*EnumSchema), typ)
 	case Array:
-		return createEncoderOfArray(cfg, schema, typ)
-
+		return createEncoderOfArray(e, schema.(*ArraySchema), typ)
 	case Map:
-		return createEncoderOfMap(cfg, schema, typ)
-
+		return createEncoderOfMap(e, schema.(*MapSchema), typ)
 	case Union:
-		return createEncoderOfUnion(cfg, schema, typ)
-
+		return createEncoderOfUnion(e, schema.(*UnionSchema), typ)
 	case Fixed:
-		return createEncoderOfFixed(schema, typ)
-
+		return createEncoderOfFixed(schema.(*FixedSchema), typ)
 	default:
 		// It is impossible to get here with a valid schema
 		return &errorEncoder{err: fmt.Errorf("avro: schema type %s is unsupported", schema.Type())}

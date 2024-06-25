@@ -129,10 +129,10 @@ type frozenConfig struct {
 
 func (c *frozenConfig) Marshal(schema Schema, v any) ([]byte, error) {
 	writer := c.borrowWriter()
+	defer c.returnWriter(writer)
 
 	writer.WriteVal(schema, v)
 	if err := writer.Error; err != nil {
-		c.returnWriter(writer)
 		return nil, err
 	}
 
@@ -140,7 +140,6 @@ func (c *frozenConfig) Marshal(schema Schema, v any) ([]byte, error) {
 	copied := make([]byte, len(result))
 	copy(copied, result)
 
-	c.returnWriter(writer)
 	return copied, nil
 }
 
@@ -159,10 +158,10 @@ func (c *frozenConfig) returnWriter(writer *Writer) {
 
 func (c *frozenConfig) Unmarshal(schema Schema, data []byte, v any) error {
 	reader := c.borrowReader(data)
+	defer c.returnReader(reader)
 
 	reader.ReadVal(schema, v)
 	err := reader.Error
-	c.returnReader(reader)
 
 	if errors.Is(err, io.EOF) {
 		return nil

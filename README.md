@@ -142,10 +142,6 @@ For security reasons, the configuration `Config.MaxByteSliceSize` restricts the 
 by the `Reader`. The default maximum size is `1MiB` and is configurable. This is required to stop untrusted input from consuming all memory and
 crashing the application. Should this not be need, setting a negative number will disable the behaviour.
 
-### Recursive Structs
-
-At this moment recursive structs are not supported. It is planned for the future.
-
 ## Benchmark
 
 Benchmark source code can be found at: [https://github.com/nrwiersma/avro-benchmarks](https://github.com/nrwiersma/avro-benchmarks)

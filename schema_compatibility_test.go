@@ -489,7 +489,8 @@ func TestSchemaCompatibility_Resolve(t *testing.T) {
 			writer: `["string", "int", "long"]`,
 			value:  "foo",
 			want:   "foo",
-		}, {
+		},
+		{
 			name:   "Union Writer Missing Schema",
 			reader: `["int", "long", "string"]`,
 			writer: `["string", "int"]`,

@@ -4,6 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"sync"
+	"sync/atomic"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/hamba/avro/v2"
 )
@@ -198,4 +204,46 @@ func ExampleMarshal() {
 	fmt.Println(b)
 
 	// Output: [54 6 102 111 111]
+}
+
+func TestEncoderDecoder_Concurrency(t *testing.T) {
+	schema := avro.MustParse(`{
+	    "type": "record",
+	    "name": "simple",
+	    "namespace": "org.hamba.avro",
+	    "fields" : [
+	        {"name": "a", "type": "long"},
+	        {"name": "b", "type": "string"}
+	    ]
+	}`)
+
+	var ops atomic.Uint32
+
+	type SimpleRecord struct {
+		A int64  `avro:"a"`
+		B string `avro:"b"`
+	}
+
+	wg := &sync.WaitGroup{}
+	for i := 0; i < 1000; i++ {
+		wg.Add(1)
+		go func(schema avro.Schema, wg *sync.WaitGroup, idx int64) {
+			defer wg.Done()
+			in := SimpleRecord{A: idx, B: fmt.Sprintf("foo-%d", idx)}
+
+			data, err := avro.Marshal(schema, in)
+			require.NoError(t, err)
+
+			out := SimpleRecord{}
+			err = avro.Unmarshal(schema, data, &out)
+
+			require.NoError(t, err)
+			assert.Equal(t, idx, out.A)
+			assert.Equal(t, fmt.Sprintf("foo-%d", idx), out.B)
+			ops.Add(1)
+		}(schema, wg, int64(i))
+	}
+	wg.Wait()
+
+	assert.Equal(t, uint32(1000), ops.Load())
 }

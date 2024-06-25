@@ -10,27 +10,27 @@ import (
 	"github.com/modern-go/reflect2"
 )
 
-func createDecoderOfEnum(schema Schema, typ reflect2.Type) ValDecoder {
+func createDecoderOfEnum(schema *EnumSchema, typ reflect2.Type) ValDecoder {
 	switch {
 	case typ.Kind() == reflect.String:
-		return &enumCodec{enum: schema.(*EnumSchema)}
+		return &enumCodec{enum: schema}
 	case typ.Implements(textUnmarshalerType):
-		return &enumTextMarshalerCodec{typ: typ, enum: schema.(*EnumSchema)}
+		return &enumTextMarshalerCodec{typ: typ, enum: schema}
 	case reflect2.PtrTo(typ).Implements(textUnmarshalerType):
-		return &enumTextMarshalerCodec{typ: typ, enum: schema.(*EnumSchema), ptr: true}
+		return &enumTextMarshalerCodec{typ: typ, enum: schema, ptr: true}
 	}
 
 	return &errorDecoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s", typ.String(), schema.Type())}
 }
 
-func createEncoderOfEnum(schema Schema, typ reflect2.Type) ValEncoder {
+func createEncoderOfEnum(schema *EnumSchema, typ reflect2.Type) ValEncoder {
 	switch {
 	case typ.Kind() == reflect.String:
-		return &enumCodec{enum: schema.(*EnumSchema)}
+		return &enumCodec{enum: schema}
 	case typ.Implements(textMarshalerType):
-		return &enumTextMarshalerCodec{typ: typ, enum: schema.(*EnumSchema)}
+		return &enumTextMarshalerCodec{typ: typ, enum: schema}
 	case reflect2.PtrTo(typ).Implements(textMarshalerType):
-		return &enumTextMarshalerCodec{typ: typ, enum: schema.(*EnumSchema), ptr: true}
+		return &enumTextMarshalerCodec{typ: typ, enum: schema, ptr: true}
 	}
 
 	return &errorEncoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s", typ.String(), schema.Type())}
