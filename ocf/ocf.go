@@ -171,7 +171,7 @@ type encoderConfig struct {
 	EncodingConfig   avro.API
 }
 
-// EncoderFunc represents an configuration function for Encoder.
+// EncoderFunc represents a configuration function for Encoder.
 type EncoderFunc func(cfg *encoderConfig)
 
 // WithBlockLength sets the block length on the encoder.
