@@ -228,3 +228,9 @@ avrosv -h
 This library supports the last two versions of Go. While the minimum Go version is
 not guarantee to increase along side Go, it may jump from time to time to support 
 additional features. This will be not be considered a breaking change.
+
+## Who uses hamba/avro?
+
+- [confluent-kafka-go](https://github.com/confluentinc/confluent-kafka-go)
+- [pulsar-client-go](https://github.com/apache/pulsar-client-go)
+
