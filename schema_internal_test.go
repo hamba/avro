@@ -96,6 +96,16 @@ func TestProperties_PropGetsFromEmptySet(t *testing.T) {
 	assert.Nil(t, p.Prop("test"))
 }
 
+func TestName_InvalidNameFirstCharButValidationSkipped(t *testing.T) {
+	SkipNameValidation = true
+	t.Cleanup(func() {
+		SkipNameValidation = false
+	})
+
+	_, err := newName("+bar", "foo", nil)
+	assert.NoError(t, err)
+}
+
 func TestIsValidDefault(t *testing.T) {
 	tests := []struct {
 		name     string
