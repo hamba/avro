@@ -195,6 +195,40 @@ func TestDecoder_WithDeflate(t *testing.T) {
 	assert.Equal(t, 1, count)
 }
 
+func TestDecoder_InvalidName(t *testing.T) {
+	type record struct {
+		Hello int    `avro:"hello"`
+		What  string `avro:"what"`
+	}
+	want := record{
+		What:  "yes",
+		Hello: 1,
+	}
+
+	f, err := os.Open("testdata/invalid-name.avro")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	t.Cleanup(func() { _ = f.Close() })
+
+	dec, err := ocf.NewDecoder(f, ocf.WithSkipNameValidation(true))
+	require.NoError(t, err)
+
+	var count int
+	for dec.HasNext() {
+		count++
+		var got record
+		err = dec.Decode(&got)
+
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	}
+
+	require.NoError(t, dec.Error())
+	assert.Equal(t, 1, count)
+}
+
 func TestDecoder_WithDeflateHandlesInvalidData(t *testing.T) {
 	f, err := os.Open("testdata/deflate-invalid-data.avro")
 	if err != nil {
