@@ -60,7 +60,7 @@ func (r *Reader) Reset(b []byte) *Reader {
 	return r
 }
 
-// ReportError record a error in iterator instance with current position.
+// ReportError record an error in iterator instance with current position.
 func (r *Reader) ReportError(operation, msg string) {
 	if r.Error != nil && !errors.Is(r.Error, io.EOF) {
 		return

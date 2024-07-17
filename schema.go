@@ -1549,6 +1549,10 @@ func validateName(name string) error {
 		return errors.New("name must be a non-empty")
 	}
 
+	if SkipNameValidation {
+		return nil
+	}
+
 	if strings.IndexFunc(name[:1], invalidNameFirstChar) > -1 {
 		return fmt.Errorf("invalid name %s", name)
 	}

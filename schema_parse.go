@@ -15,6 +15,13 @@ import (
 // DefaultSchemaCache is the default cache for schemas.
 var DefaultSchemaCache = &SchemaCache{}
 
+// SkipNameValidation sets whether to skip name validation.
+// Avro spec incurs a strict naming convention for names and aliases, however official Avro tools do not follow that
+// More info:
+// https://lists.apache.org/thread/39v98os6wdpyr6w31xdkz0yzol51fsrr
+// https://github.com/apache/avro/pull/1995
+var SkipNameValidation = false
+
 // Parse parses a schema string.
 func Parse(schema string) (Schema, error) {
 	return ParseBytes([]byte(schema))
@@ -25,7 +32,7 @@ func ParseWithCache(schema, namespace string, cache *SchemaCache) (Schema, error
 	return ParseBytesWithCache([]byte(schema), namespace, cache)
 }
 
-// MustParse parses a schema string, panicing if there is an error.
+// MustParse parses a schema string, panicking if there is an error.
 func MustParse(schema string) Schema {
 	parsed, err := Parse(schema)
 	if err != nil {
