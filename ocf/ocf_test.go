@@ -212,7 +212,10 @@ func TestDecoder_InvalidName(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = f.Close() })
 
-	dec, err := ocf.NewDecoder(f, ocf.WithSkipNameValidation(true))
+	avro.SkipNameValidation = true
+	defer func() { avro.SkipNameValidation = false }()
+
+	dec, err := ocf.NewDecoder(f)
 	require.NoError(t, err)
 
 	var count int

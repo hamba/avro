@@ -53,24 +53,8 @@ type Decoder struct {
 	count int64
 }
 
-type decoderConfig struct{}
-
-// DecoderFunc represents a configuration function for Decoder.
-type DecoderFunc func(*decoderConfig)
-
-// WithSkipNameValidation sets whether to skip validating of field names when decoding.
-func WithSkipNameValidation(skip bool) DecoderFunc {
-	return func(_ *decoderConfig) {
-		avro.SkipNameValidation = skip
-	}
-}
-
 // NewDecoder returns a new decoder that reads from reader r.
-func NewDecoder(r io.Reader, opts ...DecoderFunc) (*Decoder, error) {
-	for _, opt := range opts {
-		opt(nil)
-	}
-
+func NewDecoder(r io.Reader) (*Decoder, error) {
 	reader := avro.NewReader(r, 1024)
 
 	h, err := readHeader(reader)
