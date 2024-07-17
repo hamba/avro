@@ -187,6 +187,8 @@ Or use it as a lib in internal commands, it's the `gen` package
 
 ## Avro schema validation
 
+### avrosv
+
 A small Avro schema validation command-line utility is also available. This simple tool leverages the
 schema parsing functionality of the library, showing validation errors or optionally dumping parsed
 schemas to the console. It can be used in CI/CD pipelines to validate schema changes in a repository.
@@ -222,6 +224,20 @@ Check the options and usage with `-h`:
 ```shell
 avrosv -h
 ```
+
+### Name Validation
+
+Avro names are validated according to the
+[Avro specification](https://avro.apache.org/docs/1.11.1/specification/#names).
+
+However, the official Java library does not validate said names accordingly, resulting to some files out in the wild
+to have invalid names. Thus, this library has a configuration option to allow for these invalid names to be parsed.
+
+```go
+avro.SkipNameValidation = true
+```
+
+Note that this variable is global, so ideally you'd need to unset it after you're done with the invalid schema.
 
 ## Go Version Support
 
