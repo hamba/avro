@@ -36,7 +36,7 @@ func resolveCodec(name CodecName, lvl int) (Codec, error) {
 		return &SnappyCodec{}, nil
 
 	case ZStandard:
-		return &ZStandardCodec{}, nil
+		return newZStandardCodec(), nil
 
 	default:
 		return nil, fmt.Errorf("unknown codec %s", name)
@@ -127,20 +127,28 @@ func (*SnappyCodec) Encode(b []byte) []byte {
 }
 
 // ZStandardCodec is a zstandard compression codec.
-type ZStandardCodec struct{}
+type ZStandardCodec struct {
+	decoder *zstd.Decoder
+	encoder *zstd.Encoder
+}
+
+func newZStandardCodec() *ZStandardCodec {
+	decoder, _ := zstd.NewReader(nil)
+	encoder, _ := zstd.NewWriter(nil)
+	return &ZStandardCodec{
+		decoder: decoder,
+		encoder: encoder,
+	}
+}
 
 // Decode decodes the given bytes.
-func (*ZStandardCodec) Decode(b []byte) ([]byte, error) {
-	dec, _ := zstd.NewReader(nil)
-	defer dec.Close()
-
-	return dec.DecodeAll(b, nil)
+func (zstdCodec *ZStandardCodec) Decode(b []byte) ([]byte, error) {
+	defer func() { _ = zstdCodec.decoder.Reset(nil) }()
+	return zstdCodec.decoder.DecodeAll(b, nil)
 }
 
 // Encode encodes the given bytes.
-func (*ZStandardCodec) Encode(b []byte) []byte {
-	enc, _ := zstd.NewWriter(nil)
-	defer func() { _ = enc.Close() }()
-
-	return enc.EncodeAll(b, nil)
+func (zstdCodec *ZStandardCodec) Encode(b []byte) []byte {
+	defer zstdCodec.encoder.Reset(nil)
+	return zstdCodec.encoder.EncodeAll(b, nil)
 }
