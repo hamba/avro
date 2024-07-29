@@ -3,6 +3,7 @@ package avro_test
 import (
 	"bytes"
 	"math/big"
+	"strconv"
 	"testing"
 	"time"
 
@@ -68,7 +69,7 @@ func TestDecoder_BoolEof(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestDecoder_Int(t *testing.T) {
+func TestDecoder_Int_Int(t *testing.T) {
 	defer ConfigTeardown()
 
 	data := []byte{0x36}
@@ -81,6 +82,25 @@ func TestDecoder_Int(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, 27, i)
+}
+
+func TestDecoder_Int_Long(t *testing.T) {
+	if strconv.IntSize != 64 {
+		t.Skipf("int size is %d, skipping test", strconv.IntSize)
+	}
+
+	defer ConfigTeardown()
+
+	data := []byte{0x80, 0x80, 0x80, 0x80, 0x10}
+	schema := "long"
+	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	var i int
+	err = dec.Decode(&i)
+
+	require.NoError(t, err)
+	assert.Equal(t, 2147483648, i)
 }
 
 func TestDecoder_IntShortRead(t *testing.T) {
@@ -288,7 +308,7 @@ func TestDecoder_Uint32InvalidSchema(t *testing.T) {
 func TestDecoder_Int64(t *testing.T) {
 	defer ConfigTeardown()
 
-	data := []byte{0x36}
+	data := []byte{0x80, 0x80, 0x80, 0x80, 0x10}
 	schema := "long"
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
 	require.NoError(t, err)
@@ -297,7 +317,7 @@ func TestDecoder_Int64(t *testing.T) {
 	err = dec.Decode(&i)
 
 	require.NoError(t, err)
-	assert.Equal(t, int64(27), i)
+	assert.Equal(t, int64(2147483648), i)
 }
 
 func TestDecoder_Int64ShortRead(t *testing.T) {

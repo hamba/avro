@@ -268,6 +268,20 @@ func TestEncoder_Int64FromInt32(t *testing.T) {
 	assert.Equal(t, []byte{0x36}, buf.Bytes())
 }
 
+func TestEncoder_Int64FromInt(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := "long"
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode(2147483648)
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x80, 0x80, 0x80, 0x80, 0x10}, buf.Bytes())
+}
+
 func TestEncoder_Int64InvalidSchema(t *testing.T) {
 	defer ConfigTeardown()
 
