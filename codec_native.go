@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"strconv"
 	"time"
 	"unsafe"
 
@@ -21,10 +22,15 @@ func createDecoderOfNative(schema *PrimitiveSchema, typ reflect2.Type) ValDecode
 		return &boolCodec{}
 
 	case reflect.Int:
-		if schema.Type() != Int {
-			break
+		switch schema.Type() {
+		case Int:
+			return &intCodec[int]{}
+		case Long:
+			if strconv.IntSize == 64 {
+				// allow decoding into int when it's 64-bit
+				return &longCodec[int]{}
+			}
 		}
-		return &intCodec[int]{}
 
 	case reflect.Int8:
 		if schema.Type() != Int {
@@ -183,10 +189,12 @@ func createEncoderOfNative(schema Schema, typ reflect2.Type) ValEncoder {
 		return &boolCodec{}
 
 	case reflect.Int:
-		if schema.Type() != Int {
-			break
+		switch schema.Type() {
+		case Int:
+			return &intCodec[int]{}
+		case Long:
+			return &longCodec[int]{}
 		}
-		return &intCodec[int]{}
 
 	case reflect.Int8:
 		if schema.Type() != Int {
@@ -367,7 +375,7 @@ func (*intCodec[T]) Encode(ptr unsafe.Pointer, w *Writer) {
 }
 
 type largeInt interface {
-	~int32 | ~uint32 | int64
+	~int | ~int32 | ~uint32 | int64
 }
 
 type longCodec[T largeInt] struct{}
