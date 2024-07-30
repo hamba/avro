@@ -26,6 +26,7 @@ func NewTypeResolver() *TypeResolver {
 	r.Register(string(Int), int16(0))
 	r.Register(string(Int), int32(0))
 	r.Register(string(Int), int(0))
+	r.Register(string(Long), int(0))
 	r.Register(string(Long), int64(0))
 	r.Register(string(Float), float32(0))
 	r.Register(string(Double), float64(0))
