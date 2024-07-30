@@ -550,3 +550,94 @@ func TestEncoder_UnionInterfaceNotInSchema(t *testing.T) {
 
 	assert.Error(t, err)
 }
+
+func TestEncoder_UnionResolver(t *testing.T) {
+	testCases := []struct {
+		name   string
+		schema string
+		value  any
+		want   []byte
+	}{
+		{
+			name:   "Go int8 as Avro int",
+			schema: `["null", "int"]`,
+			value:  int8(27),
+			want:   []byte{0x2, 0x36},
+		},
+		{
+			name:   "Go int16 as Avro int",
+			schema: `["null", "int"]`,
+			value:  int16(27),
+			want:   []byte{0x2, 0x36},
+		},
+		{
+			name:   "Go int32 as Avro int",
+			schema: `["null", "int"]`,
+			value:  int32(27),
+			want:   []byte{0x2, 0x36},
+		},
+		{
+			name:   "Go int as Avro int",
+			schema: `["null", "int"]`,
+			value:  int(27),
+			want:   []byte{0x2, 0x36},
+		},
+		{
+			name:   "Go int as Avro long",
+			schema: `["null", "long"]`,
+			value:  int(2147483648),
+			want:   []byte{0x2, 0x80, 0x80, 0x80, 0x80, 0x10},
+		},
+		{
+			name:   "Go int64 as Avro long",
+			schema: `["null", "long"]`,
+			value:  int64(2147483648),
+			want:   []byte{0x2, 0x80, 0x80, 0x80, 0x80, 0x10},
+		},
+		{
+			name:   "Go float32 as Avro float",
+			schema: `["null", "float"]`,
+			value:  float32(1.15),
+			want:   []byte{0x2, 0x33, 0x33, 0x93, 0x3F},
+		},
+		{
+			name:   "Go float64 as Avro float",
+			schema: `["null", "double"]`,
+			value:  float64(1.15),
+			want:   []byte{0x2, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0xF2, 0x3F},
+		},
+		{
+			name:   "Go string as Avro string",
+			schema: `["null", "string"]`,
+			value:  "foo",
+			want:   []byte{0x2, 0x06, 0x66, 0x6F, 0x6F},
+		},
+		{
+			name:   "Go []byte as Avro bytes",
+			schema: `["null", "bytes"]`,
+			value:  []byte{0xEC, 0xAB, 0x44, 0x00},
+			want:   []byte{0x2, 0x08, 0xEC, 0xAB, 0x44, 0x00},
+		},
+		{
+			name:   "Go bool as Avro boolean",
+			schema: `["null", "boolean"]`,
+			value:  true,
+			want:   []byte{0x2, 0x01},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			defer ConfigTeardown()
+
+			buf := bytes.NewBuffer([]byte{})
+			enc, err := avro.NewEncoder(tc.schema, buf)
+			require.NoError(t, err)
+
+			err = enc.Encode(tc.value)
+
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, buf.Bytes())
+		})
+	}
+}
