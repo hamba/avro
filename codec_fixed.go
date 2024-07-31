@@ -18,27 +18,34 @@ func createDecoderOfFixed(fixed *FixedSchema, typ reflect2.Type) ValDecoder {
 			break
 		}
 		return &fixedCodec{arrayType: typ.(*reflect2.UnsafeArrayType)}
-
 	case reflect.Uint64:
 		if fixed.Size() != 8 {
 			break
 		}
 
 		return &fixedUint64Codec{}
+	case reflect.Ptr:
+		ptrType := typ.(*reflect2.UnsafePtrType)
+		elemType := ptrType.Elem()
 
+		ls := fixed.Logical()
+		tpy1 := elemType.Type1()
+		if elemType.Kind() != reflect.Struct || !tpy1.ConvertibleTo(ratType) || ls == nil ||
+			ls.Type() != Decimal {
+			break
+		}
+		dec := ls.(*DecimalLogicalSchema)
+		return &fixedDecimalCodec{prec: dec.Precision(), scale: dec.Scale(), size: fixed.Size()}
 	case reflect.Struct:
 		ls := fixed.Logical()
 		if ls == nil {
 			break
 		}
 		typ1 := typ.Type1()
-		switch {
-		case typ1.ConvertibleTo(durType) && ls.Type() == Duration:
-			return &fixedDurationCodec{}
-		case typ1.ConvertibleTo(ratType) && ls.Type() == Decimal:
-			dec := ls.(*DecimalLogicalSchema)
-			return &fixedDecimalCodec{prec: dec.Precision(), scale: dec.Scale(), size: fixed.Size()}
+		if !typ1.ConvertibleTo(durType) || ls.Type() != Duration {
+			break
 		}
+		return &fixedDurationCodec{}
 	}
 
 	return &errorDecoder{
@@ -54,14 +61,12 @@ func createEncoderOfFixed(fixed *FixedSchema, typ reflect2.Type) ValEncoder {
 			break
 		}
 		return &fixedCodec{arrayType: typ.(*reflect2.UnsafeArrayType)}
-
 	case reflect.Uint64:
 		if fixed.Size() != 8 {
 			break
 		}
 
 		return &fixedUint64Codec{}
-
 	case reflect.Ptr:
 		ptrType := typ.(*reflect2.UnsafePtrType)
 		elemType := ptrType.Elem()
@@ -131,7 +136,7 @@ type fixedDecimalCodec struct {
 func (c *fixedDecimalCodec) Decode(ptr unsafe.Pointer, r *Reader) {
 	b := make([]byte, c.size)
 	r.Read(b)
-	*((*big.Rat)(ptr)) = *ratFromBytes(b, c.scale)
+	*((**big.Rat)(ptr)) = ratFromBytes(b, c.scale)
 }
 
 func (c *fixedDecimalCodec) Encode(ptr unsafe.Pointer, w *Writer) {
