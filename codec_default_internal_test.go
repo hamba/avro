@@ -741,15 +741,15 @@ func TestDecoder_DefaultFixed(t *testing.T) {
 		schema.(*RecordSchema).Fields()[1].action = FieldSetDefault
 
 		type TestRecord struct {
-			A string  `avro:"a"`
-			B big.Rat `avro:"b"`
+			A string   `avro:"a"`
+			B *big.Rat `avro:"b"`
 		}
 
 		var got TestRecord
 		err := NewDecoderForSchema(schema, bytes.NewReader(data)).Decode(&got)
 
 		require.NoError(t, err)
-		assert.Equal(t, big.NewRat(1734, 5), &got.B)
+		assert.Equal(t, big.NewRat(1734, 5), got.B)
 		assert.Equal(t, "foo", got.A)
 	})
 }

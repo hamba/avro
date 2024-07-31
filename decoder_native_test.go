@@ -768,7 +768,7 @@ func TestDecoder_BytesRat_Positive(t *testing.T) {
 	require.NoError(t, err)
 
 	got := &big.Rat{}
-	err = dec.Decode(got)
+	err = dec.Decode(&got)
 
 	require.NoError(t, err)
 	assert.Equal(t, big.NewRat(1734, 5), got)
@@ -783,7 +783,7 @@ func TestDecoder_BytesRat_Negative(t *testing.T) {
 	require.NoError(t, err)
 
 	got := &big.Rat{}
-	err = dec.Decode(got)
+	err = dec.Decode(&got)
 
 	require.NoError(t, err)
 	assert.Equal(t, big.NewRat(-1734, 5), got)
@@ -798,7 +798,7 @@ func TestDecoder_BytesRat_Zero(t *testing.T) {
 	require.NoError(t, err)
 
 	got := &big.Rat{}
-	err = dec.Decode(got)
+	err = dec.Decode(&got)
 
 	require.NoError(t, err)
 	assert.Equal(t, big.NewRat(0, 1), got)
@@ -813,7 +813,7 @@ func TestDecoder_BytesRatInvalidSchema(t *testing.T) {
 	require.NoError(t, err)
 
 	got := &big.Rat{}
-	err = dec.Decode(got)
+	err = dec.Decode(&got)
 
 	assert.Error(t, err)
 }
@@ -827,7 +827,7 @@ func TestDecoder_BytesRatInvalidLogicalSchema(t *testing.T) {
 	require.NoError(t, err)
 
 	got := &big.Rat{}
-	err = dec.Decode(got)
+	err = dec.Decode(&got)
 
 	assert.Error(t, err)
 }

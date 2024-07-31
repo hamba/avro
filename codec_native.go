@@ -592,7 +592,7 @@ func (c *bytesDecimalCodec) Decode(ptr unsafe.Pointer, r *Reader) {
 	if i := (&big.Int{}).SetBytes(b); len(b) > 0 && b[0]&0x80 > 0 {
 		i.Sub(i, new(big.Int).Lsh(one, uint(len(b))*8))
 	}
-	*((*big.Rat)(ptr)) = *ratFromBytes(b, c.scale)
+	*((**big.Rat)(ptr)) = ratFromBytes(b, c.scale)
 }
 
 func ratFromBytes(b []byte, scale int) *big.Rat {

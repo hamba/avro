@@ -49,7 +49,7 @@ func TestDecoder_FixedRat_Positive(t *testing.T) {
 	require.NoError(t, err)
 
 	got := &big.Rat{}
-	err = dec.Decode(got)
+	err = dec.Decode(&got)
 
 	require.NoError(t, err)
 	assert.Equal(t, big.NewRat(1734, 5), got)
@@ -64,7 +64,7 @@ func TestDecoder_FixedRat_Negative(t *testing.T) {
 	require.NoError(t, err)
 
 	got := &big.Rat{}
-	err = dec.Decode(got)
+	err = dec.Decode(&got)
 
 	require.NoError(t, err)
 	assert.Equal(t, big.NewRat(-1734, 5), got)
@@ -79,7 +79,7 @@ func TestDecoder_FixedRat_Zero(t *testing.T) {
 	require.NoError(t, err)
 
 	got := &big.Rat{}
-	err = dec.Decode(got)
+	err = dec.Decode(&got)
 
 	require.NoError(t, err)
 	assert.Equal(t, big.NewRat(0, 1), got)
@@ -94,7 +94,7 @@ func TestDecoder_FixedRatInvalidLogicalSchema(t *testing.T) {
 	require.NoError(t, err)
 
 	got := &big.Rat{}
-	err = dec.Decode(got)
+	err = dec.Decode(&got)
 
 	assert.Error(t, err)
 }
