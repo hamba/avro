@@ -236,13 +236,14 @@ func TestDecoder_RecordEmbeddedIntStruct(t *testing.T) {
 func TestDecoder_RecordMap(t *testing.T) {
 	defer ConfigTeardown()
 
-	data := []byte{0x36, 0x06, 0x66, 0x6f, 0x6f}
+	data := []byte{0x36, 0x06, 0x66, 0x6f, 0x6f, 0x02, 0x06, 0x66, 0x6f, 0x6f}
 	schema := `{
 	"type": "record",
 	"name": "test",
 	"fields" : [
 		{"name": "a", "type": "long"},
-	    {"name": "b", "type": "string"}
+	    {"name": "b", "type": "string"},
+		{"name": "c", "type": ["null","string"]}
 	]
 }`
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
@@ -252,7 +253,7 @@ func TestDecoder_RecordMap(t *testing.T) {
 	err = dec.Decode(&got)
 
 	require.NoError(t, err)
-	assert.Equal(t, map[string]any{"a": int64(27), "b": "foo"}, got)
+	assert.Equal(t, map[string]any{"a": int64(27), "b": "foo", "c": "foo"}, got)
 }
 
 func TestDecoder_RecordMapInvalidKey(t *testing.T) {
