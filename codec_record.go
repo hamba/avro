@@ -275,7 +275,7 @@ func decoderOfRecord(d *decoderContext, schema Schema, typ reflect2.Type) ValDec
 
 		fields[i] = recordMapDecoderField{
 			name:    field.Name(),
-			decoder: newEfaceDecoder(d, field.Type()),
+			decoder: decoderOfType(d, field.Type(), mapType.Elem()),
 		}
 	}
 
