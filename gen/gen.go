@@ -159,7 +159,7 @@ func WithPackageDoc(text string) OptsFunc {
 	}
 }
 
-// LogicalType used when the name of the "LogicalType" field in the Avro schema matches the Name attribute
+// LogicalType used when the name of the "LogicalType" field in the Avro schema matches the Name attribute.
 type LogicalType struct {
 	// Name of the LogicalType
 	Name string
@@ -171,7 +171,7 @@ type LogicalType struct {
 	ThirdPartyImport string
 }
 
-// WithLogicalType registers a LogicalType which takes precedence over the default logical types defined by this package
+// WithLogicalType registers a LogicalType which takes precedence over the default logical types defined by this package.
 func WithLogicalType(logicalType LogicalType) OptsFunc {
 	return func(g *Generator) {
 		if g.logicalTypes == nil {
