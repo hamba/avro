@@ -187,43 +187,44 @@ func TestStruct_ConfigurableLogicalTypes(t *testing.T) {
 }
 
 func TestStruct_GenFromRecordSchema(t *testing.T) {
-	tests := map[string]struct {
-		config   gen.Config
-		fileName string
-	}{
-		"without custom logical types": {
-			config:   gen.Config{PackageName: "Something"},
-			fileName: "testdata/golden.go",
-		},
-		"with logical types": {
-			config: gen.Config{PackageName: "Something", LogicalTypes: []gen.LogicalType{{
-				Name:             "uuid",
-				Typ:              "uuid.UUID",
-				ThirdPartyImport: "github.com/google/uuid",
-			}}},
-			fileName: "testdata/golden_logicaltype.go",
-		},
-	}
-	for testName, testData := range tests {
-		testData := testData
-		t.Run(testName, func(t *testing.T) {
-			gc := testData.config
-			schema, err := os.ReadFile("testdata/golden.avsc")
-			require.NoError(t, err)
+	fileName := "testdata/golden.go"
+	gc := gen.Config{PackageName: "Something"}
+	schema, err := os.ReadFile("testdata/golden.avsc")
+	require.NoError(t, err)
 
-			file, _ := generate(t, string(schema), gc)
+	file, _ := generate(t, string(schema), gc)
 
-			if *update {
-				err = os.WriteFile(testData.fileName, file, 0600)
-				require.NoError(t, err)
-			}
-
-			want, err := os.ReadFile(testData.fileName)
-			require.NoError(t, err)
-			assert.Equal(t, string(want), string(file))
-		})
+	if *update {
+		err = os.WriteFile(fileName, file, 0600)
+		require.NoError(t, err)
 	}
 
+	want, err := os.ReadFile(fileName)
+	require.NoError(t, err)
+	assert.Equal(t, string(want), string(file))
+}
+
+func TestStruct_GenFromRecordSchemaWithCustomLogicalTypes(t *testing.T) {
+	fileName := "testdata/golden_logicaltype.go"
+
+	gc := gen.Config{PackageName: "Something", LogicalTypes: []gen.LogicalType{{
+		Name:             "uuid",
+		Typ:              "uuid.UUID",
+		ThirdPartyImport: "github.com/google/uuid",
+	}}}
+	schema, err := os.ReadFile("testdata/golden.avsc")
+	require.NoError(t, err)
+
+	file, _ := generate(t, string(schema), gc)
+
+	if *update {
+		err = os.WriteFile(fileName, file, 0600)
+		require.NoError(t, err)
+	}
+
+	want, err := os.ReadFile(fileName)
+	require.NoError(t, err)
+	assert.Equal(t, string(want), string(file))
 }
 
 func TestStruct_GenFromRecordSchemaWithFullName(t *testing.T) {

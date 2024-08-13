@@ -171,11 +171,12 @@ type LogicalType struct {
 	ThirdPartyImport string
 }
 
-// WithLogicalType registers a LogicalType which takes precedence over the default logical types defined by this package.
+// WithLogicalType registers a LogicalType which takes precedence over the default logical types
+// defined by this package.
 func WithLogicalType(logicalType LogicalType) OptsFunc {
 	return func(g *Generator) {
 		if g.logicalTypes == nil {
-			g.logicalTypes = make(map[avro.LogicalType]LogicalType)
+			g.logicalTypes = map[avro.LogicalType]LogicalType{}
 		}
 		g.logicalTypes[avro.LogicalType(logicalType.Name)] = logicalType
 	}
