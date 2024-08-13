@@ -19,12 +19,13 @@ import (
 
 // Config configures the code generation.
 type Config struct {
-	PackageName string
-	Tags        map[string]TagStyle
-	FullName    bool
-	Encoders    bool
-	StrictTypes bool
-	Initialisms []string
+	PackageName  string
+	Tags         map[string]TagStyle
+	FullName     bool
+	Encoders     bool
+	StrictTypes  bool
+	Initialisms  []string
+	LogicalTypes []LogicalType
 }
 
 // TagStyle defines the styling for a tag.
@@ -82,6 +83,9 @@ func StructFromSchema(schema avro.Schema, w io.Writer, cfg Config) error {
 		WithEncoders(cfg.Encoders),
 		WithInitialisms(cfg.Initialisms),
 		WithStrictTypes(cfg.StrictTypes),
+	}
+	for _, opt := range cfg.LogicalTypes {
+		opts = append(opts, WithLogicalType(opt))
 	}
 	g := NewGenerator(strcase.ToSnake(cfg.PackageName), cfg.Tags, opts...)
 	g.Parse(rec)
@@ -155,6 +159,29 @@ func WithPackageDoc(text string) OptsFunc {
 	}
 }
 
+// LogicalType used when the name of the "LogicalType" field in the Avro schema matches the Name attribute.
+type LogicalType struct {
+	// Name of the LogicalType
+	Name string
+	// Typ returned, has to be a valid Go type
+	Typ string
+	// Import added as import (if not empty)
+	Import string
+	// ThirdPartyImport added as import (if not empty)
+	ThirdPartyImport string
+}
+
+// WithLogicalType registers a LogicalType which takes precedence over the default logical types
+// defined by this package.
+func WithLogicalType(logicalType LogicalType) OptsFunc {
+	return func(g *Generator) {
+		if g.logicalTypes == nil {
+			g.logicalTypes = map[avro.LogicalType]LogicalType{}
+		}
+		g.logicalTypes[avro.LogicalType(logicalType.Name)] = logicalType
+	}
+}
+
 func ensureTrailingPeriod(text string) string {
 	if text == "" {
 		return text
@@ -167,14 +194,15 @@ func ensureTrailingPeriod(text string) string {
 
 // Generator generates Go structs from schemas.
 type Generator struct {
-	template    string
-	pkg         string
-	pkgdoc      string
-	tags        map[string]TagStyle
-	fullName    bool
-	encoders    bool
-	strictTypes bool
-	initialisms []string
+	template     string
+	pkg          string
+	pkgdoc       string
+	tags         map[string]TagStyle
+	fullName     bool
+	encoders     bool
+	strictTypes  bool
+	initialisms  []string
+	logicalTypes map[avro.LogicalType]LogicalType
 
 	imports           []string
 	thirdPartyImports []string
@@ -313,6 +341,19 @@ func (g *Generator) resolveUnionTypes(s *avro.UnionSchema) string {
 }
 
 func (g *Generator) resolveLogicalSchema(logicalType avro.LogicalType) string {
+	if g.logicalTypes != nil {
+		if typ, ok := g.logicalTypes[logicalType]; ok {
+			if val := typ.Import; val != "" {
+				g.addImport(val)
+			}
+			if val := typ.ThirdPartyImport; val != "" {
+				g.addThirdPartyImport(val)
+			}
+
+			return typ.Typ
+		}
+	}
+
 	var typ string
 	switch logicalType {
 	case "date", "timestamp-millis", "timestamp-micros":

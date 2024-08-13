@@ -155,19 +155,74 @@ func TestStruct_ConfigurableFieldTags(t *testing.T) {
 	}
 }
 
+func TestStruct_ConfigurableLogicalTypes(t *testing.T) {
+	schema := `{
+  "type": "record",
+  "name": "test",
+  "fields": [
+    { "name": "id", "type": {"type": "string", "logicalType": "uuid"} }
+  ]
+}`
+
+	gc := gen.Config{
+		PackageName: "Something",
+		LogicalTypes: []gen.LogicalType{{
+			Name:             "uuid",
+			Typ:              "uuid.UUID",
+			ThirdPartyImport: "github.com/google/uuid",
+		}},
+	}
+	_, lines := generate(t, schema, gc)
+
+	for _, expected := range []string{
+		"package something",
+		"import (",
+		"\"github.com/google/uuid\"",
+		"type Test struct {",
+		"ID uuid.UUID `avro:\"id\"`",
+		"}",
+	} {
+		assert.Contains(t, lines, expected)
+	}
+}
+
 func TestStruct_GenFromRecordSchema(t *testing.T) {
+	fileName := "testdata/golden.go"
+	gc := gen.Config{PackageName: "Something"}
 	schema, err := os.ReadFile("testdata/golden.avsc")
 	require.NoError(t, err)
 
-	gc := gen.Config{PackageName: "Something"}
 	file, _ := generate(t, string(schema), gc)
 
 	if *update {
-		err = os.WriteFile("testdata/golden.go", file, 0600)
+		err = os.WriteFile(fileName, file, 0600)
 		require.NoError(t, err)
 	}
 
-	want, err := os.ReadFile("testdata/golden.go")
+	want, err := os.ReadFile(fileName)
+	require.NoError(t, err)
+	assert.Equal(t, string(want), string(file))
+}
+
+func TestStruct_GenFromRecordSchemaWithCustomLogicalTypes(t *testing.T) {
+	fileName := "testdata/golden_logicaltype.go"
+
+	gc := gen.Config{PackageName: "Something", LogicalTypes: []gen.LogicalType{{
+		Name:             "uuid",
+		Typ:              "uuid.UUID",
+		ThirdPartyImport: "github.com/google/uuid",
+	}}}
+	schema, err := os.ReadFile("testdata/golden.avsc")
+	require.NoError(t, err)
+
+	file, _ := generate(t, string(schema), gc)
+
+	if *update {
+		err = os.WriteFile(fileName, file, 0600)
+		require.NoError(t, err)
+	}
+
+	want, err := os.ReadFile(fileName)
 	require.NoError(t, err)
 	assert.Equal(t, string(want), string(file))
 }

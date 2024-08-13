@@ -43,7 +43,7 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if cfg.Verbose {
-		fmt.Fprintln(stdout, schema)
+		_, _ = fmt.Fprintln(stdout, schema)
 	}
 
 	return 0
