@@ -247,7 +247,7 @@ Note that this variable is global, so ideally you'd need to unset it after you'r
 ## Go Version Support
 
 This library supports the last two versions of Go. While the minimum Go version is
-not guarantee to increase along side Go, it may jump from time to time to support 
+not guaranteed to increase along side Go, it may jump from time to time to support 
 additional features. This will be not be considered a breaking change.
 
 ## Who uses hamba/avro?
