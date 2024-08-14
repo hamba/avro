@@ -10,18 +10,8 @@ linters:
   enable-all: true
   disable:
     - cyclop # duplicate of gocyclo
-    - deadcode # deprecated
     - execinquery # deprecated
-    - exhaustivestruct # deprecated
-    - golint # deprecated
     - gomnd # deprecated
-    - ifshort # deprecated
-    - interfacer # deprecated
-    - maligned # deprecated
-    - nosnakecase # deprecated
-    - scopelint # deprecated
-    - structcheck # deprecated
-    - varcheck # deprecated
     - depguard
     - err113
     - exhaustive

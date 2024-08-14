@@ -287,7 +287,7 @@ func (r *Reader) readBytes(op string) []byte {
 	if size == 0 {
 		return []byte{}
 	}
-	if max := r.cfg.getMaxByteSliceSize(); max > 0 && size > max {
+	if maxSize := r.cfg.getMaxByteSliceSize(); maxSize > 0 && size > maxSize {
 		fnName := "Read" + strings.ToTitle(op)
 		r.ReportError(fnName, "size is greater than `Config.MaxByteSliceSize`")
 		return nil
