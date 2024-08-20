@@ -26,14 +26,14 @@ func NewDecoderForSchema(schema Schema, reader io.Reader) *Decoder {
 }
 
 // Decode reads the next Avro encoded value from its input and stores it in the value pointed to by v.
-func (d *Decoder) Decode(obj any) error {
+func (d *Decoder) Decode(v any) error {
 	if d.r.head == d.r.tail && d.r.reader != nil {
 		if !d.r.loadMore() {
 			return io.EOF
 		}
 	}
 
-	d.r.ReadVal(d.s, obj)
+	d.r.ReadVal(d.s, v)
 
 	//nolint:errorlint // Only direct EOF errors should be discarded.
 	if d.r.Error == io.EOF {
