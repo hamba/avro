@@ -564,6 +564,13 @@ func derefSchema(schema Schema) Schema {
 
 	return walkSchema(schema, func(schema Schema) Schema {
 		if ns, ok := schema.(NamedSchema); ok {
+			if _, hasSeen := seen[ns.FullName()]; hasSeen {
+				// This NamedSchema has been seen in this run, it needs
+				// to be turned into a reference. It is possible it was
+				// dereferenced in a previous run.
+				return NewRefSchema(ns)
+			}
+
 			seen[ns.FullName()] = struct{}{}
 			return schema
 		}
