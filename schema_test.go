@@ -2,6 +2,7 @@ package avro_test
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/hamba/avro/v2"
@@ -1479,4 +1480,51 @@ func TestSchema_ParseBackAndForth(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, schema, schema2)
+}
+
+func TestSchema_DereferencingRectifiesAlreadySeenSchema(t *testing.T) {
+	schmCache := &avro.SchemaCache{}
+	_, err := avro.ParseWithCache(`{
+  "type": "record",
+  "name": "test1",
+  "namespace": "org.hamba.avro",
+  "fields": [
+    {"name": "a", "type": "string"}
+  ]
+}`, "", schmCache)
+	require.NoError(t, err)
+	_, err = avro.ParseWithCache(`{
+  "type": "record",
+  "name": "test2",
+  "namespace": "org.hamba.avro",
+  "fields": [
+    {
+      "name": "inner",
+      "type": {
+        "name": "InnerRecord",
+        "type": "record",
+        "fields": [
+          {"name": "b", "type": "org.hamba.avro.test1"}
+        ]
+      }
+    }
+  ]
+}`, "", schmCache)
+	require.NoError(t, err)
+	schm, err := avro.ParseWithCache(`{
+  "type": "record",
+  "name": "test3",
+  "namespace": "org.hamba.avro",
+  "fields": [
+    {"name": "c", "type": "org.hamba.avro.test1"},
+    {"name": "d", "type": "org.hamba.avro.test2"}
+  ]
+}
+`, "", schmCache)
+	require.NoError(t, err)
+
+	strSchema := schm.String()
+
+	n := strings.Count(strSchema, `"name":"org.hamba.avro.test1"`)
+	assert.Equal(t, 1, n)
 }
