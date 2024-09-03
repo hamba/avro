@@ -7,11 +7,10 @@ on:
 name: run tests
 jobs:
   test:
-
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         go-version: [ "1.22", "1.23" ]
-    runs-on: ubuntu-latest
     env:
       GOLANGCI_LINT_VERSION: v1.60.1
 
@@ -49,3 +48,66 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path-to-lcov: coverage.lcov
+
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os:
+          - darwin
+          - linux
+          - windows
+        arch:
+          - 386
+          - amd64
+          - arm
+          - arm64
+          - ppc64le
+          - s390x
+        include:
+          - os: linux
+            arch: arm
+            arm: 7
+        exclude:
+          - os: darwin
+            arch: 386
+          - os: darwin
+            arch: arm
+          - os: darwin
+            arch: ppc64le
+          - os: darwin
+            arch: s390x
+          - os: windows
+            arch: arm
+          - os: windows
+            arch: arm64
+          - os: windows
+            arch: ppc64le
+          - os: windows
+            arch: s390x
+    env:
+      GO_VERSION: "1.23"
+
+    steps:
+      - name: Install Go
+        if: success()
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Build avrogen
+        run: GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} GOARM=${{ matrix.arm }} go build ./cmd/avrogen
+
+      - name: Build avrosv
+        run: GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} GOARM=${{ matrix.arm }} go build ./cmd/avrosv
