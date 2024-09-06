@@ -11,9 +11,10 @@ import (
 )
 
 var (
-	timeType = reflect.TypeOf(time.Time{})
-	ratType  = reflect.TypeOf(big.Rat{})
-	durType  = reflect.TypeOf(LogicalDuration{})
+	timeType         = reflect.TypeOf(time.Time{})
+	timeDurationType = reflect.TypeOf(time.Duration(0))
+	ratType          = reflect.TypeOf(big.Rat{})
+	durType          = reflect.TypeOf(LogicalDuration{})
 )
 
 type null struct{}

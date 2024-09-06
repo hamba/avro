@@ -2,6 +2,7 @@ package avro_test
 
 import (
 	"math/big"
+	"strconv"
 	"testing"
 	"time"
 
@@ -813,6 +814,62 @@ func TestSchemaCompatibility_Resolve(t *testing.T) {
 			want: map[string]any{
 				"a": map[string]any{"a": int64(10)},
 				"b": map[string]any{"a": int64(20)},
+			},
+		},
+		{
+			name: "Record Writer Field Missing With Long timestamp-millis Default",
+			reader: `{
+						"type":"record", "name":"test", "namespace": "org.hamba.avro", 
+						"fields":[
+							{"name": "a", "type": "string"},
+							{
+								"name": "b",
+								"type": {
+									"type": "long", 
+									"logicalType": "timestamp-millis"
+								}, 
+								"default": ` + strconv.FormatInt(1725616800000, 10) + `
+							}
+						]
+					}`,
+			writer: `{
+						"type":"record", "name":"test", "namespace": "org.hamba.avro", 
+						"fields":[
+							{"name": "a", "type": "string"}
+						]
+					}`,
+			value: map[string]any{"a": "foo"},
+			want: map[string]any{
+				"a": "foo",
+				"b": time.UnixMilli(1725616800000).UTC(), // 2024-09-06 10:00:00
+			},
+		},
+		{
+			name: "Record Writer Field Missing With Long timestamp-micros Default",
+			reader: `{
+						"type":"record", "name":"test", "namespace": "org.hamba.avro", 
+						"fields":[
+							{"name": "a", "type": "string"},
+							{
+								"name": "b",
+								"type": {
+									"type": "long", 
+									"logicalType": "timestamp-micros"
+								}, 
+								"default": ` + strconv.FormatInt(1725616800000000, 10) + `
+							}
+						]
+					}`,
+			writer: `{
+						"type":"record", "name":"test", "namespace": "org.hamba.avro", 
+						"fields":[
+							{"name": "a", "type": "string"}
+						]
+					}`,
+			value: map[string]any{"a": "foo"},
+			want: map[string]any{
+				"a": "foo",
+				"b": time.UnixMicro(1725616800000000).UTC(), // 2024-09-06 10:00:00
 			},
 		},
 	}
