@@ -2,7 +2,6 @@ package avro
 
 import (
 	"fmt"
-	"time"
 	"unsafe"
 
 	"github.com/modern-go/reflect2"
@@ -11,32 +10,6 @@ import (
 func createDefaultDecoder(d *decoderContext, field *Field, typ reflect2.Type) ValDecoder {
 	cfg := d.cfg
 	fn := func(def any) ([]byte, error) {
-		// Solution 1:
-
-		// def's Go type is decided by JSON decode.
-		// Force conversion of some Go types to ensure compatibility with AVRO codec.
-		switch schema := field.Type().Type(); schema {
-		case Long:
-			schema := field.Type().(*PrimitiveSchema)
-			if schema.Logical() == nil {
-				break
-			}
-			switch schema.Logical().Type() {
-			case TimestampMillis:
-				d, ok := def.(int64)
-				if !ok {
-					break
-				}
-				def = time.UnixMilli(d)
-			case TimestampMicros:
-				d, ok := def.(int64)
-				if !ok {
-					break
-				}
-				def = time.UnixMicro(d)
-			}
-		}
-
 		defaultType := reflect2.TypeOf(def)
 		if defaultType == nil {
 			defaultType = reflect2.TypeOf((*null)(nil))
