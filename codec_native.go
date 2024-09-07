@@ -83,15 +83,16 @@ func createDecoderOfNative(schema *PrimitiveSchema, typ reflect2.Type) ValDecode
 				convert: createLongConverter(schema.encodedType),
 			}
 
-		case st == Long && lt == "":
+		case st == Long:
+			isTimestamp := (lt == TimestampMillis || lt == TimestampMicros)
+			if isTimestamp && typ.Type1() == timeDurationType {
+				return &errorDecoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s and logicalType %s",
+					typ.Type1().String(), schema.Type(), lt)}
+			}
 			if resolved {
 				return &longConvCodec[int64]{convert: createLongConverter(schema.encodedType)}
 			}
 			return &longCodec[int64]{}
-
-		case lt != "":
-			return &errorDecoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s and logicalType %s",
-				typ.String(), schema.Type(), lt)}
 
 		default:
 			break
@@ -245,12 +246,13 @@ func createEncoderOfNative(schema Schema, typ reflect2.Type) ValEncoder {
 		case st == Long && lt == TimeMicros: // time.Duration
 			return &timeMicrosCodec{}
 
-		case st == Long && lt == "":
+		case st == Long:
+			isTimestamp := (lt == TimestampMillis || lt == TimestampMicros)
+			if isTimestamp && typ.Type1() == timeDurationType {
+				return &errorEncoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s and logicalType %s",
+					typ.Type1().String(), schema.Type(), lt)}
+			}
 			return &longCodec[int64]{}
-
-		case lt != "":
-			return &errorEncoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s and logicalType %s",
-				typ.String(), schema.Type(), lt)}
 
 		default:
 			break
