@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"os"
 	"strings"
 	"text/template"
 	"unicode/utf8"
@@ -182,6 +183,16 @@ func WithLogicalType(logicalType LogicalType) OptsFunc {
 	}
 }
 
+// WithLogWriter sets a custom log writer for the Generator.
+// It allows you to specify an `io.Writer` to which log messages will be written.
+//
+// Default output is `os.Stdout`.
+func WithLogWriter(writer io.Writer) OptsFunc {
+	return func(g *Generator) {
+		g.logWriter = writer
+	}
+}
+
 func ensureTrailingPeriod(text string) string {
 	if text == "" {
 		return text
@@ -209,6 +220,8 @@ type Generator struct {
 	typedefs          []typedef
 
 	nameCaser *strcase.Caser
+
+	logWriter io.Writer
 }
 
 // NewGenerator returns a generator.
@@ -217,9 +230,10 @@ func NewGenerator(pkg string, tags map[string]TagStyle, opts ...OptsFunc) *Gener
 	delete(clonedTags, "avro")
 
 	g := &Generator{
-		template: outputTemplate,
-		pkg:      pkg,
-		tags:     clonedTags,
+		template:  outputTemplate,
+		pkg:       pkg,
+		tags:      clonedTags,
+		logWriter: os.Stdout,
 	}
 
 	for _, opt := range opts {
@@ -304,9 +318,29 @@ func (g *Generator) resolveRecordSchema(schema *avro.RecordSchema) string {
 
 	typeName := g.resolveTypeName(schema)
 	if !g.hasTypeDef(typeName) {
-		g.typedefs = append(g.typedefs, newType(typeName, schema.Doc(), fields, schema.String()))
+		g.typedefs = append(g.typedefs, newType(typeName, schema.Doc(), fields, g.rawSchema(schema)))
 	}
 	return typeName
+}
+
+func (g *Generator) rawSchema(schema *avro.RecordSchema) string {
+	var rawSchema string
+	if schemaJSON, err := schema.MarshalJSON(); err != nil {
+		g.log("Warning:",
+			fmt.Sprintf(
+				"Failed to marshal raw schema for '%s'. Falling back to using the canonical form of the schema.",
+				schema.FullName(),
+			),
+			"Error:", err)
+		rawSchema = schema.String()
+	} else {
+		rawSchema = string(schemaJSON)
+	}
+	return rawSchema
+}
+
+func (g *Generator) log(operands ...any) {
+	_, _ = fmt.Fprintln(g.logWriter, operands...)
 }
 
 func (g *Generator) hasTypeDef(name string) bool {

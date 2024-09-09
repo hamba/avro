@@ -84,6 +84,7 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 		gen.WithInitialisms(initialisms),
 		gen.WithTemplate(string(template)),
 		gen.WithStrictTypes(cfg.StrictTypes),
+		gen.WithLogWriter(stdout),
 	}
 	g := gen.NewGenerator(cfg.Pkg, tags, opts...)
 	for _, file := range flgs.Args() {

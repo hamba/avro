@@ -13,7 +13,7 @@ type Test struct {
 	SomeInt    int    `avro:"someInt"`
 }
 
-var schemaTest = avro.MustParse(`{"name":"a.b.test","type":"record","fields":[{"name":"someString","type":"string"},{"name":"someInt","type":"int"}]}`)
+var schemaTest = avro.MustParse(`{"name":"a.b.test","doc":"Test is a test struct","type":"record","fields":[{"name":"someString","doc":"SomeString is a string","type":"string"},{"name":"someInt","type":"int"}]}`)
 
 // Schema returns the schema for Test.
 func (o *Test) Schema() avro.Schema {
