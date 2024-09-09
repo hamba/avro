@@ -463,6 +463,5 @@ type field struct {
 	Doc           string
 	AvroFieldName string
 	Tags          map[string]TagStyle
-
-	Props map[string]any
+	Props         map[string]any
 }

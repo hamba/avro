@@ -366,6 +366,8 @@ func (p properties) Prop(name string) any {
 	return p.props[name]
 }
 
+// Props returns a map that contains all schema custom properties.
+// Any accidental change to the returned map will directly modify the schema custom properties.
 func (p properties) Props() map[string]any {
 	return p.props
 }
