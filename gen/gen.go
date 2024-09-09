@@ -299,12 +299,12 @@ func (g *Generator) resolveRecordSchema(schema *avro.RecordSchema) string {
 	fields := make([]field, len(schema.Fields()))
 	for i, f := range schema.Fields() {
 		typ := g.generate(f.Type())
-		fields[i] = g.newField(g.nameCaser.ToPascal(f.Name()), typ, f.Doc(), f.Name())
+		fields[i] = g.newField(g.nameCaser.ToPascal(f.Name()), typ, f.Doc(), f.Name(), f.Props())
 	}
 
 	typeName := g.resolveTypeName(schema)
 	if !g.hasTypeDef(typeName) {
-		g.typedefs = append(g.typedefs, newType(typeName, schema.Doc(), fields, schema.String()))
+		g.typedefs = append(g.typedefs, newType(typeName, schema.Doc(), fields, schema.String(), schema.Props()))
 	}
 	return typeName
 }
@@ -379,13 +379,14 @@ func (g *Generator) resolveLogicalSchema(logicalType avro.LogicalType) string {
 	return typ
 }
 
-func (g *Generator) newField(name, typ, doc, avroFieldName string) field {
+func (g *Generator) newField(name, typ, doc, avroFieldName string, props map[string]any) field {
 	return field{
 		Name:          name,
 		Type:          typ,
 		AvroFieldName: avroFieldName,
 		Doc:           ensureTrailingPeriod(doc),
 		Tags:          g.tags,
+		Props:         props,
 	}
 }
 
@@ -443,14 +444,16 @@ type typedef struct {
 	Doc    string
 	Fields []field
 	Schema string
+	Props  map[string]any
 }
 
-func newType(name, doc string, fields []field, schema string) typedef {
+func newType(name, doc string, fields []field, schema string, props map[string]any) typedef {
 	return typedef{
 		Name:   name,
 		Doc:    ensureTrailingPeriod(doc),
 		Fields: fields,
 		Schema: schema,
+		Props:  props,
 	}
 }
 
@@ -460,4 +463,6 @@ type field struct {
 	Doc           string
 	AvroFieldName string
 	Tags          map[string]TagStyle
+
+	Props map[string]any
 }

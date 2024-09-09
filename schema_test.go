@@ -177,6 +177,7 @@ func TestPrimitiveSchema_HandlesProps(t *testing.T) {
 	assert.Equal(t, avro.String, s.Type())
 	assert.Equal(t, "bar", s.(*avro.PrimitiveSchema).Prop("foo"))
 	assert.Equal(t, float64(1), s.(*avro.PrimitiveSchema).Prop("baz"))
+	assert.Equal(t, map[string]any{"foo": "bar", "baz": float64(1)}, s.(*avro.PrimitiveSchema).Props())
 }
 
 func TestRecordSchema(t *testing.T) {
@@ -507,6 +508,7 @@ func TestRecordSchema_HandlesProps(t *testing.T) {
    "namespace": "org.hamba.avro",
    "doc": "foo",
    "foo": "bar1",
+   "bar": "foo1",
    "fields": [
        {"name": "intField", "doc": "bar", "type": "int", "foo": "bar2"}
    ]
@@ -520,9 +522,11 @@ func TestRecordSchema_HandlesProps(t *testing.T) {
 	assert.Equal(t, avro.Record, s.Type())
 	assert.Equal(t, "foo", rs.Doc())
 	assert.Equal(t, "bar1", rs.Prop("foo"))
+	assert.Equal(t, map[string]any{"foo": "bar1", "bar": "foo1"}, rs.Props())
 	require.Len(t, rs.Fields(), 1)
 	assert.Equal(t, "bar", rs.Fields()[0].Doc())
 	assert.Equal(t, "bar2", rs.Fields()[0].Prop("foo"))
+	assert.Equal(t, map[string]any{"foo": "bar2"}, rs.Fields()[0].Props())
 }
 
 func TestRecordSchema_WithReference(t *testing.T) {
@@ -701,6 +705,7 @@ func TestEnumSchema_HandlesProps(t *testing.T) {
 	assert.Equal(t, avro.Enum, s.Type())
 	assert.Equal(t, "hello", es.Doc())
 	assert.Equal(t, "bar", es.Prop("foo"))
+	assert.Equal(t, map[string]any{"foo": "bar"}, es.Props())
 }
 
 func TestArraySchema(t *testing.T) {
@@ -749,6 +754,7 @@ func TestArraySchema_HandlesProps(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, avro.Array, s.Type())
 	assert.Equal(t, "bar", s.(*avro.ArraySchema).Prop("foo"))
+	assert.Equal(t, map[string]any{"foo": "bar"}, s.(*avro.ArraySchema).Props())
 }
 
 func TestMapSchema(t *testing.T) {
@@ -797,6 +803,7 @@ func TestMapSchema_HandlesProps(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, avro.Map, s.Type())
 	assert.Equal(t, "bar", s.(*avro.MapSchema).Prop("foo"))
+	assert.Equal(t, map[string]any{"foo": "bar"}, s.(*avro.MapSchema).Props())
 }
 
 func TestUnionSchema(t *testing.T) {
@@ -972,6 +979,7 @@ func TestFixedSchema_HandlesProps(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, avro.Fixed, s.Type())
 	assert.Equal(t, "bar", s.(*avro.FixedSchema).Prop("foo"))
+	assert.Equal(t, map[string]any{"foo": "bar"}, s.(*avro.FixedSchema).Props())
 }
 
 func TestSchema_LogicalTypes(t *testing.T) {

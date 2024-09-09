@@ -366,6 +366,10 @@ func (p properties) Prop(name string) any {
 	return p.props[name]
 }
 
+func (p properties) Props() map[string]any {
+	return p.props
+}
+
 func (p properties) marshalPropertiesToJSON(buf *bytes.Buffer) error {
 	sortedPropertyKeys := make([]string, 0, len(p.props))
 	for k := range p.props {
