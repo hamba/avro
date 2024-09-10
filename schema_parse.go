@@ -202,17 +202,18 @@ func parsePrimitiveLogicalType(typ Type, lt string, prec, scale int) LogicalSche
 		return parseDecimalLogicalType(-1, prec, scale)
 	}
 
-	return nil
+	return getCustomLogicalSchema(ltyp)
 }
 
 type recordSchema struct {
-	Type      string           `mapstructure:"type"`
-	Name      string           `mapstructure:"name"`
-	Namespace string           `mapstructure:"namespace"`
-	Aliases   []string         `mapstructure:"aliases"`
-	Doc       string           `mapstructure:"doc"`
-	Fields    []map[string]any `mapstructure:"fields"`
-	Props     map[string]any   `mapstructure:",remain"`
+	Type        string           `mapstructure:"type"`
+	Name        string           `mapstructure:"name"`
+	Namespace   string           `mapstructure:"namespace"`
+	Aliases     []string         `mapstructure:"aliases"`
+	Doc         string           `mapstructure:"doc"`
+	Fields      []map[string]any `mapstructure:"fields"`
+	LogicalType string           `mapstructure:"logicalType"`
+	Props       map[string]any   `mapstructure:",remain"`
 }
 
 func parseRecord(typ Type, namespace string, m map[string]any, seen seenCache, cache *SchemaCache) (Schema, error) {
@@ -243,11 +244,11 @@ func parseRecord(typ Type, namespace string, m map[string]any, seen seenCache, c
 	switch typ {
 	case Record:
 		rec, err = NewRecordSchema(r.Name, r.Namespace, fields,
-			WithAliases(r.Aliases), WithDoc(r.Doc), WithProps(r.Props),
+			WithAliases(r.Aliases), WithDoc(r.Doc), WithProps(r.Props), WithCustomLogicalType(LogicalType(r.LogicalType)),
 		)
 	case Error:
 		rec, err = NewErrorRecordSchema(r.Name, r.Namespace, fields,
-			WithAliases(r.Aliases), WithDoc(r.Doc), WithProps(r.Props),
+			WithAliases(r.Aliases), WithDoc(r.Doc), WithProps(r.Props), WithCustomLogicalType(LogicalType(r.LogicalType)),
 		)
 	}
 	if err != nil {
@@ -276,13 +277,14 @@ func parseRecord(typ Type, namespace string, m map[string]any, seen seenCache, c
 }
 
 type fieldSchema struct {
-	Name    string         `mapstructure:"name"`
-	Aliases []string       `mapstructure:"aliases"`
-	Type    any            `mapstructure:"type"`
-	Doc     string         `mapstructure:"doc"`
-	Default any            `mapstructure:"default"`
-	Order   Order          `mapstructure:"order"`
-	Props   map[string]any `mapstructure:",remain"`
+	Name        string         `mapstructure:"name"`
+	Aliases     []string       `mapstructure:"aliases"`
+	Type        any            `mapstructure:"type"`
+	Doc         string         `mapstructure:"doc"`
+	Default     any            `mapstructure:"default"`
+	Order       Order          `mapstructure:"order"`
+	LogicalType string         `mapstructure:"logicalType"`
+	Props       map[string]any `mapstructure:",remain"`
 }
 
 func parseField(namespace string, m map[string]any, seen seenCache, cache *SchemaCache) (*Field, error) {
@@ -312,6 +314,7 @@ func parseField(namespace string, m map[string]any, seen seenCache, cache *Schem
 
 	field, err := NewField(f.Name, typ,
 		WithDefault(f.Default), WithAliases(f.Aliases), WithDoc(f.Doc), WithOrder(f.Order), WithProps(f.Props),
+		WithCustomLogicalType(LogicalType(f.LogicalType)),
 	)
 	if err != nil {
 		return nil, err
@@ -321,14 +324,15 @@ func parseField(namespace string, m map[string]any, seen seenCache, cache *Schem
 }
 
 type enumSchema struct {
-	Name      string         `mapstructure:"name"`
-	Namespace string         `mapstructure:"namespace"`
-	Aliases   []string       `mapstructure:"aliases"`
-	Type      string         `mapstructure:"type"`
-	Doc       string         `mapstructure:"doc"`
-	Symbols   []string       `mapstructure:"symbols"`
-	Default   string         `mapstructure:"default"`
-	Props     map[string]any `mapstructure:",remain"`
+	Name        string         `mapstructure:"name"`
+	Namespace   string         `mapstructure:"namespace"`
+	Aliases     []string       `mapstructure:"aliases"`
+	Type        string         `mapstructure:"type"`
+	Doc         string         `mapstructure:"doc"`
+	Symbols     []string       `mapstructure:"symbols"`
+	Default     string         `mapstructure:"default"`
+	LogicalType string         `mapstructure:"logicalType"`
+	Props       map[string]any `mapstructure:",remain"`
 }
 
 func parseEnum(namespace string, m map[string]any, seen seenCache, cache *SchemaCache) (Schema, error) {
@@ -349,6 +353,7 @@ func parseEnum(namespace string, m map[string]any, seen seenCache, cache *Schema
 
 	enum, err := NewEnumSchema(e.Name, e.Namespace, e.Symbols,
 		WithDefault(e.Default), WithAliases(e.Aliases), WithDoc(e.Doc), WithProps(e.Props),
+		WithCustomLogicalType(LogicalType(e.LogicalType)),
 	)
 	if err != nil {
 		return nil, err
@@ -368,8 +373,9 @@ func parseEnum(namespace string, m map[string]any, seen seenCache, cache *Schema
 }
 
 type arraySchema struct {
-	Items any            `mapstructure:"items"`
-	Props map[string]any `mapstructure:",remain"`
+	Items       any            `mapstructure:"items"`
+	LogicalType string         `mapstructure:"logicalType"`
+	Props       map[string]any `mapstructure:",remain"`
 }
 
 func parseArray(namespace string, m map[string]any, seen seenCache, cache *SchemaCache) (Schema, error) {
@@ -389,12 +395,13 @@ func parseArray(namespace string, m map[string]any, seen seenCache, cache *Schem
 		return nil, err
 	}
 
-	return NewArraySchema(schema, WithProps(a.Props)), nil
+	return NewArraySchema(schema, WithProps(a.Props), WithCustomLogicalType(LogicalType(a.LogicalType))), nil
 }
 
 type mapSchema struct {
-	Values any            `mapstructure:"values"`
-	Props  map[string]any `mapstructure:",remain"`
+	Values      any            `mapstructure:"values"`
+	LogicalType string         `mapstructure:"logicalType"`
+	Props       map[string]any `mapstructure:",remain"`
 }
 
 func parseMap(namespace string, m map[string]any, seen seenCache, cache *SchemaCache) (Schema, error) {
@@ -414,7 +421,7 @@ func parseMap(namespace string, m map[string]any, seen seenCache, cache *SchemaC
 		return nil, err
 	}
 
-	return NewMapSchema(schema, WithProps(ms.Props)), nil
+	return NewMapSchema(schema, WithProps(ms.Props), WithCustomLogicalType(LogicalType(ms.LogicalType))), nil
 }
 
 func parseUnion(namespace string, v []any, seen seenCache, cache *SchemaCache) (Schema, error) {
@@ -494,7 +501,7 @@ func parseFixedLogicalType(size int, lt string, prec, scale int) LogicalSchema {
 		return parseDecimalLogicalType(size, prec, scale)
 	}
 
-	return nil
+	return getCustomLogicalSchema(ltyp)
 }
 
 func parseDecimalLogicalType(size, prec, scale int) LogicalSchema {

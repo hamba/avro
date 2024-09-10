@@ -182,3 +182,30 @@ func TestConfig_DisableCache_DoesNotReuseEncoders(t *testing.T) {
 
 	assert.NotSame(t, enc1, enc2)
 }
+
+func TestConfig_RegisterCustomLogicalType(t *testing.T) {
+	type testObj struct {
+		A int64 `avro:"a"`
+	}
+
+	api := Config{
+		TagKey:         "test",
+		BlockLength:    2,
+		DisableCaching: true,
+	}.Freeze()
+	cfg := api.(*frozenConfig)
+
+	schema := MustParse(`{
+	"type": "record",
+	"name": "test",
+	"fields" : [
+		{"name": "a", "type": "long"}
+	]
+}`)
+	typ := reflect2.TypeOfPtr(testObj{})
+
+	enc1 := cfg.EncoderOf(schema, typ)
+	enc2 := cfg.EncoderOf(schema, typ)
+
+	assert.NotSame(t, enc1, enc2)
+}
