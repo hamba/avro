@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"maps"
-	"os"
 	"strings"
 	"text/template"
 	"unicode/utf8"
@@ -24,6 +23,7 @@ type Config struct {
 	Tags         map[string]TagStyle
 	FullName     bool
 	Encoders     bool
+	FullSchema   bool
 	StrictTypes  bool
 	Initialisms  []string
 	LogicalTypes []LogicalType
@@ -84,6 +84,7 @@ func StructFromSchema(schema avro.Schema, w io.Writer, cfg Config) error {
 		WithEncoders(cfg.Encoders),
 		WithInitialisms(cfg.Initialisms),
 		WithStrictTypes(cfg.StrictTypes),
+		WithFullSchema(cfg.FullSchema),
 	}
 	for _, opt := range cfg.LogicalTypes {
 		opts = append(opts, WithLogicalType(opt))
@@ -160,6 +161,13 @@ func WithPackageDoc(text string) OptsFunc {
 	}
 }
 
+// WithFullSchema configures the generator to store the full schema within the generation context.
+func WithFullSchema(b bool) OptsFunc {
+	return func(g *Generator) {
+		g.fullSchema = b
+	}
+}
+
 // LogicalType used when the name of the "LogicalType" field in the Avro schema matches the Name attribute.
 type LogicalType struct {
 	// Name of the LogicalType
@@ -183,16 +191,6 @@ func WithLogicalType(logicalType LogicalType) OptsFunc {
 	}
 }
 
-// WithLogWriter sets a custom log writer for the Generator.
-// It allows you to specify an `io.Writer` to which log messages will be written.
-//
-// Default output is `os.Stdout`.
-func WithLogWriter(writer io.Writer) OptsFunc {
-	return func(g *Generator) {
-		g.logWriter = writer
-	}
-}
-
 func ensureTrailingPeriod(text string) string {
 	if text == "" {
 		return text
@@ -211,6 +209,7 @@ type Generator struct {
 	tags         map[string]TagStyle
 	fullName     bool
 	encoders     bool
+	fullSchema   bool
 	strictTypes  bool
 	initialisms  []string
 	logicalTypes map[avro.LogicalType]LogicalType
@@ -220,8 +219,6 @@ type Generator struct {
 	typedefs          []typedef
 
 	nameCaser *strcase.Caser
-
-	logWriter io.Writer
 }
 
 // NewGenerator returns a generator.
@@ -230,10 +227,9 @@ func NewGenerator(pkg string, tags map[string]TagStyle, opts ...OptsFunc) *Gener
 	delete(clonedTags, "avro")
 
 	g := &Generator{
-		template:  outputTemplate,
-		pkg:       pkg,
-		tags:      clonedTags,
-		logWriter: os.Stdout,
+		template: outputTemplate,
+		pkg:      pkg,
+		tags:     clonedTags,
 	}
 
 	for _, opt := range opts {
@@ -324,23 +320,14 @@ func (g *Generator) resolveRecordSchema(schema *avro.RecordSchema) string {
 }
 
 func (g *Generator) rawSchema(schema *avro.RecordSchema) string {
-	var rawSchema string
-	if schemaJSON, err := schema.MarshalJSON(); err != nil {
-		g.log("Warning:",
-			fmt.Sprintf(
-				"Failed to marshal raw schema for '%s'. Falling back to using the canonical form of the schema.",
-				schema.FullName(),
-			),
-			"Error:", err)
-		rawSchema = schema.String()
-	} else {
-		rawSchema = string(schemaJSON)
+	if g.fullSchema {
+		schemaJSON, err := schema.MarshalJSON()
+		if err != nil {
+			panic(fmt.Errorf("failed to marshal raw schema for '%s': %w", schema.FullName(), err))
+		}
+		return string(schemaJSON)
 	}
-	return rawSchema
-}
-
-func (g *Generator) log(operands ...any) {
-	_, _ = fmt.Fprintln(g.logWriter, operands...)
+	return schema.String()
 }
 
 func (g *Generator) hasTypeDef(name string) bool {

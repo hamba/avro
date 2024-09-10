@@ -24,6 +24,7 @@ type config struct {
 	Tags        string
 	FullName    bool
 	Encoders    bool
+	FullSchema  bool
 	StrictTypes bool
 	Initialisms string
 }
@@ -42,6 +43,7 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 	flgs.StringVar(&cfg.Tags, "tags", "", "The additional field tags <tag-name>:{snake|camel|upper-camel|kebab}>[,...]")
 	flgs.BoolVar(&cfg.FullName, "fullname", false, "Use the full name of the Record schema to create the struct name.")
 	flgs.BoolVar(&cfg.Encoders, "encoders", false, "Generate encoders for the structs.")
+	flgs.BoolVar(&cfg.FullSchema, "fullschema", false, "Use the full schema in the generated encoders.")
 	flgs.BoolVar(&cfg.StrictTypes, "strict-types", false, "Use strict type sizes (e.g. int32) during generation.")
 	flgs.StringVar(&cfg.Initialisms, "initialisms", "", "Custom initialisms <VAL>[,...] for struct and field names.")
 	flgs.StringVar(&cfg.TemplateFileName, "template-filename", "", "Override output template with one loaded from file.")
@@ -84,7 +86,7 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 		gen.WithInitialisms(initialisms),
 		gen.WithTemplate(string(template)),
 		gen.WithStrictTypes(cfg.StrictTypes),
-		gen.WithLogWriter(stdout),
+		gen.WithFullSchema(cfg.FullSchema),
 	}
 	g := gen.NewGenerator(cfg.Pkg, tags, opts...)
 	for _, file := range flgs.Args() {
