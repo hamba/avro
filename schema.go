@@ -97,6 +97,9 @@ func getCustomLogicalSchema(ltyp LogicalType) LogicalSchema {
 	return nil
 }
 
+// RegisterCustomLogicalType registers a custom logical type that is not part of the Avro specification.
+// It returns an error if the logical type conflicts with a predefined logical type or if the logical
+// type has already been registered.
 func RegisterCustomLogicalType(ltyp LogicalType) error {
 	// Ensure that the custom logical type does not overwrite a primitive type
 	switch ltyp {
@@ -461,7 +464,10 @@ func WithAliases(aliases []string) SchemaOption {
 	}
 }
 
-// WithCustomLogicalType sets the logical type on a schema.
+// WithCustomLogicalType sets a custom logical type on a schema.
+// Make sure to register the custom logical type before using it,
+// otherwise it will be ignored.
+// See RegisterCustomLogicalType.
 func WithCustomLogicalType(ltyp LogicalType) SchemaOption {
 	return func(opts *schemaConfig) {
 		opts.customLogicalSchema = getCustomLogicalSchema(ltyp)
@@ -653,6 +659,7 @@ func (s *RecordSchema) Type() Type {
 	return Record
 }
 
+// Logical returns the logical schema or nil.
 func (s *RecordSchema) Logical() LogicalSchema {
 	return s.logical
 }
