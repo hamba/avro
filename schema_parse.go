@@ -202,7 +202,7 @@ func parsePrimitiveLogicalType(typ Type, lt string, prec, scale int) LogicalSche
 		return parseDecimalLogicalType(-1, prec, scale)
 	}
 
-	return getCustomLogicalSchema(ltyp)
+	return getCustomLogicalSchema(typ, ltyp)
 }
 
 type recordSchema struct {
@@ -501,7 +501,7 @@ func parseFixedLogicalType(size int, lt string, prec, scale int) LogicalSchema {
 		return parseDecimalLogicalType(size, prec, scale)
 	}
 
-	return getCustomLogicalSchema(ltyp)
+	return getCustomLogicalSchema(Fixed, ltyp)
 }
 
 func parseDecimalLogicalType(size, prec, scale int) LogicalSchema {

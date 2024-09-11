@@ -984,15 +984,11 @@ func TestFixedSchema_HandlesProps(t *testing.T) {
 
 func TestSchema_LogicalTypes(t *testing.T) {
 	customType := avro.LogicalType("customType")
-	err := avro.RegisterCustomLogicalType(customType)
+	err := avro.RegisterCustomLogicalType(customType, avro.Int, avro.Enum, avro.Array, avro.Map, avro.Record)
 	require.NoError(t, err)
 
-	// Should not be able to register the same type twice
-	err = avro.RegisterCustomLogicalType(customType)
-	require.Error(t, err)
-
 	// should not be able to register a type with the same name as a built-in type
-	err = avro.RegisterCustomLogicalType(avro.Date)
+	err = avro.RegisterCustomLogicalType(avro.Date, avro.Double)
 	require.Error(t, err)
 
 	tests := []struct {
@@ -1007,6 +1003,12 @@ func TestSchema_LogicalTypes(t *testing.T) {
 			name:        "Invalid",
 			schema:      `{"type": "int", "logicalType": "test"}`,
 			wantType:    avro.Int,
+			wantLogical: false,
+		},
+		{
+			name:        "Invalid",
+			schema:      `{"type": "long", "logicalType": "customType"}`,
+			wantType:    avro.Long,
 			wantLogical: false,
 		},
 		{

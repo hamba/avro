@@ -82,25 +82,32 @@ type customLogicalSchema struct {
 	PrimitiveLogicalSchema
 }
 
-var customLogicalSchemas sync.Map // map[LogicalType]*CustomLogicalSchema
+type customSchemaKey = struct {
+	typ  Type
+	ltyp LogicalType
+}
 
-func addCustomLogicalSchema(ltyp LogicalType) {
-	customLogicalSchemas.Store(ltyp, &customLogicalSchema{
+var customLogicalSchemas sync.Map // map[customSchemaKey]*CustomLogicalSchema
+
+func addCustomLogicalSchema(typ Type, ltyp LogicalType) {
+	key := customSchemaKey{typ, ltyp}
+	customLogicalSchemas.Store(key, &customLogicalSchema{
 		PrimitiveLogicalSchema: PrimitiveLogicalSchema{typ: ltyp},
 	})
 }
 
-func getCustomLogicalSchema(ltyp LogicalType) LogicalSchema {
-	if ls, ok := customLogicalSchemas.Load(ltyp); ok {
+func getCustomLogicalSchema(typ Type, ltyp LogicalType) LogicalSchema {
+	key := customSchemaKey{typ, ltyp}
+	if ls, ok := customLogicalSchemas.Load(key); ok {
 		return ls.(*customLogicalSchema)
 	}
 	return nil
 }
 
-// RegisterCustomLogicalType registers a custom logical type that is not part of the Avro specification.
-// It returns an error if the logical type conflicts with a predefined logical type or if the logical
-// type has already been registered.
-func RegisterCustomLogicalType(ltyp LogicalType) error {
+// RegisterCustomLogicalType registers a custom logical type that is not part of the Avro specification
+// for the given types.
+// It returns an error if the logical type conflicts with a predefined logical type.
+func RegisterCustomLogicalType(ltyp LogicalType, types ...Type) error {
 	// Ensure that the custom logical type does not overwrite a primitive type
 	switch ltyp {
 	case Decimal,
@@ -116,12 +123,19 @@ func RegisterCustomLogicalType(ltyp LogicalType) error {
 		return errors.New("logical type conflicts with a predefined logical type")
 	}
 
-	// Ensure that the custom logical schema has not already been registered
-	if ls := getCustomLogicalSchema(ltyp); ls != nil {
-		return errors.New("logical type has already been registered")
+	// Check that all of the given type supports logical types
+	for _, typ := range types {
+		switch typ {
+		case Ref, Union, Null:
+			return fmt.Errorf("type %q does not support logical types", typ)
+		}
 	}
 
-	addCustomLogicalSchema(ltyp)
+	// Register the custom logical type
+	for _, typ := range types {
+		addCustomLogicalSchema(typ, ltyp)
+	}
+
 	return nil
 }
 
@@ -445,13 +459,13 @@ func (p properties) marshalPropertiesToJSON(buf *bytes.Buffer) error {
 }
 
 type schemaConfig struct {
-	aliases             []string
-	doc                 string
-	def                 any
-	order               Order
-	props               map[string]any
-	wfp                 *[32]byte
-	customLogicalSchema LogicalSchema
+	aliases           []string
+	doc               string
+	def               any
+	order             Order
+	props             map[string]any
+	wfp               *[32]byte
+	customLogicalType LogicalType
 }
 
 // SchemaOption is a function that sets a schema option.
@@ -470,7 +484,7 @@ func WithAliases(aliases []string) SchemaOption {
 // See RegisterCustomLogicalType.
 func WithCustomLogicalType(ltyp LogicalType) SchemaOption {
 	return func(opts *schemaConfig) {
-		opts.customLogicalSchema = getCustomLogicalSchema(ltyp)
+		opts.customLogicalType = ltyp
 	}
 }
 
@@ -539,7 +553,7 @@ func NewPrimitiveSchema(t Type, l LogicalSchema, opts ...SchemaOption) *Primitiv
 
 	// If the logical schema is nil, use the custom logical schema.
 	if l == nil {
-		l = cfg.customLogicalSchema
+		l = getCustomLogicalSchema(t, cfg.customLogicalType)
 	}
 
 	return &PrimitiveSchema{
@@ -638,7 +652,7 @@ func NewRecordSchema(name, namespace string, fields []*Field, opts ...SchemaOpti
 		cacheFingerprinter: cacheFingerprinter{writerFingerprint: cfg.wfp},
 		fields:             fields,
 		doc:                cfg.doc,
-		logical:            cfg.customLogicalSchema,
+		logical:            getCustomLogicalSchema(Record, cfg.customLogicalType),
 	}, nil
 }
 
@@ -998,7 +1012,7 @@ func NewEnumSchema(name, namespace string, symbols []string, opts ...SchemaOptio
 		symbols:            symbols,
 		def:                def,
 		doc:                cfg.doc,
-		logical:            cfg.customLogicalSchema,
+		logical:            getCustomLogicalSchema(Enum, cfg.customLogicalType),
 	}, nil
 }
 
@@ -1163,7 +1177,7 @@ func NewArraySchema(items Schema, opts ...SchemaOption) *ArraySchema {
 		properties:         newProperties(cfg.props, schemaReserved),
 		cacheFingerprinter: cacheFingerprinter{writerFingerprint: cfg.wfp},
 		items:              items,
-		logical:            cfg.customLogicalSchema,
+		logical:            getCustomLogicalSchema(Array, cfg.customLogicalType),
 	}
 }
 
@@ -1246,7 +1260,7 @@ func NewMapSchema(values Schema, opts ...SchemaOption) *MapSchema {
 		properties:         newProperties(cfg.props, schemaReserved),
 		cacheFingerprinter: cacheFingerprinter{writerFingerprint: cfg.wfp},
 		values:             values,
-		logical:            cfg.customLogicalSchema,
+		logical:            getCustomLogicalSchema(Map, cfg.customLogicalType),
 	}
 }
 
