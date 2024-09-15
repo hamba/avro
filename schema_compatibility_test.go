@@ -976,3 +976,45 @@ func TestSchemaCompatibility_ResolveWithComplexUnion(t *testing.T) {
 	want := map[string]any{"b": []byte("foo")}
 	assert.Equal(t, want, result)
 }
+
+func TestSchemaCompatibility_ResolveWithFieldMissingInWriterAndReaderStruct(t *testing.T) {
+
+	w := avro.MustParse(`{
+						"type":"record", "name":"test", "namespace": "org.hamba.avro", 
+						"fields":[
+							{"name": "a", "type": "string"}
+						]
+					}`)
+
+	r := avro.MustParse(`{
+				"type":"record", "name":"test", "namespace": "org.hamba.avro", 
+				"fields":[
+					{"name": "a", "type": "string"},
+					{"name": "b", "type": "int", "default": 10},
+					{"name": "c", "type": "string", "default": "foo"}
+				]
+			}`)
+
+	type TW struct {
+		A string `avro:"a"`
+	}
+	value := TW{A: "abc"}
+
+	b, err := avro.Marshal(w, value)
+	assert.NoError(t, err)
+
+	sch, err := avro.NewSchemaCompatibility().Resolve(r, w)
+	assert.NoError(t, err)
+
+	type TR struct {
+		A string `avro:"a"`
+		C string `avro:"c"`
+	}
+	want := TR{A: "abc", C: "foo"}
+
+	var result TR
+	err = avro.Unmarshal(sch, b, &result)
+	assert.NoError(t, err)
+
+	assert.Equal(t, want, result)
+}
