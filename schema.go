@@ -16,7 +16,13 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
-var nullDefault = struct{}{}
+type nullDefaultType struct{}
+
+func (nullDefaultType) MarshalJSON() ([]byte, error) {
+	return []byte("null"), nil
+}
+
+var nullDefault nullDefaultType = struct{}{}
 
 var (
 	schemaReserved = []string{
