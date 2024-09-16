@@ -978,13 +978,12 @@ func TestSchemaCompatibility_ResolveWithComplexUnion(t *testing.T) {
 }
 
 func TestSchemaCompatibility_ResolveWithFieldMissingInWriterAndReaderStruct(t *testing.T) {
-
 	w := avro.MustParse(`{
-						"type":"record", "name":"test", "namespace": "org.hamba.avro", 
-						"fields":[
-							{"name": "a", "type": "string"}
-						]
-					}`)
+				"type":"record", "name":"test", "namespace": "org.hamba.avro", 
+				"fields":[
+					{"name": "a", "type": "string"}
+				]
+			}`)
 
 	r := avro.MustParse(`{
 				"type":"record", "name":"test", "namespace": "org.hamba.avro", 
@@ -995,25 +994,25 @@ func TestSchemaCompatibility_ResolveWithFieldMissingInWriterAndReaderStruct(t *t
 				]
 			}`)
 
-	type TW struct {
+	type TestW struct {
 		A string `avro:"a"`
 	}
-	value := TW{A: "abc"}
+	value := TestW{A: "abc"}
 
 	b, err := avro.Marshal(w, value)
 	assert.NoError(t, err)
 
-	sch, err := avro.NewSchemaCompatibility().Resolve(r, w)
+	schema, err := avro.NewSchemaCompatibility().Resolve(r, w)
 	assert.NoError(t, err)
 
-	type TR struct {
+	type TestR struct {
 		A string `avro:"a"`
 		C string `avro:"c"`
 	}
-	want := TR{A: "abc", C: "foo"}
+	want := TestR{A: "abc", C: "foo"}
 
-	var result TR
-	err = avro.Unmarshal(sch, b, &result)
+	var result TestR
+	err = avro.Unmarshal(schema, b, &result)
 	assert.NoError(t, err)
 
 	assert.Equal(t, want, result)
