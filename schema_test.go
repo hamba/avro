@@ -417,6 +417,11 @@ func TestRecordSchema_ValidatesDefault(t *testing.T) {
 			wantErr: assert.NoError,
 		},
 		{
+			name:    "Record With Nullable Field",
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": {"type":"record", "name": "test2", "fields":[{"name": "b", "type": "int"},{"name": "c", "type": ["null","int"]}]}, "default": {"b": 1, "c": null}}]}`,
+			wantErr: assert.NoError,
+		},
+		{
 			name:    "Record Not Map",
 			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "a", "type": {"type":"record", "name": "test2", "fields":[{"name": "b", "type": "int"},{"name": "c", "type": "int", "default": 1}]}, "default": "test"}]}`,
 			wantErr: assert.Error,
@@ -438,9 +443,19 @@ func TestRecordSchema_ValidatesDefault(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			_, err := avro.ParseWithCache(test.schema, "", &avro.SchemaCache{})
+			schema, err := avro.ParseWithCache(test.schema, "", &avro.SchemaCache{})
 
 			test.wantErr(t, err)
+			if err != nil {
+				return
+			}
+
+			// Ensure MarshalJSON Generate the same schema as it considers default values
+			b, err := schema.(*avro.RecordSchema).MarshalJSON()
+			assert.NoError(t, err)
+			schema2, err := avro.ParseWithCache(string(b), "", &avro.SchemaCache{})
+			assert.NoError(t, err)
+			assert.Equal(t, schema, schema2)
 		})
 	}
 }
