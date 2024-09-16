@@ -76,9 +76,17 @@ func decoderOfStruct(d *decoderContext, schema Schema, typ reflect2.Type) ValDec
 				}
 			}
 		}
-
-		// Skip field if it doesnt exist
+		// Skip field if it doesn't exist
 		if sf == nil {
+			// If the field value doesn't exist in the binary, ignore it instead of
+			// appending a 'SkipDecoder'.
+			//
+			// Note: 'SkipDecoder' performs a read and moves the cursor, which,
+			// in this case, will lead to a dirty read.
+			if field.action == FieldSetDefault {
+				continue
+			}
+
 			fields = append(fields, &structFieldDecoder{
 				decoder: createSkipDecoder(field.Type()),
 			})
