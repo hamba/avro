@@ -104,8 +104,8 @@ func getCustomLogicalSchema(typ Type, ltyp LogicalType) LogicalSchema {
 	return nil
 }
 
-// RegisterCustomLogicalType registers a custom logical type that is not part of the Avro specification
-// for the given types.
+// RegisterCustomLogicalType registers a custom logical type that is not part of the
+// Avro specification for the given types.
 // It returns an error if the logical type conflicts with a predefined logical type.
 func RegisterCustomLogicalType(ltyp LogicalType, types ...Type) error {
 	// Ensure that the custom logical type does not overwrite a primitive type
@@ -709,7 +709,9 @@ func (s *RecordSchema) String() string {
 	}
 
 	if s.logical != nil {
-		return `{"name":"` + s.FullName() + `","type":"` + typ + `,"fields":[` + fields + `]` + `",` + s.logical.String() + `}`
+		return fmt.Sprintf("{\"name\":\"%s\", \"type\":\"%s\", \"fields\":[%s]\", %s}",
+			s.FullName(), typ, fields, s.logical.String(),
+		)
 	}
 
 	return `{"name":"` + s.FullName() + `","type":"` + typ + `","fields":[` + fields + `]}`
@@ -1090,7 +1092,8 @@ func (s *EnumSchema) String() string {
 	}
 
 	if s.logical != nil {
-		return `{"name":"` + s.FullName() + `","type":"enum","symbols":[` + symbols + `]` + `",` + s.logical.String() + `}`
+		return fmt.Sprintf("{\"name\":\"%s\", \"type\":\"enum\", \"symbols\":[%s]\", %s}",
+			s.FullName(), symbols, s.logical.String())
 	}
 
 	return `{"name":"` + s.FullName() + `","type":"enum","symbols":[` + symbols + `]}`
