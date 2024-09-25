@@ -192,6 +192,11 @@ func TestRecordSchema(t *testing.T) {
 			wantErr: require.NoError,
 		},
 		{
+			name:    "Empty Namespace",
+			schema:  `{"type":"record", "name":"test", "namespace": "", "fields":[{"name": "intField", "type": "int"}]}`,
+			wantErr: require.NoError,
+		},
+		{
 			name:    "Invalid Name First Char",
 			schema:  `{"type":"record", "name":"0test", "namespace": "org.hamba.avro", "fields":[{"name": "field", "type": "int"}]}`,
 			wantErr: require.Error,
@@ -214,11 +219,6 @@ func TestRecordSchema(t *testing.T) {
 		{
 			name:    "Invalid Namespace",
 			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro+", "fields":[{"name": "field", "type": "int"}]}`,
-			wantErr: require.Error,
-		},
-		{
-			name:    "Empty Namespace",
-			schema:  `{"type":"record", "name":"test", "namespace": "", "fields":[{"name": "intField", "type": "int"}]}`,
 			wantErr: require.Error,
 		},
 		{
@@ -287,6 +287,11 @@ func TestErrorRecordSchema(t *testing.T) {
 			wantErr:    require.NoError,
 		},
 		{
+			name:    "Empty Namespace",
+			schema:  `{"type":"error", "name":"test", "namespace": "", "fields":[{"name": "intField", "type": "int"}]}`,
+			wantErr: require.NoError,
+		},
+		{
 			name:    "Invalid Name First Char",
 			schema:  `{"type":"error", "name":"0test", "namespace": "org.hamba.avro", "fields":[{"name": "field", "type": "int"}]}`,
 			wantErr: require.Error,
@@ -309,11 +314,6 @@ func TestErrorRecordSchema(t *testing.T) {
 		{
 			name:    "Invalid Namespace",
 			schema:  `{"type":"error", "name":"test", "namespace": "org.hamba.avro+", "fields":[{"name": "field", "type": "int"}]}`,
-			wantErr: require.Error,
-		},
-		{
-			name:    "Empty Namespace",
-			schema:  `{"type":"error", "name":"test", "namespace": "", "fields":[{"name": "intField", "type": "int"}]}`,
 			wantErr: require.Error,
 		},
 	}
@@ -641,6 +641,11 @@ func TestEnumSchema(t *testing.T) {
 			wantErr:     require.NoError,
 		},
 		{
+			name:    "Empty Namespace",
+			schema:  `{"type":"enum", "name":"test", "namespace": "", "symbols":["TEST"]}`,
+			wantErr: require.NoError,
+		},
+		{
 			name:    "Invalid Name",
 			schema:  `{"type":"enum", "name":"test+", "namespace": "org.hamba.avro", "symbols":["TEST"]}`,
 			wantErr: require.Error,
@@ -658,11 +663,6 @@ func TestEnumSchema(t *testing.T) {
 		{
 			name:    "Invalid Namespace",
 			schema:  `{"type":"enum", "name":"test", "namespace": "org.hamba.avro+", "symbols":["TEST"]}`,
-			wantErr: require.Error,
-		},
-		{
-			name:    "Empty Namespace",
-			schema:  `{"type":"enum", "name":"test", "namespace": "", "symbols":["TEST"]}`,
 			wantErr: require.Error,
 		},
 		{
@@ -932,6 +932,11 @@ func TestFixedSchema(t *testing.T) {
 			wantErr:         require.NoError,
 		},
 		{
+			name:    "Empty Namespace",
+			schema:  `{"type":"fixed", "name":"test", "namespace": "", "size": 12}`,
+			wantErr: require.NoError,
+		},
+		{
 			name:    "Invalid Name",
 			schema:  `{"type":"fixed", "name":"test+", "namespace": "org.hamba.avro", "size": 12}`,
 			wantErr: require.Error,
@@ -949,11 +954,6 @@ func TestFixedSchema(t *testing.T) {
 		{
 			name:    "Invalid Namespace",
 			schema:  `{"type":"fixed", "name":"test", "namespace": "org.hamba.avro+", "size": 12}`,
-			wantErr: require.Error,
-		},
-		{
-			name:    "Empty Namespace",
-			schema:  `{"type":"fixed", "name":"test", "namespace": "", "size": 12}`,
 			wantErr: require.Error,
 		},
 		{

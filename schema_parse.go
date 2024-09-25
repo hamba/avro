@@ -224,7 +224,7 @@ func parseRecord(typ Type, namespace string, m map[string]any, seen seenCache, c
 		return nil, fmt.Errorf("avro: error decoding record: %w", err)
 	}
 
-	if err := checkParsedName(r.Name, r.Namespace, hasKey(meta.Keys, "namespace")); err != nil {
+	if err := checkParsedName(r.Name); err != nil {
 		return nil, err
 	}
 	if r.Namespace == "" {
@@ -294,7 +294,7 @@ func parseField(namespace string, m map[string]any, seen seenCache, cache *Schem
 		return nil, fmt.Errorf("avro: error decoding field: %w", err)
 	}
 
-	if err := checkParsedName(f.Name, "", false); err != nil {
+	if err := checkParsedName(f.Name); err != nil {
 		return nil, err
 	}
 
@@ -340,7 +340,7 @@ func parseEnum(namespace string, m map[string]any, seen seenCache, cache *Schema
 		return nil, fmt.Errorf("avro: error decoding enum: %w", err)
 	}
 
-	if err := checkParsedName(e.Name, e.Namespace, hasKey(meta.Keys, "namespace")); err != nil {
+	if err := checkParsedName(e.Name); err != nil {
 		return nil, err
 	}
 	if e.Namespace == "" {
@@ -451,7 +451,7 @@ func parseFixed(namespace string, m map[string]any, seen seenCache, cache *Schem
 		return nil, fmt.Errorf("avro: error decoding fixed: %w", err)
 	}
 
-	if err := checkParsedName(f.Name, f.Namespace, hasKey(meta.Keys, "namespace")); err != nil {
+	if err := checkParsedName(f.Name); err != nil {
 		return nil, err
 	}
 	if f.Namespace == "" {
@@ -529,12 +529,9 @@ func fullName(namespace, name string) string {
 	return namespace + "." + name
 }
 
-func checkParsedName(name, ns string, hasNS bool) error {
+func checkParsedName(name string) error {
 	if name == "" {
 		return errors.New("avro: non-empty name key required")
-	}
-	if hasNS && ns == "" {
-		return errors.New("avro: namespace key must be non-empty or omitted")
 	}
 	return nil
 }
