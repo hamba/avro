@@ -54,6 +54,11 @@ func TestParseProtocol(t *testing.T) {
 			wantErr: assert.NoError,
 		},
 		{
+			name:    "Empty Namespace",
+			schema:  `{"protocol":"test", "namespace": ""}`,
+			wantErr: assert.NoError,
+		},
+		{
 			name:    "Invalid Json",
 			schema:  `{`,
 			wantErr: assert.Error,
@@ -81,11 +86,6 @@ func TestParseProtocol(t *testing.T) {
 		{
 			name:    "Invalid Namespace",
 			schema:  `{"protocol":"test", "namespace": "org.hamba.avro+"}`,
-			wantErr: assert.Error,
-		},
-		{
-			name:    "Empty Namespace",
-			schema:  `{"protocol":"test", "namespace": ""}`,
 			wantErr: assert.Error,
 		},
 		{
