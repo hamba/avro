@@ -115,13 +115,13 @@ type fixedCodec struct {
 }
 
 func (c *fixedCodec) Decode(ptr unsafe.Pointer, r *Reader) {
-	for i := 0; i < c.arrayType.Len(); i++ {
+	for i := range c.arrayType.Len() {
 		c.arrayType.UnsafeSetIndex(ptr, i, reflect2.PtrOf(r.readByte()))
 	}
 }
 
 func (c *fixedCodec) Encode(ptr unsafe.Pointer, w *Writer) {
-	for i := 0; i < c.arrayType.Len(); i++ {
+	for i := range c.arrayType.Len() {
 		bytePtr := c.arrayType.UnsafeGetIndex(ptr, i)
 		w.writeByte(*((*byte)(bytePtr)))
 	}

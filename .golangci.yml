@@ -5,12 +5,16 @@ run:
 linters-settings:
   gofumpt:
     extra-rules: true
+  gosec:
+    excludes:
+      - G115
 
 linters:
   enable-all: true
   disable:
     - cyclop # duplicate of gocyclo
     - execinquery # deprecated
+    - exportloopref # deprecated
     - gomnd # deprecated
     - depguard
     - err113

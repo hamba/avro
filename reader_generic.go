@@ -133,7 +133,7 @@ func (r *Reader) ReadArrayCB(fn func(*Reader) bool) {
 		if l == 0 {
 			break
 		}
-		for i := 0; i < int(l); i++ {
+		for range l {
 			fn(r)
 		}
 	}
@@ -147,7 +147,7 @@ func (r *Reader) ReadMapCB(fn func(*Reader, string) bool) {
 			break
 		}
 
-		for i := 0; i < int(l); i++ {
+		for range l {
 			field := r.ReadString()
 			fn(r, field)
 		}

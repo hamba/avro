@@ -67,7 +67,7 @@ func (d *mapDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 			break
 		}
 
-		for i := int64(0); i < l; i++ {
+		for range l {
 			keyPtr := reflect2.PtrOf(r.ReadString())
 			elemPtr := d.elemType.UnsafeNew()
 			d.decoder.Decode(elemPtr, r)
@@ -115,7 +115,7 @@ func (d *mapDecoderUnmarshaler) Decode(ptr unsafe.Pointer, r *Reader) {
 			break
 		}
 
-		for i := int64(0); i < l; i++ {
+		for range l {
 			keyPtr := d.keyType.UnsafeNew()
 			keyObj := d.keyType.UnsafeIndirect(keyPtr)
 			if reflect2.IsNil(keyObj) {

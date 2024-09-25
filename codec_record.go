@@ -465,7 +465,7 @@ func describeStruct(tagKey string, typ reflect2.Type) *structDescriptor {
 			}
 			visited[rtype] = true
 
-			for i := 0; i < f.anon.NumField(); i++ {
+			for i := range f.anon.NumField() {
 				field := f.anon.Field(i).(*reflect2.UnsafeStructField)
 				isUnexported := field.PkgPath() != ""
 

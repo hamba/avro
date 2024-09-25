@@ -21,9 +21,9 @@ type Table [256]uint64
 
 func makeTable() *Table {
 	t := new(Table)
-	for i := 0; i < 256; i++ {
+	for i := range 256 {
 		fp := uint64(i)
-		for j := 0; j < 8; j++ {
+		for range 8 {
 			fp = (fp >> 1) ^ (Empty & -(fp & 1))
 		}
 		t[i] = fp
@@ -68,7 +68,7 @@ func (d *digest) Reset() {
 
 // Write accumulatively adds the given data to the checksum.
 func (d *digest) Write(p []byte) (n int, err error) {
-	for i := 0; i < len(p); i++ {
+	for i := range p {
 		d.crc = (d.crc >> 8) ^ d.tab[(int)(byte(d.crc)^p[i])&0xff]
 	}
 
