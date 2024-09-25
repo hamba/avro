@@ -152,7 +152,7 @@ func (d *sliceSkipDecoder) Decode(_ unsafe.Pointer, r *Reader) {
 			continue
 		}
 
-		for i := 0; i < int(l); i++ {
+		for range l {
 			d.decoder.Decode(nil, r)
 		}
 	}
@@ -183,7 +183,7 @@ func (d *mapSkipDecoder) Decode(_ unsafe.Pointer, r *Reader) {
 			continue
 		}
 
-		for i := 0; i < int(l); i++ {
+		for range l {
 			r.SkipString()
 			d.decoder.Decode(nil, r)
 		}
