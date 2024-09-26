@@ -24,7 +24,7 @@ var magicBytes = [4]byte{'O', 'b', 'j', 1}
 
 // HeaderSchema is the Avro schema of a container file header.
 var HeaderSchema = avro.MustParse(`{
-	"type": "record", 
+	"type": "record",
 	"name": "org.apache.avro.file.Header",
 	"fields": [
 		{"name": "magic", "type": {"type": "fixed", "name": "Magic", "size": 4}},
@@ -38,6 +38,20 @@ type Header struct {
 	Magic [4]byte           `avro:"magic"`
 	Meta  map[string][]byte `avro:"meta"`
 	Sync  [16]byte          `avro:"sync"`
+}
+
+type decoderConfig struct {
+	DecoderConfig avro.API
+}
+
+// DecoderFunc represents a configuration function for Decoder.
+type DecoderFunc func(cfg *decoderConfig)
+
+// WithDecoderConfig sets the value decoder config on the OCF decoder.
+func WithDecoderConfig(wCfg avro.API) DecoderFunc {
+	return func(cfg *decoderConfig) {
+		cfg.DecoderConfig = wCfg
+	}
 }
 
 // Decoder reads and decodes Avro values from a container file.
@@ -54,13 +68,15 @@ type Decoder struct {
 }
 
 // NewDecoder returns a new decoder that reads from reader r.
-func NewDecoder(r io.Reader) (*Decoder, error) {
-	return NewDecoderWithConfig(r, avro.DefaultConfig)
-}
+func NewDecoder(r io.Reader, opts ...DecoderFunc) (*Decoder, error) {
+	cfg := decoderConfig{
+		DecoderConfig: avro.DefaultConfig,
+	}
+	for _, opt := range opts {
+		opt(&cfg)
+	}
 
-// NewDecoderWithConfig returns a new decoder that uses the provided config.
-func NewDecoderWithConfig(r io.Reader, conf avro.API) (*Decoder, error) {
-	reader := avro.NewReader(r, 1024, avro.WithReaderConfig(conf))
+	reader := avro.NewReader(r, 1024)
 
 	h, err := readHeader(reader)
 	if err != nil {
@@ -72,7 +88,7 @@ func NewDecoderWithConfig(r io.Reader, conf avro.API) (*Decoder, error) {
 	return &Decoder{
 		reader:      reader,
 		resetReader: decReader,
-		decoder:     conf.NewDecoder(h.Schema, decReader),
+		decoder:     cfg.DecoderConfig.NewDecoder(h.Schema, decReader),
 		meta:        h.Meta,
 		sync:        h.Sync,
 		codec:       h.Codec,

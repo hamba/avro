@@ -502,9 +502,10 @@ func TestDecoder_WithConfig(t *testing.T) {
 	})
 
 	t.Run("Custom Config Is Used", func(t *testing.T) {
-		dec, err := ocf.NewDecoderWithConfig(
+		cfg := avro.Config{MaxByteSliceSize: defaultMax + 1}.Freeze()
+		dec, err := ocf.NewDecoder(
 			bytes.NewReader(buf.Bytes()),
-			avro.Config{MaxByteSliceSize: defaultMax + 1}.Freeze(),
+			ocf.WithDecoderConfig(cfg),
 		)
 		require.NoError(t, err)
 
