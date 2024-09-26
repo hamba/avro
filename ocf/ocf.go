@@ -55,7 +55,12 @@ type Decoder struct {
 
 // NewDecoder returns a new decoder that reads from reader r.
 func NewDecoder(r io.Reader) (*Decoder, error) {
-	reader := avro.NewReader(r, 1024)
+	return NewDecoderWithConfig(r, avro.DefaultConfig)
+}
+
+// NewDecoderWithConfig returns a new decoder that uses the provided config.
+func NewDecoderWithConfig(r io.Reader, conf avro.API) (*Decoder, error) {
+	reader := avro.NewReader(r, 1024, avro.WithReaderConfig(conf))
 
 	h, err := readHeader(reader)
 	if err != nil {
@@ -67,7 +72,7 @@ func NewDecoder(r io.Reader) (*Decoder, error) {
 	return &Decoder{
 		reader:      reader,
 		resetReader: decReader,
-		decoder:     avro.NewDecoderForSchema(h.Schema, decReader),
+		decoder:     conf.NewDecoder(h.Schema, decReader),
 		meta:        h.Meta,
 		sync:        h.Sync,
 		codec:       h.Codec,
