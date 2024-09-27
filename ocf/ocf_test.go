@@ -7,6 +7,7 @@ import (
 	"flag"
 	"io"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/hamba/avro/v2"
@@ -451,6 +452,68 @@ func TestDecoder_InvalidBlock(t *testing.T) {
 
 	assert.False(t, got)
 	assert.Error(t, dec.Error())
+}
+
+func TestDecoder_WithConfig(t *testing.T) {
+	const defaultMax = 1_048_576
+
+	unionStr := "union value"
+	longString := strings.Repeat("a", defaultMax+1)
+	record := FullRecord{
+		Strings: []string{"string1", "string2", "string3", "string4", "string5"},
+		Longs:   []int64{1, 2, 3, 4, 5},
+		Enum:    "C",
+		Map: map[string]int{
+			"key1": 1,
+			"key2": 2,
+			"key3": 3,
+			"key4": 4,
+			"key5": 5,
+		},
+		Nullable: &unionStr,
+		Fixed:    [16]byte{0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04, 0x01, 0x02, 0x03, 0x04},
+		Record: &TestRecord{
+			Long:   1925639126735,
+			String: longString,
+			Int:    666,
+			Float:  7171.17,
+			Double: 916734926348163.01973408746523,
+			Bool:   true,
+		},
+	}
+
+	buf := &bytes.Buffer{}
+	enc, err := ocf.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode(record)
+	require.NoError(t, err)
+
+	err = enc.Close()
+	require.NoError(t, err)
+
+	t.Run("Default Fails", func(t *testing.T) {
+		dec, err := ocf.NewDecoder(bytes.NewReader(buf.Bytes()))
+		require.NoError(t, err)
+
+		var got FullRecord
+		require.True(t, dec.HasNext())
+		require.ErrorContains(t, dec.Decode(&got), "size is greater than `Config.MaxByteSliceSize`")
+	})
+
+	t.Run("Custom Config Is Used", func(t *testing.T) {
+		cfg := avro.Config{MaxByteSliceSize: defaultMax + 1}.Freeze()
+		dec, err := ocf.NewDecoder(
+			bytes.NewReader(buf.Bytes()),
+			ocf.WithDecoderConfig(cfg),
+		)
+		require.NoError(t, err)
+
+		var got FullRecord
+		require.True(t, dec.HasNext())
+		require.NoError(t, dec.Decode(&got))
+		require.Equal(t, record, got)
+	})
 }
 
 func TestNewEncoder_InvalidSchema(t *testing.T) {
