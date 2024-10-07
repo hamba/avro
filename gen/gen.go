@@ -24,6 +24,8 @@ type Config struct {
 	FullName     bool
 	Encoders     bool
 	FullSchema   bool
+	PlainMap     bool
+	PlainSlice   bool
 	StrictTypes  bool
 	Initialisms  []string
 	LogicalTypes []LogicalType
@@ -43,6 +45,9 @@ const (
 	Kebab TagStyle = "kebab"
 	// UpperCamel is a style like ImWrittenInUpperCamel.
 	UpperCamel TagStyle = "upper-camel"
+
+	prefixMap   string = "map["
+	prefixSlice string = "[]"
 )
 
 //go:embed output_template.tmpl
@@ -85,6 +90,8 @@ func StructFromSchema(schema avro.Schema, w io.Writer, cfg Config) error {
 		WithInitialisms(cfg.Initialisms),
 		WithStrictTypes(cfg.StrictTypes),
 		WithFullSchema(cfg.FullSchema),
+		WithPlainMap(cfg.PlainMap),
+		WithPlainSlice(cfg.PlainSlice),
 	}
 	for _, opt := range cfg.LogicalTypes {
 		opts = append(opts, WithLogicalType(opt))
@@ -168,6 +175,20 @@ func WithFullSchema(b bool) OptsFunc {
 	}
 }
 
+// WithPlainMap configures the generator to emit a plain map and not a map ptr for nullable unions.
+func WithPlainMap(b bool) OptsFunc {
+	return func(g *Generator) {
+		g.plainMap = b
+	}
+}
+
+// WithPlainSlice configures the generator to emit a plain map and not a map ptr for nullable unions.
+func WithPlainSlice(b bool) OptsFunc {
+	return func(g *Generator) {
+		g.plainSlice = b
+	}
+}
+
 // LogicalType used when the name of the "LogicalType" field in the Avro schema matches the Name attribute.
 type LogicalType struct {
 	// Name of the LogicalType
@@ -210,6 +231,8 @@ type Generator struct {
 	fullName     bool
 	encoders     bool
 	fullSchema   bool
+	plainMap     bool
+	plainSlice   bool
 	strictTypes  bool
 	initialisms  []string
 	logicalTypes map[avro.LogicalType]LogicalType
@@ -356,6 +379,14 @@ func (g *Generator) resolveUnionTypes(s *avro.UnionSchema) string {
 		types = append(types, g.generate(elem))
 	}
 	if s.Nullable() {
+		if g.plainMap && strings.HasPrefix(types[0], prefixMap) {
+			return types[0]
+		}
+
+		if g.plainSlice && strings.HasPrefix(types[0], prefixSlice) {
+			return types[0]
+		}
+
 		return "*" + types[0]
 	}
 	return "any"
