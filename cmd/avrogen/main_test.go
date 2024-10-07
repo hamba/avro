@@ -189,6 +189,33 @@ func TestAvroGen_GeneratesSchemaWithStrictTypes(t *testing.T) {
 	assert.Equal(t, want, got)
 }
 
+func TestAvroGen_GeneratePlain(t *testing.T) {
+	for _, opt := range []string{"map", "slice"} {
+		t.Run(opt, func(t *testing.T) {
+			t.Parallel()
+
+			path := t.TempDir()
+			file := filepath.Join(path, "test.go")
+
+			args := []string{"avrogen", "-pkg", "testpkg", "-o", file, "-plain-" + opt, "testdata/schema.avsc"}
+			gotCode := realMain(args, io.Discard, io.Discard)
+			require.Equal(t, 0, gotCode)
+
+			got, err := os.ReadFile(file)
+			require.NoError(t, err)
+
+			if *update {
+				err = os.WriteFile("testdata/golden_plain"+opt+".go", got, 0600)
+				require.NoError(t, err)
+			}
+
+			want, err := os.ReadFile("testdata/golden_plain" + opt + ".go")
+			require.NoError(t, err)
+			assert.Equal(t, want, got)
+		})
+	}
+}
+
 func TestParseTags(t *testing.T) {
 	tests := []struct {
 		name string
