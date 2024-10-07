@@ -998,6 +998,14 @@ func TestFixedSchema_HandlesProps(t *testing.T) {
 }
 
 func TestSchema_LogicalTypes(t *testing.T) {
+	customType := avro.LogicalType("customType")
+	err := avro.RegisterCustomLogicalType(customType, avro.Int, avro.Enum, avro.Array, avro.Map, avro.Record)
+	require.NoError(t, err)
+
+	// should not be able to register a type with the same name as a built-in type
+	err = avro.RegisterCustomLogicalType(avro.Date, avro.Double)
+	require.Error(t, err)
+
 	tests := []struct {
 		name            string
 		schema          string
@@ -1011,6 +1019,47 @@ func TestSchema_LogicalTypes(t *testing.T) {
 			schema:      `{"type": "int", "logicalType": "test"}`,
 			wantType:    avro.Int,
 			wantLogical: false,
+		},
+		{
+			name:        "Invalid",
+			schema:      `{"type": "long", "logicalType": "customType"}`,
+			wantType:    avro.Long,
+			wantLogical: false,
+		},
+		{
+			name:            "Primitive Custom Type",
+			schema:          `{"type": "int", "logicalType": "customType"}`,
+			wantType:        avro.Int,
+			wantLogical:     true,
+			wantLogicalType: customType,
+		},
+		{
+			name:            "Enum Custom Type",
+			schema:          `{"type":"enum", "name":"test", "namespace": "org.hamba.avro", "symbols":["TEST"], "logicalType": "customType"}`,
+			wantType:        avro.Enum,
+			wantLogical:     true,
+			wantLogicalType: customType,
+		},
+		{
+			name:            "Array Custom Type",
+			schema:          `{"type":"array", "items": "int", "logicalType": "customType"}`,
+			wantType:        avro.Array,
+			wantLogical:     true,
+			wantLogicalType: customType,
+		},
+		{
+			name:            "Map Custom Type",
+			schema:          `{"type":"map", "values": "int", "logicalType": "customType"}`,
+			wantType:        avro.Map,
+			wantLogical:     true,
+			wantLogicalType: customType,
+		},
+		{
+			name:            "Record Custom Type",
+			schema:          `{"type": "record", "name": "Foo", "fields": [{"name": "baz", "type": "string"}], "logicalType": "customType"}`,
+			wantType:        avro.Record,
+			wantLogical:     true,
+			wantLogicalType: customType,
 		},
 		{
 			name:            "Date",

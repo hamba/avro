@@ -82,6 +82,69 @@ const (
 	Duration             LogicalType = "duration"
 )
 
+// customLogicalSchema is a custom logical type schema that is not part of the Avro specification.
+// It wraps a primitive type schema and thus supports no additional properties.
+type customLogicalSchema struct {
+	PrimitiveLogicalSchema
+}
+
+type customSchemaKey = struct {
+	typ  Type
+	ltyp LogicalType
+}
+
+var customLogicalSchemas sync.Map // map[customSchemaKey]*CustomLogicalSchema
+
+func addCustomLogicalSchema(typ Type, ltyp LogicalType) {
+	key := customSchemaKey{typ, ltyp}
+	customLogicalSchemas.Store(key, &customLogicalSchema{
+		PrimitiveLogicalSchema: PrimitiveLogicalSchema{typ: ltyp},
+	})
+}
+
+func getCustomLogicalSchema(typ Type, ltyp LogicalType) LogicalSchema {
+	key := customSchemaKey{typ, ltyp}
+	if ls, ok := customLogicalSchemas.Load(key); ok {
+		return ls.(*customLogicalSchema)
+	}
+	return nil
+}
+
+// RegisterCustomLogicalType registers a custom logical type that is not part of the
+// Avro specification for the given types.
+// It returns an error if the logical type conflicts with a predefined logical type.
+func RegisterCustomLogicalType(ltyp LogicalType, types ...Type) error {
+	// Ensure that the custom logical type does not overwrite a primitive type
+	switch ltyp {
+	case Decimal,
+		UUID,
+		Date,
+		TimeMillis,
+		TimeMicros,
+		TimestampMillis,
+		TimestampMicros,
+		LocalTimestampMillis,
+		LocalTimestampMicros,
+		Duration:
+		return errors.New("logical type conflicts with a predefined logical type")
+	}
+
+	// Check that all of the given type supports logical types
+	for _, typ := range types {
+		switch typ {
+		case Ref, Union, Null:
+			return fmt.Errorf("type %q does not support logical types", typ)
+		}
+	}
+
+	// Register the custom logical type
+	for _, typ := range types {
+		addCustomLogicalSchema(typ, ltyp)
+	}
+
+	return nil
+}
+
 // Action is a field action used during decoding process.
 type Action string
 
@@ -402,12 +465,13 @@ func (p properties) marshalPropertiesToJSON(buf *bytes.Buffer) error {
 }
 
 type schemaConfig struct {
-	aliases []string
-	doc     string
-	def     any
-	order   Order
-	props   map[string]any
-	wfp     *[32]byte
+	aliases           []string
+	doc               string
+	def               any
+	order             Order
+	props             map[string]any
+	wfp               *[32]byte
+	customLogicalType LogicalType
 }
 
 // SchemaOption is a function that sets a schema option.
@@ -417,6 +481,16 @@ type SchemaOption func(*schemaConfig)
 func WithAliases(aliases []string) SchemaOption {
 	return func(opts *schemaConfig) {
 		opts.aliases = aliases
+	}
+}
+
+// WithCustomLogicalType sets a custom logical type on a schema.
+// Make sure to register the custom logical type before using it,
+// otherwise it will be ignored.
+// See RegisterCustomLogicalType.
+func WithCustomLogicalType(ltyp LogicalType) SchemaOption {
+	return func(opts *schemaConfig) {
+		opts.customLogicalType = ltyp
 	}
 }
 
@@ -481,6 +555,11 @@ func NewPrimitiveSchema(t Type, l LogicalSchema, opts ...SchemaOption) *Primitiv
 	var cfg schemaConfig
 	for _, opt := range opts {
 		opt(&cfg)
+	}
+
+	// If the logical schema is nil, use the custom logical schema.
+	if l == nil {
+		l = getCustomLogicalSchema(t, cfg.customLogicalType)
 	}
 
 	return &PrimitiveSchema{
@@ -558,6 +637,7 @@ type RecordSchema struct {
 	isError bool
 	fields  []*Field
 	doc     string
+	logical LogicalSchema
 }
 
 // NewRecordSchema creates a new record schema instance.
@@ -578,6 +658,7 @@ func NewRecordSchema(name, namespace string, fields []*Field, opts ...SchemaOpti
 		cacheFingerprinter: cacheFingerprinter{writerFingerprint: cfg.wfp},
 		fields:             fields,
 		doc:                cfg.doc,
+		logical:            getCustomLogicalSchema(Record, cfg.customLogicalType),
 	}, nil
 }
 
@@ -596,6 +677,11 @@ func NewErrorRecordSchema(name, namespace string, fields []*Field, opts ...Schem
 // Type returns the type of the schema.
 func (s *RecordSchema) Type() Type {
 	return Record
+}
+
+// Logical returns the logical schema or nil.
+func (s *RecordSchema) Logical() LogicalSchema {
+	return s.logical
 }
 
 // Doc returns the documentation of a record.
@@ -626,6 +712,12 @@ func (s *RecordSchema) String() string {
 	}
 	if len(fields) > 0 {
 		fields = fields[:len(fields)-1]
+	}
+
+	if s.logical != nil {
+		return fmt.Sprintf("{\"name\":\"%s\", \"type\":\"%s\", \"fields\":[%s]\", %s}",
+			s.FullName(), typ, fields, s.logical.String(),
+		)
 	}
 
 	return `{"name":"` + s.FullName() + `","type":"` + typ + `","fields":[` + fields + `]}`
@@ -664,6 +756,9 @@ func (s *RecordSchema) MarshalJSON() ([]byte, error) {
 	buf.Write(fieldsJSON)
 	if err := s.marshalPropertiesToJSON(buf); err != nil {
 		return nil, err
+	}
+	if s.logical != nil {
+		buf.WriteString(`,"logicalType":"` + string(s.logical.Type()) + `"`)
 	}
 	buf.WriteString("}")
 	return buf.Bytes(), nil
@@ -882,6 +977,7 @@ type EnumSchema struct {
 	symbols []string
 	def     string
 	doc     string
+	logical LogicalSchema
 
 	// encodedSymbols is the symbols of the encoded value.
 	// It's only used in the context of write-read schema resolution.
@@ -924,6 +1020,7 @@ func NewEnumSchema(name, namespace string, symbols []string, opts ...SchemaOptio
 		symbols:            symbols,
 		def:                def,
 		doc:                cfg.doc,
+		logical:            getCustomLogicalSchema(Enum, cfg.customLogicalType),
 	}, nil
 }
 
@@ -985,6 +1082,11 @@ func (s *EnumSchema) HasDefault() bool {
 	return s.def != ""
 }
 
+// Logical returns the logical schema or nil.
+func (s *EnumSchema) Logical() LogicalSchema {
+	return s.logical
+}
+
 // String returns the canonical form of the schema.
 func (s *EnumSchema) String() string {
 	symbols := ""
@@ -993,6 +1095,11 @@ func (s *EnumSchema) String() string {
 	}
 	if len(symbols) > 0 {
 		symbols = symbols[:len(symbols)-1]
+	}
+
+	if s.logical != nil {
+		return fmt.Sprintf("{\"name\":\"%s\", \"type\":\"enum\", \"symbols\":[%s]\", %s}",
+			s.FullName(), symbols, s.logical.String())
 	}
 
 	return `{"name":"` + s.FullName() + `","type":"enum","symbols":[` + symbols + `]}`
@@ -1031,6 +1138,9 @@ func (s *EnumSchema) MarshalJSON() ([]byte, error) {
 	if err := s.marshalPropertiesToJSON(buf); err != nil {
 		return nil, err
 	}
+	if s.logical != nil {
+		buf.WriteString(`,"logicalType":"` + string(s.logical.Type()) + `"`)
+	}
 	buf.WriteString("}")
 	return buf.Bytes(), nil
 }
@@ -1061,7 +1171,8 @@ type ArraySchema struct {
 	fingerprinter
 	cacheFingerprinter
 
-	items Schema
+	items   Schema
+	logical LogicalSchema
 }
 
 // NewArraySchema creates an array schema instance.
@@ -1075,6 +1186,7 @@ func NewArraySchema(items Schema, opts ...SchemaOption) *ArraySchema {
 		properties:         newProperties(cfg.props, schemaReserved),
 		cacheFingerprinter: cacheFingerprinter{writerFingerprint: cfg.wfp},
 		items:              items,
+		logical:            getCustomLogicalSchema(Array, cfg.customLogicalType),
 	}
 }
 
@@ -1088,8 +1200,16 @@ func (s *ArraySchema) Items() Schema {
 	return s.items
 }
 
+// Logical returns the logical schema or nil.
+func (s *ArraySchema) Logical() LogicalSchema {
+	return s.logical
+}
+
 // String returns the canonical form of the schema.
 func (s *ArraySchema) String() string {
+	if s.logical != nil {
+		return `{"type":"array","items":` + s.items.String() + `,"` + s.logical.String() + `"}`
+	}
 	return `{"type":"array","items":` + s.items.String() + `}`
 }
 
@@ -1105,6 +1225,9 @@ func (s *ArraySchema) MarshalJSON() ([]byte, error) {
 	buf.Write(itemsJSON)
 	if err = s.marshalPropertiesToJSON(buf); err != nil {
 		return nil, err
+	}
+	if s.logical != nil {
+		buf.WriteString(`,"logicalType":"` + string(s.logical.Type()) + `"`)
 	}
 	buf.WriteString("}")
 	return buf.Bytes(), nil
@@ -1131,7 +1254,8 @@ type MapSchema struct {
 	fingerprinter
 	cacheFingerprinter
 
-	values Schema
+	values  Schema
+	logical LogicalSchema
 }
 
 // NewMapSchema creates a map schema instance.
@@ -1145,6 +1269,7 @@ func NewMapSchema(values Schema, opts ...SchemaOption) *MapSchema {
 		properties:         newProperties(cfg.props, schemaReserved),
 		cacheFingerprinter: cacheFingerprinter{writerFingerprint: cfg.wfp},
 		values:             values,
+		logical:            getCustomLogicalSchema(Map, cfg.customLogicalType),
 	}
 }
 
@@ -1158,8 +1283,16 @@ func (s *MapSchema) Values() Schema {
 	return s.values
 }
 
+// Logical returns the logical schema or nil.
+func (s *MapSchema) Logical() LogicalSchema {
+	return s.logical
+}
+
 // String returns the canonical form of the schema.
 func (s *MapSchema) String() string {
+	if s.logical != nil {
+		return `{"type":"map","values":` + s.values.String() + `,"` + s.logical.String() + `"}`
+	}
 	return `{"type":"map","values":` + s.values.String() + `}`
 }
 
@@ -1175,6 +1308,9 @@ func (s *MapSchema) MarshalJSON() ([]byte, error) {
 	buf.Write(valuesJSON)
 	if err := s.marshalPropertiesToJSON(buf); err != nil {
 		return nil, err
+	}
+	if s.logical != nil {
+		buf.WriteString(`,"logicalType":"` + string(s.logical.Type()) + `"`)
 	}
 	buf.WriteString("}")
 	return buf.Bytes(), nil
