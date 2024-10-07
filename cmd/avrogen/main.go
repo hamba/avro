@@ -25,6 +25,8 @@ type config struct {
 	FullName    bool
 	Encoders    bool
 	FullSchema  bool
+	PlainMap    bool
+	PlainSlice  bool
 	StrictTypes bool
 	Initialisms string
 }
@@ -45,6 +47,8 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 	flgs.BoolVar(&cfg.Encoders, "encoders", false, "Generate encoders for the structs.")
 	flgs.BoolVar(&cfg.FullSchema, "fullschema", false, "Use the full schema in the generated encoders.")
 	flgs.BoolVar(&cfg.StrictTypes, "strict-types", false, "Use strict type sizes (e.g. int32) during generation.")
+	flgs.BoolVar(&cfg.PlainMap, "plain-map", false, "Use a plain map instead of a ptr for nullable map unions.")
+	flgs.BoolVar(&cfg.PlainSlice, "plain-slice", false, "Use a plain slice instead of a ptr for nullable slice unions.")
 	flgs.StringVar(&cfg.Initialisms, "initialisms", "", "Custom initialisms <VAL>[,...] for struct and field names.")
 	flgs.StringVar(&cfg.TemplateFileName, "template-filename", "", "Override output template with one loaded from file.")
 	flgs.Usage = func() {
@@ -85,6 +89,8 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 		gen.WithEncoders(cfg.Encoders),
 		gen.WithInitialisms(initialisms),
 		gen.WithTemplate(string(template)),
+		gen.WithPlainMap(cfg.PlainMap),
+		gen.WithPlainSlice(cfg.PlainSlice),
 		gen.WithStrictTypes(cfg.StrictTypes),
 		gen.WithFullSchema(cfg.FullSchema),
 	}
