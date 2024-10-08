@@ -115,7 +115,7 @@ When a non-`nil` union value is encountered, a single key is en/decoded. The key
 type name, or scheam full name in the case of a named schema (enum, fixed or record).
 * ***T:** This is allowed in a "nullable" union. A nullable union is defined as a two schema union, 
 with one of the types being `null` (ie. `["null", "string"]` or `["string", "null"]`), in this case 
-a `*T` is allowed, with `T` matching the conversion table above. In the case of a slice, the slice can be used
+a `*T` is allowed, with `T` matching the conversion table above. In the case of a slice or a map, the slice or the map can be used
 directly.
 * **any:** An `interface` can be provided and the type or name resolved. Primitive types
 are pre-registered, but named types, maps and slices will need to be registered with the `Register` function. 

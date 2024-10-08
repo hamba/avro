@@ -13,10 +13,18 @@ import (
 func createDecoderOfUnion(d *decoderContext, schema *UnionSchema, typ reflect2.Type) ValDecoder {
 	switch typ.Kind() {
 	case reflect.Map:
-		if typ.(reflect2.MapType).Key().Kind() != reflect.String ||
-			typ.(reflect2.MapType).Elem().Kind() != reflect.Interface {
+		if typ.(reflect2.MapType).Key().Kind() != reflect.String {
 			break
 		}
+
+		if typ.(reflect2.MapType).Elem().Kind() != reflect.Interface {
+			if !schema.Nullable() {
+				break
+			}
+
+			return decoderOfNullableUnion(d, schema, typ)
+		}
+
 		return decoderOfMapUnion(d, schema, typ)
 	case reflect.Slice:
 		if !schema.Nullable() {
@@ -44,10 +52,18 @@ func createDecoderOfUnion(d *decoderContext, schema *UnionSchema, typ reflect2.T
 func createEncoderOfUnion(e *encoderContext, schema *UnionSchema, typ reflect2.Type) ValEncoder {
 	switch typ.Kind() {
 	case reflect.Map:
-		if typ.(reflect2.MapType).Key().Kind() != reflect.String ||
-			typ.(reflect2.MapType).Elem().Kind() != reflect.Interface {
+		if typ.(reflect2.MapType).Key().Kind() != reflect.String {
 			break
 		}
+
+		if typ.(reflect2.MapType).Elem().Kind() != reflect.Interface {
+			if !schema.Nullable() {
+				break
+			}
+
+			return encoderOfNullableUnion(e, schema, typ)
+		}
+
 		return encoderOfMapUnion(e, schema, typ)
 	case reflect.Slice:
 		if !schema.Nullable() {
@@ -179,6 +195,8 @@ func decoderOfNullableUnion(d *decoderContext, schema Schema, typ reflect2.Type)
 		isPtr = true
 	case *reflect2.UnsafeSliceType:
 		baseTyp = v
+	case *reflect2.UnsafeMapType:
+		baseTyp = v
 	}
 	decoder := decoderOfType(d, union.Types()[typeIdx], baseTyp)
 
@@ -248,6 +266,8 @@ func encoderOfNullableUnion(e *encoderContext, schema Schema, typ reflect2.Type)
 		baseTyp = v.Elem()
 		isPtr = true
 	case *reflect2.UnsafeSliceType:
+		baseTyp = v
+	case *reflect2.UnsafeMapType:
 		baseTyp = v
 	}
 	encoder := encoderOfType(e, union.Types()[typeIdx], baseTyp)
