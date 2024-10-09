@@ -6,6 +6,7 @@ package ocf
 import (
 	"bytes"
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -42,6 +43,7 @@ type Header struct {
 
 type decoderConfig struct {
 	DecoderConfig avro.API
+	SchemaCache   *avro.SchemaCache
 }
 
 // DecoderFunc represents a configuration function for Decoder.
@@ -54,6 +56,14 @@ func WithDecoderConfig(wCfg avro.API) DecoderFunc {
 	}
 }
 
+// WithDecoderSchemaCache sets the schema cache for the decoder.
+// If not specified, defaults to avro.DefaultSchemaCache.
+func WithDecoderSchemaCache(cache *avro.SchemaCache) DecoderFunc {
+	return func(cfg *decoderConfig) {
+		cfg.SchemaCache = cache
+	}
+}
+
 // Decoder reads and decodes Avro values from a container file.
 type Decoder struct {
 	reader      *avro.Reader
@@ -61,6 +71,7 @@ type Decoder struct {
 	decoder     *avro.Decoder
 	meta        map[string][]byte
 	sync        [16]byte
+	schema      avro.Schema
 
 	codec Codec
 
@@ -71,6 +82,7 @@ type Decoder struct {
 func NewDecoder(r io.Reader, opts ...DecoderFunc) (*Decoder, error) {
 	cfg := decoderConfig{
 		DecoderConfig: avro.DefaultConfig,
+		SchemaCache:   avro.DefaultSchemaCache,
 	}
 	for _, opt := range opts {
 		opt(&cfg)
@@ -78,7 +90,7 @@ func NewDecoder(r io.Reader, opts ...DecoderFunc) (*Decoder, error) {
 
 	reader := avro.NewReader(r, 1024)
 
-	h, err := readHeader(reader)
+	h, err := readHeader(reader, cfg.SchemaCache)
 	if err != nil {
 		return nil, fmt.Errorf("decoder: %w", err)
 	}
@@ -92,12 +104,17 @@ func NewDecoder(r io.Reader, opts ...DecoderFunc) (*Decoder, error) {
 		meta:        h.Meta,
 		sync:        h.Sync,
 		codec:       h.Codec,
+		schema:      h.Schema,
 	}, nil
 }
 
 // Metadata returns the header metadata.
 func (d *Decoder) Metadata() map[string][]byte {
 	return d.meta
+}
+
+func (d *Decoder) Schema() avro.Schema {
+	return d.schema
 }
 
 // HasNext determines if there is another value to read.
@@ -174,6 +191,7 @@ type encoderConfig struct {
 	Metadata         map[string][]byte
 	Sync             [16]byte
 	EncodingConfig   avro.API
+	SchemaCache      *avro.SchemaCache
 }
 
 // EncoderFunc represents a configuration function for Encoder.
@@ -209,6 +227,14 @@ func WithMetadata(meta map[string][]byte) EncoderFunc {
 	}
 }
 
+// WithEncoderSchemaCache sets the schema cache for the encoder.
+// If not specified, defaults to avro.DefaultSchemaCache.
+func WithEncoderSchemaCache(cache *avro.SchemaCache) EncoderFunc {
+	return func(cfg *encoderConfig) {
+		cfg.SchemaCache = cache
+	}
+}
+
 // WithSyncBlock sets the sync block.
 func WithSyncBlock(sync [16]byte) EncoderFunc {
 	return func(cfg *encoderConfig) {
@@ -241,12 +267,47 @@ type Encoder struct {
 // If the writer is an existing ocf file, it will append data using the
 // existing schema.
 func NewEncoder(s string, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
+	return newEncoder(
+		func(cache *avro.SchemaCache) (avro.Schema, []byte, error) {
+			var buf bytes.Buffer
+			if err := json.Compact(&buf, []byte(s)); err != nil {
+				return nil, nil, fmt.Errorf("schema is not valid JSON: %w", err)
+			}
+			schema, err := avro.ParseBytesWithCache(buf.Bytes(), "", cache)
+			if err != nil {
+				return nil, nil, err
+			}
+			return schema, buf.Bytes(), nil
+		},
+		w,
+		opts...)
+}
+
+// NewEncoderWithSchema returns a new encoder that writes to w using schema s.
+//
+// If the writer is an existing ocf file, it will append data using the
+// existing schema.
+func NewEncoderWithSchema(schema avro.Schema, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
+	return newEncoder(
+		func(_ *avro.SchemaCache) (avro.Schema, []byte, error) {
+			schemaJSON, err := json.Marshal(schema)
+			if err != nil {
+				return nil, nil, err
+			}
+			return schema, schemaJSON, nil
+		},
+		w,
+		opts...)
+}
+
+func newEncoder(getSchema func(*avro.SchemaCache) (avro.Schema, []byte, error), w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
 	cfg := encoderConfig{
 		BlockLength:      100,
 		CodecName:        Null,
 		CodecCompression: -1,
 		Metadata:         map[string][]byte{},
 		EncodingConfig:   avro.DefaultConfig,
+		SchemaCache:      avro.DefaultSchemaCache,
 	}
 	for _, opt := range opts {
 		opt(&cfg)
@@ -263,7 +324,7 @@ func NewEncoder(s string, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
 
 		if info.Size() > 0 {
 			reader := avro.NewReader(file, 1024)
-			h, err := readHeader(reader)
+			h, err := readHeader(reader, cfg.SchemaCache)
 			if err != nil {
 				return nil, err
 			}
@@ -285,12 +346,12 @@ func NewEncoder(s string, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
 		}
 	}
 
-	schema, err := avro.Parse(s)
+	schema, schemaJSON, err := getSchema(cfg.SchemaCache)
 	if err != nil {
 		return nil, err
 	}
 
-	cfg.Metadata[schemaKey] = []byte(schema.String())
+	cfg.Metadata[schemaKey] = schemaJSON
 	cfg.Metadata[codecKey] = []byte(cfg.CodecName)
 	header := Header{
 		Magic: magicBytes,
@@ -400,7 +461,7 @@ type ocfHeader struct {
 	Sync   [16]byte
 }
 
-func readHeader(reader *avro.Reader) (*ocfHeader, error) {
+func readHeader(reader *avro.Reader, schemaCache *avro.SchemaCache) (*ocfHeader, error) {
 	var h Header
 	reader.ReadVal(HeaderSchema, &h)
 	if reader.Error != nil {
@@ -410,7 +471,7 @@ func readHeader(reader *avro.Reader) (*ocfHeader, error) {
 	if h.Magic != magicBytes {
 		return nil, errors.New("invalid avro file")
 	}
-	schema, err := avro.Parse(string(h.Meta[schemaKey]))
+	schema, err := avro.ParseBytesWithCache(h.Meta[schemaKey], "", schemaCache)
 	if err != nil {
 		return nil, err
 	}
