@@ -1074,7 +1074,6 @@ func TestWithSchemaMarshaler(t *testing.T) {
 				"name": "meta",
 				"type": {
 					"type": "array",
-					"logicalType": "map",
 					"items": {
 						"type": "record",
 						"name": "FooMetadataEntry",
@@ -1146,9 +1145,6 @@ func TestWithSchemaMarshaler(t *testing.T) {
 		},
 		"fields.2": {
 			"field-id": 3.0,
-		},
-		"fields.2.type": {
-			"logicalType": "map",
 		},
 		"fields.2.type.items.fields.0": {
 			"field-id": 4.0,

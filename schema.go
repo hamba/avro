@@ -25,10 +25,6 @@ func (nullDefaultType) MarshalJSON() ([]byte, error) {
 var nullDefault nullDefaultType = struct{}{}
 
 var (
-	arrayReserved = []string{ // same as schemaReserved, but allows logicalType
-		"doc", "fields", "items", "name", "namespace", "size", "symbols",
-		"values", "type", "aliases", "precision", "scale",
-	}
 	schemaReserved = []string{
 		"doc", "fields", "items", "name", "namespace", "size", "symbols",
 		"values", "type", "aliases", "logicalType", "precision", "scale",
@@ -1076,7 +1072,7 @@ func NewArraySchema(items Schema, opts ...SchemaOption) *ArraySchema {
 	}
 
 	return &ArraySchema{
-		properties:         newProperties(cfg.props, arrayReserved),
+		properties:         newProperties(cfg.props, schemaReserved),
 		cacheFingerprinter: cacheFingerprinter{writerFingerprint: cfg.wfp},
 		items:              items,
 	}

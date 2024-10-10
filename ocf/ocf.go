@@ -123,6 +123,8 @@ func (d *Decoder) Metadata() map[string][]byte {
 	return d.meta
 }
 
+// Schema returns the schema that was parsed from the file's metadata
+// and that is used to interpret the file's contents.
 func (d *Decoder) Schema() avro.Schema {
 	return d.schema
 }
@@ -286,12 +288,12 @@ type Encoder struct {
 // If the writer is an existing ocf file, it will append data using the
 // existing schema.
 func NewEncoder(s string, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
-	return newEncoder(
-		func(cache *avro.SchemaCache) (avro.Schema, error) {
-			return avro.ParseWithCache(s, "", cache)
-		},
-		w,
-		opts...)
+	cfg := computeEncoderConfig(opts)
+	schema, err := avro.ParseWithCache(s, "", cfg.SchemaCache)
+	if err != nil {
+		return nil, err
+	}
+	return newEncoder(schema, w, cfg)
 }
 
 // NewEncoderWithSchema returns a new encoder that writes to w using schema s.
@@ -299,28 +301,10 @@ func NewEncoder(s string, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
 // If the writer is an existing ocf file, it will append data using the
 // existing schema.
 func NewEncoderWithSchema(schema avro.Schema, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
-	return newEncoder(
-		func(_ *avro.SchemaCache) (avro.Schema, error) {
-			return schema, nil
-		},
-		w,
-		opts...)
+	return newEncoder(schema, w, computeEncoderConfig(opts))
 }
 
-func newEncoder(getSchema func(*avro.SchemaCache) (avro.Schema, error), w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
-	cfg := encoderConfig{
-		BlockLength:      100,
-		CodecName:        Null,
-		CodecCompression: -1,
-		Metadata:         map[string][]byte{},
-		EncodingConfig:   avro.DefaultConfig,
-		SchemaCache:      avro.DefaultSchemaCache,
-		SchemaMarshaler:  DefaultSchemaMarshaler,
-	}
-	for _, opt := range opts {
-		opt(&cfg)
-	}
-
+func newEncoder(schema avro.Schema, w io.Writer, cfg encoderConfig) (*Encoder, error) {
 	switch file := w.(type) {
 	case nil:
 		return nil, errors.New("writer cannot be nil")
@@ -354,10 +338,6 @@ func newEncoder(getSchema func(*avro.SchemaCache) (avro.Schema, error), w io.Wri
 		}
 	}
 
-	schema, err := getSchema(cfg.SchemaCache)
-	if err != nil {
-		return nil, err
-	}
 	schemaJSON, err := cfg.SchemaMarshaler(schema)
 	if err != nil {
 		return nil, err
@@ -395,6 +375,22 @@ func newEncoder(getSchema func(*avro.SchemaCache) (avro.Schema, error), w io.Wri
 		blockLength: cfg.BlockLength,
 	}
 	return e, nil
+}
+
+func computeEncoderConfig(opts []EncoderFunc) encoderConfig {
+	cfg := encoderConfig{
+		BlockLength:      100,
+		CodecName:        Null,
+		CodecCompression: -1,
+		Metadata:         map[string][]byte{},
+		EncodingConfig:   avro.DefaultConfig,
+		SchemaCache:      avro.DefaultSchemaCache,
+		SchemaMarshaler:  DefaultSchemaMarshaler,
+	}
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+	return cfg
 }
 
 // Write v to the internal buffer. This method skips the internal encoder and
