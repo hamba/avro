@@ -24,14 +24,6 @@ func (nullDefaultType) MarshalJSON() ([]byte, error) {
 
 var nullDefault nullDefaultType = struct{}{}
 
-var (
-	schemaReserved = []string{
-		"doc", "fields", "items", "name", "namespace", "size", "symbols",
-		"values", "type", "aliases", "logicalType", "precision", "scale",
-	}
-	fieldReserved = []string{"default", "doc", "name", "order", "type", "aliases"}
-)
-
 // Type is a schema type.
 type Type string
 
@@ -343,24 +335,8 @@ type properties struct {
 	props map[string]any
 }
 
-func newProperties(props map[string]any, res []string) properties {
-	p := properties{props: map[string]any{}}
-	for k, v := range props {
-		if isReserved(res, k) {
-			continue
-		}
-		p.props[k] = v
-	}
-	return p
-}
-
-func isReserved(res []string, k string) bool {
-	for _, r := range res {
-		if k == r {
-			return true
-		}
-	}
-	return false
+func newProperties(props map[string]any) properties {
+	return properties{props: props}
 }
 
 // Prop gets a property from the schema.
@@ -484,7 +460,7 @@ func NewPrimitiveSchema(t Type, l LogicalSchema, opts ...SchemaOption) *Primitiv
 	}
 
 	return &PrimitiveSchema{
-		properties:         newProperties(cfg.props, schemaReserved),
+		properties:         newProperties(cfg.props),
 		cacheFingerprinter: cacheFingerprinter{writerFingerprint: cfg.wfp},
 		typ:                t,
 		logical:            l,
@@ -574,7 +550,7 @@ func NewRecordSchema(name, namespace string, fields []*Field, opts ...SchemaOpti
 
 	return &RecordSchema{
 		name:               n,
-		properties:         newProperties(cfg.props, schemaReserved),
+		properties:         newProperties(cfg.props),
 		cacheFingerprinter: cacheFingerprinter{writerFingerprint: cfg.wfp},
 		fields:             fields,
 		doc:                cfg.doc,
@@ -743,7 +719,7 @@ func NewField(name string, typ Schema, opts ...SchemaOption) (*Field, error) {
 	}
 
 	f := &Field{
-		properties: newProperties(cfg.props, fieldReserved),
+		properties: newProperties(cfg.props),
 		name:       name,
 		aliases:    cfg.aliases,
 		doc:        cfg.doc,
@@ -919,7 +895,7 @@ func NewEnumSchema(name, namespace string, symbols []string, opts ...SchemaOptio
 
 	return &EnumSchema{
 		name:               n,
-		properties:         newProperties(cfg.props, schemaReserved),
+		properties:         newProperties(cfg.props),
 		cacheFingerprinter: cacheFingerprinter{writerFingerprint: cfg.wfp},
 		symbols:            symbols,
 		def:                def,
@@ -1072,7 +1048,7 @@ func NewArraySchema(items Schema, opts ...SchemaOption) *ArraySchema {
 	}
 
 	return &ArraySchema{
-		properties:         newProperties(cfg.props, schemaReserved),
+		properties:         newProperties(cfg.props),
 		cacheFingerprinter: cacheFingerprinter{writerFingerprint: cfg.wfp},
 		items:              items,
 	}
@@ -1142,7 +1118,7 @@ func NewMapSchema(values Schema, opts ...SchemaOption) *MapSchema {
 	}
 
 	return &MapSchema{
-		properties:         newProperties(cfg.props, schemaReserved),
+		properties:         newProperties(cfg.props),
 		cacheFingerprinter: cacheFingerprinter{writerFingerprint: cfg.wfp},
 		values:             values,
 	}
@@ -1325,7 +1301,7 @@ func NewFixedSchema(
 
 	return &FixedSchema{
 		name:               n,
-		properties:         newProperties(cfg.props, schemaReserved),
+		properties:         newProperties(cfg.props),
 		cacheFingerprinter: cacheFingerprinter{writerFingerprint: cfg.wfp},
 		size:               size,
 		logical:            logical,

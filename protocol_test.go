@@ -204,3 +204,13 @@ func TestParseProtocol_Types(t *testing.T) {
 	assert.Equal(t, wantPong, protocol.Types()[1].String())
 	assert.Equal(t, wantPongError, protocol.Types()[2].String())
 }
+
+func TestProtocol_String(t *testing.T) {
+	protocol, err := avro.ParseProtocolFile("testdata/echo.avpr")
+	require.NoError(t, err)
+
+	json := protocol.String()
+
+	want := `{"protocol":"Echo","namespace":"org.hamba.avro","types":[{"name":"org.hamba.avro.Ping","type":"record","fields":[{"name":"timestamp","type":"long"},{"name":"text","type":"string"}]},{"name":"org.hamba.avro.Pong","type":"record","fields":[{"name":"timestamp","type":"long"},{"name":"ping","type":"org.hamba.avro.Ping"}]},{"name":"org.hamba.avro.PongError","type":"error","fields":[{"name":"timestamp","type":"long"},{"name":"reason","type":"string"}]}],"messages":{"ping":{"request":[{"name":"ping","type":"org.hamba.avro.Ping"}],"response":"org.hamba.avro.Pong","errors":["org.hamba.avro.PongError"]}}}`
+	assert.Equal(t, want, json)
+}
