@@ -3,11 +3,11 @@ package ocf_test
 import (
 	"bytes"
 	"compress/flate"
+	"encoding/json"
 	"errors"
 	"flag"
 	"io"
 	"os"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -1134,28 +1134,17 @@ func TestWithSchemaMarshaler(t *testing.T) {
 	require.False(t, dec.HasNext())
 	require.Equal(t, val, roundTripVal)
 
-	props := make(map[string]map[string]any)
-	collectProperties(dec.Schema(), props)
-	require.Equal(t, map[string]map[string]any{
-		"fields.0": {
-			"field-id": 1.0, // ints turn into floats when round-tripped through JSON
-		},
-		"fields.1": {
-			"field-id": 2.0,
-		},
-		"fields.2": {
-			"field-id": 3.0,
-		},
-		"fields.2.type.items.fields.0": {
-			"field-id": 4.0,
-		},
-		"fields.2.type.items.fields.1": {
-			"field-id": 5.0,
-		},
-		"fields.2.type.items.fields.1.type": {
-			"element-id": 6.0,
-		},
-	}, props)
+	got, err := json.MarshalIndent(dec.Schema(), "", "  ")
+	require.NoError(t, err)
+
+	if *update {
+		err = os.WriteFile("testdata/full-schema.json", got, 0o644)
+		require.NoError(t, err)
+	}
+
+	want, err := os.ReadFile("testdata/full-schema.json")
+	require.NoError(t, err)
+	assert.Equal(t, want, got)
 }
 
 func copyToTemp(t *testing.T, src string) *os.File {
@@ -1192,41 +1181,4 @@ type errorHeaderWriter struct{}
 
 func (*errorHeaderWriter) Write(p []byte) (int, error) {
 	return 0, errors.New("test")
-}
-
-func collectProperties(schema avro.Schema, props map[string]map[string]any, path ...string) {
-	currentPath := strings.Join(path, ".")
-	switch schema := schema.(type) {
-	case *avro.RecordSchema:
-		maybeAddProps(currentPath, schema.Props(), props)
-		childPath := append(path, "fields")
-		for i, field := range schema.Fields() {
-			fieldPath := append(childPath, strconv.Itoa(i))
-			maybeAddProps(strings.Join(fieldPath, "."), field.Props(), props)
-			collectProperties(field.Type(), props, append(fieldPath, "type")...)
-		}
-	case *avro.ArraySchema:
-		maybeAddProps(currentPath, schema.Props(), props)
-		collectProperties(schema.Items(), props, append(path, "items")...)
-	case *avro.MapSchema:
-		maybeAddProps(currentPath, schema.Props(), props)
-		collectProperties(schema.Values(), props, append(path, "values")...)
-	case *avro.UnionSchema:
-		for i, t := range schema.Types() {
-			collectProperties(t, props, append(path, strconv.Itoa(i))...)
-		}
-	case *avro.FixedSchema:
-		maybeAddProps(currentPath, schema.Props(), props)
-	case *avro.EnumSchema:
-		maybeAddProps(currentPath, schema.Props(), props)
-	case *avro.PrimitiveSchema:
-		maybeAddProps(currentPath, schema.Props(), props)
-	}
-}
-
-func maybeAddProps(key string, props map[string]any, accumulator map[string]map[string]any) {
-	if len(props) == 0 {
-		return
-	}
-	accumulator[key] = props
 }
