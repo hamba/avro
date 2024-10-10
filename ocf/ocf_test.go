@@ -7,6 +7,7 @@ import (
 	"flag"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -967,6 +968,200 @@ func TestEncoder_WriteHeaderError(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestWithSchemaCache(t *testing.T) {
+	schema := `{
+		"type": "record",
+		"name": "Foo",
+		"namespace": "foo.bar.baz",
+		"fields": [
+			{
+				"name": "name",
+				"type": "string"
+			},
+			{
+				"name": "id",
+				"type": "long"
+			},
+			{
+				"name": "meta",
+				"type": {
+					"type": "array",
+					"items": {
+						"type": "record",
+						"name": "FooMetadataEntry",
+						"namespace": "foo.bar.baz",
+						"fields": [
+							{
+								"name": "key",
+								"type": "string"
+							},
+							{
+								"name": "values",
+								"type": {
+									"type": "array",
+									"items": "string"
+								}
+							}
+						]
+					}
+				}
+			}
+		]
+	}`
+	type metaEntry struct {
+		Key    string   `avro:"key"`
+		Values []string `avro:"values"`
+	}
+	type foo struct {
+		Name string      `avro:"name"`
+		ID   int64       `avro:"id"`
+		Meta []metaEntry `avro:"meta"`
+	}
+	encoderCache := &avro.SchemaCache{}
+	var buf bytes.Buffer
+	enc, err := ocf.NewEncoder(schema, &buf, ocf.WithEncoderSchemaCache(encoderCache))
+	require.NoError(t, err)
+	val := foo{
+		Name: "Bob Loblaw",
+		ID:   42,
+		Meta: []metaEntry{
+			{
+				Key:    "abc",
+				Values: []string{"123", "456"},
+			},
+		},
+	}
+	require.NoError(t, enc.Encode(val))
+	require.NoError(t, enc.Close())
+
+	assert.NotNil(t, encoderCache.Get("foo.bar.baz.Foo"))
+	assert.NotNil(t, encoderCache.Get("foo.bar.baz.FooMetadataEntry"))
+	assert.Nil(t, avro.DefaultSchemaCache.Get("foo.bar.baz.Foo"))
+	assert.Nil(t, avro.DefaultSchemaCache.Get("foo.bar.baz.FooMetadataEntry"))
+
+	decoderCache := &avro.SchemaCache{}
+	dec, err := ocf.NewDecoder(&buf, ocf.WithDecoderSchemaCache(decoderCache))
+	require.NoError(t, err)
+	require.True(t, dec.HasNext())
+	var roundTripVal foo
+	require.NoError(t, dec.Decode(&roundTripVal))
+	require.False(t, dec.HasNext())
+	require.Equal(t, val, roundTripVal)
+
+	assert.NotNil(t, decoderCache.Get("foo.bar.baz.Foo"))
+	assert.NotNil(t, decoderCache.Get("foo.bar.baz.FooMetadataEntry"))
+	assert.Nil(t, avro.DefaultSchemaCache.Get("foo.bar.baz.Foo"))
+	assert.Nil(t, avro.DefaultSchemaCache.Get("foo.bar.baz.FooMetadataEntry"))
+}
+
+func TestWithSchemaMarshaler(t *testing.T) {
+	schema := `{
+		"type": "record",
+		"name": "Bar",
+		"namespace": "foo.bar.baz",
+		"fields": [
+			{
+				"name": "name",
+				"type": "string",
+				"field-id": 1
+			},
+			{
+				"name": "id",
+				"type": "long",
+				"field-id": 2
+			},
+			{
+				"name": "meta",
+				"type": {
+					"type": "array",
+					"logicalType": "map",
+					"items": {
+						"type": "record",
+						"name": "FooMetadataEntry",
+						"namespace": "foo.bar.baz",
+						"fields": [
+							{
+								"name": "key",
+								"type": "string",
+								"field-id": 4
+							},
+							{
+								"name": "values",
+								"type": {
+									"type": "array",
+									"items": "string",
+									"element-id": 6
+								},
+								"field-id": 5
+							}
+						]
+					}
+				},
+				"field-id": 3
+			}
+		]
+	}`
+	parsedSchema := avro.MustParse(schema)
+	type metaEntry struct {
+		Key    string   `avro:"key"`
+		Values []string `avro:"values"`
+	}
+	type foo struct {
+		Name string      `avro:"name"`
+		ID   int64       `avro:"id"`
+		Meta []metaEntry `avro:"meta"`
+	}
+	var buf bytes.Buffer
+	enc, err := ocf.NewEncoderWithSchema(parsedSchema, &buf, ocf.WithSchemaMarshaler(ocf.FullSchemaMarshaler))
+	require.NoError(t, err)
+	val := foo{
+		Name: "Bob Loblaw",
+		ID:   42,
+		Meta: []metaEntry{
+			{
+				Key:    "abc",
+				Values: []string{"123", "456"},
+			},
+		},
+	}
+	require.NoError(t, enc.Encode(val))
+	require.NoError(t, enc.Close())
+
+	dec, err := ocf.NewDecoder(&buf)
+	require.NoError(t, err)
+	require.True(t, dec.HasNext())
+	var roundTripVal foo
+	require.NoError(t, dec.Decode(&roundTripVal))
+	require.False(t, dec.HasNext())
+	require.Equal(t, val, roundTripVal)
+
+	props := make(map[string]map[string]any)
+	collectProperties(dec.Schema(), props)
+	require.Equal(t, map[string]map[string]any{
+		"fields.0": {
+			"field-id": 1.0, // ints turn into floats when round-tripped through JSON
+		},
+		"fields.1": {
+			"field-id": 2.0,
+		},
+		"fields.2": {
+			"field-id": 3.0,
+		},
+		"fields.2.type": {
+			"logicalType": "map",
+		},
+		"fields.2.type.items.fields.0": {
+			"field-id": 4.0,
+		},
+		"fields.2.type.items.fields.1": {
+			"field-id": 5.0,
+		},
+		"fields.2.type.items.fields.1.type": {
+			"element-id": 6.0,
+		},
+	}, props)
+}
+
 func copyToTemp(t *testing.T, src string) *os.File {
 	t.Helper()
 
@@ -1001,4 +1196,41 @@ type errorHeaderWriter struct{}
 
 func (*errorHeaderWriter) Write(p []byte) (int, error) {
 	return 0, errors.New("test")
+}
+
+func collectProperties(schema avro.Schema, props map[string]map[string]any, path ...string) {
+	currentPath := strings.Join(path, ".")
+	switch schema := schema.(type) {
+	case *avro.RecordSchema:
+		maybeAddProps(currentPath, schema.Props(), props)
+		childPath := append(path, "fields")
+		for i, field := range schema.Fields() {
+			fieldPath := append(childPath, strconv.Itoa(i))
+			maybeAddProps(strings.Join(fieldPath, "."), field.Props(), props)
+			collectProperties(field.Type(), props, append(fieldPath, "type")...)
+		}
+	case *avro.ArraySchema:
+		maybeAddProps(currentPath, schema.Props(), props)
+		collectProperties(schema.Items(), props, append(path, "items")...)
+	case *avro.MapSchema:
+		maybeAddProps(currentPath, schema.Props(), props)
+		collectProperties(schema.Values(), props, append(path, "values")...)
+	case *avro.UnionSchema:
+		for i, t := range schema.Types() {
+			collectProperties(t, props, append(path, strconv.Itoa(i))...)
+		}
+	case *avro.FixedSchema:
+		maybeAddProps(currentPath, schema.Props(), props)
+	case *avro.EnumSchema:
+		maybeAddProps(currentPath, schema.Props(), props)
+	case *avro.PrimitiveSchema:
+		maybeAddProps(currentPath, schema.Props(), props)
+	}
+}
+
+func maybeAddProps(key string, props map[string]any, accumulator map[string]map[string]any) {
+	if len(props) == 0 {
+		return
+	}
+	accumulator[key] = props
 }

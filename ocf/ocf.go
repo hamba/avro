@@ -52,9 +52,8 @@ type Header struct {
 }
 
 type decoderConfig struct {
-	DecoderConfig   avro.API
-	SchemaCache     *avro.SchemaCache
-	SchemaMarshaler func(avro.Schema) ([]byte, error)
+	DecoderConfig avro.API
+	SchemaCache   *avro.SchemaCache
 }
 
 // DecoderFunc represents a configuration function for Decoder.
@@ -75,14 +74,6 @@ func WithDecoderSchemaCache(cache *avro.SchemaCache) DecoderFunc {
 	}
 }
 
-// WithDecoderSchemaMarshaler sets the schema marshaler for the decoder.
-// If not specified, defaults to DefaultSchemaMarshaler.
-func WithDecoderSchemaMarshaler(m func(avro.Schema) ([]byte, error)) DecoderFunc {
-	return func(cfg *decoderConfig) {
-		cfg.SchemaMarshaler = m
-	}
-}
-
 // Decoder reads and decodes Avro values from a container file.
 type Decoder struct {
 	reader      *avro.Reader
@@ -100,9 +91,8 @@ type Decoder struct {
 // NewDecoder returns a new decoder that reads from reader r.
 func NewDecoder(r io.Reader, opts ...DecoderFunc) (*Decoder, error) {
 	cfg := decoderConfig{
-		DecoderConfig:   avro.DefaultConfig,
-		SchemaCache:     avro.DefaultSchemaCache,
-		SchemaMarshaler: DefaultSchemaMarshaler,
+		DecoderConfig: avro.DefaultConfig,
+		SchemaCache:   avro.DefaultSchemaCache,
 	}
 	for _, opt := range opts {
 		opt(&cfg)
@@ -256,9 +246,9 @@ func WithEncoderSchemaCache(cache *avro.SchemaCache) EncoderFunc {
 	}
 }
 
-// WithEncoderSchemaMarshaler sets the schema marshaler for the encoder.
+// WithSchemaMarshaler sets the schema marshaler for the encoder.
 // If not specified, defaults to DefaultSchemaMarshaler.
-func WithEncoderSchemaMarshaler(m func(avro.Schema) ([]byte, error)) EncoderFunc {
+func WithSchemaMarshaler(m func(avro.Schema) ([]byte, error)) EncoderFunc {
 	return func(cfg *encoderConfig) {
 		cfg.SchemaMarshaler = m
 	}
