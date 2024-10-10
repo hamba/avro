@@ -25,11 +25,19 @@ func (nullDefaultType) MarshalJSON() ([]byte, error) {
 var nullDefault nullDefaultType = struct{}{}
 
 var (
-	schemaReserved = []string{
-		"doc", "fields", "items", "name", "namespace", "size", "symbols",
-		"values", "type", "aliases", "logicalType", "precision", "scale",
-	}
-	fieldReserved = []string{"default", "doc", "name", "order", "type", "aliases"}
+	// Note: order matches the order of properties as they are named in the spec.
+	// 	https://avro.apache.org/docs/1.12.0/specification
+	recordReserved                   = []string{"type", "name", "namespace", "doc", "aliases", "fields"}
+	fieldReserved                    = []string{"name", "doc", "type", "order", "aliases", "default"}
+	enumReserved                     = []string{"type", "name", "namespace", "aliases", "doc", "symbols", "default"}
+	arrayReserved                    = []string{"type", "items"}
+	mapReserved                      = []string{"type", "values"}
+	fixedReserved                    = []string{"type", "name", "namespace", "aliases", "size"}
+	fixedWithLogicalTypeReserved     = []string{"type", "name", "namespace", "aliases", "size", "logicalType"}
+	fixedWithDecimalTypeReserved     = []string{"type", "name", "namespace", "aliases", "size", "logicalType", "precision", "scale"}
+	primitiveReserved                = []string{"type"}
+	primitiveWithLogicalTypeReserved = []string{"type", "logicalType"}
+	primitiveWithDecimalTypeReserved = []string{"type", "logicalType", "precision", "scale"}
 )
 
 // Type is a schema type.
@@ -482,9 +490,16 @@ func NewPrimitiveSchema(t Type, l LogicalSchema, opts ...SchemaOption) *Primitiv
 	for _, opt := range opts {
 		opt(&cfg)
 	}
-
+	reservedProps := primitiveReserved
+	if l != nil {
+		if l.Type() == Decimal {
+			reservedProps = primitiveWithDecimalTypeReserved
+		} else {
+			reservedProps = primitiveWithLogicalTypeReserved
+		}
+	}
 	return &PrimitiveSchema{
-		properties:         newProperties(cfg.props, schemaReserved),
+		properties:         newProperties(cfg.props, reservedProps),
 		cacheFingerprinter: cacheFingerprinter{writerFingerprint: cfg.wfp},
 		typ:                t,
 		logical:            l,
@@ -574,7 +589,7 @@ func NewRecordSchema(name, namespace string, fields []*Field, opts ...SchemaOpti
 
 	return &RecordSchema{
 		name:               n,
-		properties:         newProperties(cfg.props, schemaReserved),
+		properties:         newProperties(cfg.props, recordReserved),
 		cacheFingerprinter: cacheFingerprinter{writerFingerprint: cfg.wfp},
 		fields:             fields,
 		doc:                cfg.doc,
@@ -919,7 +934,7 @@ func NewEnumSchema(name, namespace string, symbols []string, opts ...SchemaOptio
 
 	return &EnumSchema{
 		name:               n,
-		properties:         newProperties(cfg.props, schemaReserved),
+		properties:         newProperties(cfg.props, enumReserved),
 		cacheFingerprinter: cacheFingerprinter{writerFingerprint: cfg.wfp},
 		symbols:            symbols,
 		def:                def,
@@ -1072,7 +1087,7 @@ func NewArraySchema(items Schema, opts ...SchemaOption) *ArraySchema {
 	}
 
 	return &ArraySchema{
-		properties:         newProperties(cfg.props, schemaReserved),
+		properties:         newProperties(cfg.props, arrayReserved),
 		cacheFingerprinter: cacheFingerprinter{writerFingerprint: cfg.wfp},
 		items:              items,
 	}
@@ -1142,7 +1157,7 @@ func NewMapSchema(values Schema, opts ...SchemaOption) *MapSchema {
 	}
 
 	return &MapSchema{
-		properties:         newProperties(cfg.props, schemaReserved),
+		properties:         newProperties(cfg.props, mapReserved),
 		cacheFingerprinter: cacheFingerprinter{writerFingerprint: cfg.wfp},
 		values:             values,
 	}
@@ -1323,9 +1338,17 @@ func NewFixedSchema(
 		return nil, err
 	}
 
+	reservedProps := fixedReserved
+	if logical != nil {
+		if logical.Type() == Decimal {
+			reservedProps = fixedWithDecimalTypeReserved
+		} else {
+			reservedProps = fixedWithLogicalTypeReserved
+		}
+	}
 	return &FixedSchema{
 		name:               n,
-		properties:         newProperties(cfg.props, schemaReserved),
+		properties:         newProperties(cfg.props, reservedProps),
 		cacheFingerprinter: cacheFingerprinter{writerFingerprint: cfg.wfp},
 		size:               size,
 		logical:            logical,
