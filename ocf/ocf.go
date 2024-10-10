@@ -21,10 +21,11 @@ const (
 	codecKey  = "avro.codec"
 )
 
-var magicBytes = [4]byte{'O', 'b', 'j', 1}
+var (
+	magicBytes = [4]byte{'O', 'b', 'j', 1}
 
-// HeaderSchema is the Avro schema of a container file header.
-var HeaderSchema = avro.MustParse(`{
+	// HeaderSchema is the Avro schema of a container file header.
+	HeaderSchema = avro.MustParse(`{
 	"type": "record",
 	"name": "org.apache.avro.file.Header",
 	"fields": [
@@ -34,6 +35,15 @@ var HeaderSchema = avro.MustParse(`{
 	]
 }`)
 
+	// DefaultSchemaMarshaler calls the schema's String() method, to produce
+	// a "canonical" schema.
+	DefaultSchemaMarshaler = defaultMarshalSchema
+	// FullSchemaMarshaler calls the schema's MarshalJSON() method, to produce
+	// a schema with all details preserved. The "canonical" schema returned by
+	// the default marshaler does not preserve a type's extra properties.
+	FullSchemaMarshaler = fullMarshalSchema
+)
+
 // Header represents an Avro container file header.
 type Header struct {
 	Magic [4]byte           `avro:"magic"`
@@ -42,8 +52,9 @@ type Header struct {
 }
 
 type decoderConfig struct {
-	DecoderConfig avro.API
-	SchemaCache   *avro.SchemaCache
+	DecoderConfig   avro.API
+	SchemaCache     *avro.SchemaCache
+	SchemaMarshaler func(avro.Schema) ([]byte, error)
 }
 
 // DecoderFunc represents a configuration function for Decoder.
@@ -64,6 +75,14 @@ func WithDecoderSchemaCache(cache *avro.SchemaCache) DecoderFunc {
 	}
 }
 
+// WithDecoderSchemaMarshaler sets the schema marshaler for the decoder.
+// If not specified, defaults to DefaultSchemaMarshaler.
+func WithDecoderSchemaMarshaler(m func(avro.Schema) ([]byte, error)) DecoderFunc {
+	return func(cfg *decoderConfig) {
+		cfg.SchemaMarshaler = m
+	}
+}
+
 // Decoder reads and decodes Avro values from a container file.
 type Decoder struct {
 	reader      *avro.Reader
@@ -81,8 +100,9 @@ type Decoder struct {
 // NewDecoder returns a new decoder that reads from reader r.
 func NewDecoder(r io.Reader, opts ...DecoderFunc) (*Decoder, error) {
 	cfg := decoderConfig{
-		DecoderConfig: avro.DefaultConfig,
-		SchemaCache:   avro.DefaultSchemaCache,
+		DecoderConfig:   avro.DefaultConfig,
+		SchemaCache:     avro.DefaultSchemaCache,
+		SchemaMarshaler: DefaultSchemaMarshaler,
 	}
 	for _, opt := range opts {
 		opt(&cfg)
@@ -192,6 +212,7 @@ type encoderConfig struct {
 	Sync             [16]byte
 	EncodingConfig   avro.API
 	SchemaCache      *avro.SchemaCache
+	SchemaMarshaler  func(avro.Schema) ([]byte, error)
 }
 
 // EncoderFunc represents a configuration function for Encoder.
@@ -235,6 +256,14 @@ func WithEncoderSchemaCache(cache *avro.SchemaCache) EncoderFunc {
 	}
 }
 
+// WithEncoderSchemaMarshaler sets the schema marshaler for the encoder.
+// If not specified, defaults to DefaultSchemaMarshaler.
+func WithEncoderSchemaMarshaler(m func(avro.Schema) ([]byte, error)) EncoderFunc {
+	return func(cfg *encoderConfig) {
+		cfg.SchemaMarshaler = m
+	}
+}
+
 // WithSyncBlock sets the sync block.
 func WithSyncBlock(sync [16]byte) EncoderFunc {
 	return func(cfg *encoderConfig) {
@@ -268,16 +297,8 @@ type Encoder struct {
 // existing schema.
 func NewEncoder(s string, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
 	return newEncoder(
-		func(cache *avro.SchemaCache) (avro.Schema, []byte, error) {
-			var buf bytes.Buffer
-			if err := json.Compact(&buf, []byte(s)); err != nil {
-				return nil, nil, fmt.Errorf("schema is not valid JSON: %w", err)
-			}
-			schema, err := avro.ParseBytesWithCache(buf.Bytes(), "", cache)
-			if err != nil {
-				return nil, nil, err
-			}
-			return schema, buf.Bytes(), nil
+		func(cache *avro.SchemaCache) (avro.Schema, error) {
+			return avro.ParseWithCache(s, "", cache)
 		},
 		w,
 		opts...)
@@ -289,18 +310,14 @@ func NewEncoder(s string, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
 // existing schema.
 func NewEncoderWithSchema(schema avro.Schema, w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
 	return newEncoder(
-		func(_ *avro.SchemaCache) (avro.Schema, []byte, error) {
-			schemaJSON, err := json.Marshal(schema)
-			if err != nil {
-				return nil, nil, err
-			}
-			return schema, schemaJSON, nil
+		func(_ *avro.SchemaCache) (avro.Schema, error) {
+			return schema, nil
 		},
 		w,
 		opts...)
 }
 
-func newEncoder(getSchema func(*avro.SchemaCache) (avro.Schema, []byte, error), w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
+func newEncoder(getSchema func(*avro.SchemaCache) (avro.Schema, error), w io.Writer, opts ...EncoderFunc) (*Encoder, error) {
 	cfg := encoderConfig{
 		BlockLength:      100,
 		CodecName:        Null,
@@ -308,6 +325,7 @@ func newEncoder(getSchema func(*avro.SchemaCache) (avro.Schema, []byte, error), 
 		Metadata:         map[string][]byte{},
 		EncodingConfig:   avro.DefaultConfig,
 		SchemaCache:      avro.DefaultSchemaCache,
+		SchemaMarshaler:  DefaultSchemaMarshaler,
 	}
 	for _, opt := range opts {
 		opt(&cfg)
@@ -346,7 +364,11 @@ func newEncoder(getSchema func(*avro.SchemaCache) (avro.Schema, []byte, error), 
 		}
 	}
 
-	schema, schemaJSON, err := getSchema(cfg.SchemaCache)
+	schema, err := getSchema(cfg.SchemaCache)
+	if err != nil {
+		return nil, err
+	}
+	schemaJSON, err := cfg.SchemaMarshaler(schema)
 	if err != nil {
 		return nil, err
 	}
@@ -507,4 +529,12 @@ func skipToEnd(reader *avro.Reader, sync [16]byte) error {
 			reader.Error = errors.New("invalid block")
 		}
 	}
+}
+
+func defaultMarshalSchema(schema avro.Schema) ([]byte, error) {
+	return []byte(schema.String()), nil
+}
+
+func fullMarshalSchema(schema avro.Schema) ([]byte, error) {
+	return json.Marshal(schema)
 }
