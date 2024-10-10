@@ -158,6 +158,7 @@ func parseComplexType(namespace string, m map[string]any, seen seenCache, cache 
 }
 
 type primitiveSchema struct {
+	Type        string         `mapstructure:"type"`
 	LogicalType string         `mapstructure:"logicalType"`
 	Precision   int            `mapstructure:"precision"`
 	Scale       int            `mapstructure:"scale"`
@@ -368,6 +369,7 @@ func parseEnum(namespace string, m map[string]any, seen seenCache, cache *Schema
 }
 
 type arraySchema struct {
+	Type  string         `mapstructure:"type"`
 	Items any            `mapstructure:"items"`
 	Props map[string]any `mapstructure:",remain"`
 }
@@ -393,6 +395,7 @@ func parseArray(namespace string, m map[string]any, seen seenCache, cache *Schem
 }
 
 type mapSchema struct {
+	Type   string         `mapstructure:"type"`
 	Values any            `mapstructure:"values"`
 	Props  map[string]any `mapstructure:",remain"`
 }

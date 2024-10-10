@@ -11,11 +11,6 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
-var (
-	protocolReserved = []string{"doc", "types", "messages", "protocol", "namespace"}
-	messageReserved  = []string{"doc", "response", "request", "errors", "one-way"}
-)
-
 type protocolConfig struct {
 	doc   string
 	props map[string]any
@@ -70,7 +65,7 @@ func NewProtocol(
 
 	p := &Protocol{
 		name:       n,
-		properties: newProperties(cfg.props, protocolReserved),
+		properties: newProperties(cfg.props),
 		types:      types,
 		messages:   messages,
 		doc:        cfg.doc,
@@ -145,7 +140,7 @@ func NewMessage(req *RecordSchema, resp Schema, errors *UnionSchema, oneWay bool
 	}
 
 	return &Message{
-		properties: newProperties(cfg.props, messageReserved),
+		properties: newProperties(cfg.props),
 		req:        req,
 		resp:       resp,
 		errs:       errors,
