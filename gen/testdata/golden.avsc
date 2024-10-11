@@ -106,7 +106,6 @@
     {
       "name": "mapOfStrings",
       "type": {
-        "name": "aMapOfStrings",
         "type": "map",
         "values": "string"
       }
@@ -114,7 +113,6 @@
     {
       "name": "mapOfRecords",
       "type": {
-        "name": "aMapOfRecords",
         "type": "map",
         "values": {
           "name": "RecordInMap",
@@ -175,7 +173,6 @@
     {
       "name": "aRecordArray",
       "type": {
-        "name": "someRecordArray",
         "type": "array",
         "items": {
           "name": "recordInArray",

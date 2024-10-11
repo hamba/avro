@@ -58,6 +58,7 @@ func TestNullSchema(t *testing.T) {
 	schemas := []string{
 		`null`,
 		`{"type":"null"}`,
+		`{"type":"null", "other-property": 123, "another-property": ["a","b","c"]}`,
 	}
 
 	for _, schm := range schemas {
@@ -1550,4 +1551,690 @@ func TestSchema_DereferencingRectifiesAlreadySeenSchema(t *testing.T) {
 
 	n := strings.Count(strSchema, `"name":"org.hamba.avro.test1"`)
 	assert.Equal(t, 1, n)
+}
+
+func TestParse_PreservesAllProperties(t *testing.T) {
+	testCases := []struct {
+		name   string
+		schema string
+		check  func(t *testing.T, schema avro.Schema)
+	}{
+		{
+			name: "record",
+			schema: `{
+				"type": "record",
+				"name": "SomeRecord",
+				"logicalType": "complex-number",
+				"precision": "abc",
+				"scale": "def",
+				"other": [1,2,3],
+				"fields": [
+					{
+						"name": "r",
+						"type": "double"
+					},
+					{
+						"name": "i",
+						"type": "double"
+					}
+				]
+			}`,
+			check: func(t *testing.T, schema avro.Schema) {
+				rec := schema.(*avro.RecordSchema)
+				assert.Equal(t, map[string]any{
+					"logicalType": "complex-number",
+					"precision":   "abc",
+					"scale":       "def",
+					"other":       []any{1.0, 2.0, 3.0},
+				}, rec.Props())
+			},
+		},
+		{
+			name: "array",
+			schema: `{
+				"type": "array",
+				"name": "SomeArray",
+				"logicalType": "complex-number",
+				"precision": "abc",
+				"scale": "def",
+				"other": [1,2,3],
+				"items": "double"
+			}`,
+			check: func(t *testing.T, schema avro.Schema) {
+				rec := schema.(*avro.ArraySchema)
+				assert.Equal(t, map[string]any{
+					"name":        "SomeArray",
+					"logicalType": "complex-number",
+					"precision":   "abc",
+					"scale":       "def",
+					"other":       []any{1.0, 2.0, 3.0},
+				}, rec.Props())
+			},
+		},
+		{
+			name: "map",
+			schema: `{
+				"type": "map",
+				"name": "SomeMap",
+				"logicalType": "weights",
+				"precision": "abc",
+				"scale": "def",
+				"other": [1,2,3],
+				"values": "double"
+			}`,
+			check: func(t *testing.T, schema avro.Schema) {
+				rec := schema.(*avro.MapSchema)
+				assert.Equal(t, map[string]any{
+					"name":        "SomeMap",
+					"logicalType": "weights",
+					"precision":   "abc",
+					"scale":       "def",
+					"other":       []any{1.0, 2.0, 3.0},
+				}, rec.Props())
+			},
+		},
+		{
+			name: "enum",
+			schema: `{
+				"type": "enum",
+				"name": "SomeEnum",
+				"logicalType": "status",
+				"precision": "abc",
+				"scale": "def",
+				"other": [1,2,3],
+				"symbols": ["A", "B", "C"],
+				"default": "A"
+			}`,
+			check: func(t *testing.T, schema avro.Schema) {
+				rec := schema.(*avro.EnumSchema)
+				assert.Equal(t, map[string]any{
+					"logicalType": "status",
+					"precision":   "abc",
+					"scale":       "def",
+					"other":       []any{1.0, 2.0, 3.0},
+				}, rec.Props())
+			},
+		},
+		{
+			name: "fixed-no-logical-type",
+			schema: `{
+				"type": "fixed",
+				"name": "SomeFixed",
+				"size": 16,
+				"precision": "abc",
+				"scale": "def",
+				"other": [1,2,3]
+			}`,
+			check: func(t *testing.T, schema avro.Schema) {
+				rec := schema.(*avro.FixedSchema)
+				assert.Equal(t, map[string]any{
+					"precision": "abc",
+					"scale":     "def",
+					"other":     []any{1.0, 2.0, 3.0},
+				}, rec.Props())
+			},
+		},
+		{
+			name: "fixed-unknown-logical-type",
+			schema: `{
+				"type": "fixed",
+				"name": "SomeFixed",
+				"size": 16,
+				"logicalType": "uuid",
+				"precision": "abc",
+				"scale": "def",
+				"other": [1,2,3]
+			}`,
+			check: func(t *testing.T, schema avro.Schema) {
+				rec := schema.(*avro.FixedSchema)
+				assert.Equal(t, map[string]any{
+					"logicalType": "uuid",
+					"precision":   "abc",
+					"scale":       "def",
+					"other":       []any{1.0, 2.0, 3.0},
+				}, rec.Props())
+			},
+		},
+		{
+			name: "fixed-invalid-logical-type",
+			schema: `{
+				"type": "fixed",
+				"name": "SomeFixed",
+				"size": 16,
+				"logicalType": {"foo": "bar", "baz": ["x","y","z"]},
+				"precision": "abc",
+				"scale": "def",
+				"other": [1,2,3]
+			}`,
+			check: func(t *testing.T, schema avro.Schema) {
+				rec := schema.(*avro.FixedSchema)
+				assert.Equal(t, map[string]any{
+					"logicalType": map[string]any{
+						"foo": "bar",
+						"baz": []any{"x", "y", "z"},
+					},
+					"precision": "abc",
+					"scale":     "def",
+					"other":     []any{1.0, 2.0, 3.0},
+				}, rec.Props())
+			},
+		},
+		{
+			name: "fixed-decimal-logical-type",
+			schema: `{
+				"type": "fixed",
+				"name": "SomeFixed",
+				"size": 16,
+				"logicalType": "decimal",
+				"precision": 10,
+				"scale": 3,
+				"other": [1,2,3]
+			}`,
+			check: func(t *testing.T, schema avro.Schema) {
+				rec := schema.(*avro.FixedSchema)
+				assert.Equal(t, map[string]any{
+					"other": []any{1.0, 2.0, 3.0},
+				}, rec.Props())
+				assert.Equal(t, avro.Decimal, rec.Logical().Type())
+			},
+		},
+		{
+			name: "fixed-invalid-decimal-logical-type-bad-values", // scale is too high
+			schema: `{
+				"type": "fixed",
+				"name": "SomeFixed",
+				"size": 16,
+				"logicalType": "decimal",
+				"precision": 10,
+				"scale": 20,
+				"other": [1,2,3]
+			}`,
+			check: func(t *testing.T, schema avro.Schema) {
+				rec := schema.(*avro.FixedSchema)
+				assert.Equal(t, map[string]any{
+					"logicalType": "decimal",
+					"precision":   10.0,
+					"scale":       20.0,
+					"other":       []any{1.0, 2.0, 3.0},
+				}, rec.Props())
+			},
+		},
+		{
+			name: "fixed-invalid-decimal-logical-type-bad-type", // precision and scale aren't ints
+			schema: `{
+				"type": "fixed",
+				"name": "SomeFixed",
+				"size": 16,
+				"logicalType": "decimal",
+				"precision": "abc",
+				"scale": "def",
+				"other": [1,2,3]
+			}`,
+			check: func(t *testing.T, schema avro.Schema) {
+				rec := schema.(*avro.FixedSchema)
+				assert.Equal(t, map[string]any{
+					"logicalType": "decimal",
+					"precision":   "abc",
+					"scale":       "def",
+					"other":       []any{1.0, 2.0, 3.0},
+				}, rec.Props())
+			},
+		},
+		{
+			name: "fixed-duration-logical",
+			schema: `{
+				"type": "fixed",
+				"name": "SomeFixed",
+				"size": 12,
+				"logicalType": "duration",
+				"precision": "abc",
+				"scale": "def",
+				"other": [1,2,3]
+			}`,
+			check: func(t *testing.T, schema avro.Schema) {
+				rec := schema.(*avro.FixedSchema)
+				assert.Equal(t, map[string]any{
+					"precision": "abc",
+					"scale":     "def",
+					"other":     []any{1.0, 2.0, 3.0},
+				}, rec.Props())
+				assert.Equal(t, avro.Duration, rec.Logical().Type())
+			},
+		},
+		{
+			name: "primitive-no-logical-type",
+			schema: `{
+				"type": "long",
+				"name": "SomeLong",
+				"size": 16,
+				"precision": "abc",
+				"scale": "def",
+				"other": [1,2,3]
+			}`,
+			check: func(t *testing.T, schema avro.Schema) {
+				rec := schema.(*avro.PrimitiveSchema)
+				assert.Equal(t, map[string]any{
+					"name":      "SomeLong",
+					"size":      16.0,
+					"precision": "abc",
+					"scale":     "def",
+					"other":     []any{1.0, 2.0, 3.0},
+				}, rec.Props())
+			},
+		},
+		{
+			name: "primitive-unknown-logical-type",
+			schema: `{
+				"type": "string",
+				"name": "SomeString",
+				"logicalType": "enum-name",
+				"precision": "abc",
+				"scale": "def",
+				"other": [1,2,3]
+			}`,
+			check: func(t *testing.T, schema avro.Schema) {
+				rec := schema.(*avro.PrimitiveSchema)
+				assert.Equal(t, map[string]any{
+					"name":        "SomeString",
+					"logicalType": "enum-name",
+					"precision":   "abc",
+					"scale":       "def",
+					"other":       []any{1.0, 2.0, 3.0},
+				}, rec.Props())
+			},
+		},
+		{
+			name: "primitive-invalid-logical-type",
+			schema: `{
+				"type": "string",
+				"name": "SomeString",
+				"logicalType": {"foo": "bar", "baz": ["x","y","z"]},
+				"precision": "abc",
+				"scale": "def",
+				"other": [1,2,3]
+			}`,
+			check: func(t *testing.T, schema avro.Schema) {
+				rec := schema.(*avro.PrimitiveSchema)
+				assert.Equal(t, map[string]any{
+					"name": "SomeString",
+					"logicalType": map[string]any{
+						"foo": "bar",
+						"baz": []any{"x", "y", "z"},
+					},
+					"precision": "abc",
+					"scale":     "def",
+					"other":     []any{1.0, 2.0, 3.0},
+				}, rec.Props())
+			},
+		},
+		{
+			name: "primitive-date-logical-type",
+			schema: `{
+				"type": "int",
+				"logicalType": "date",
+				"precision": 10,
+				"scale": 3,
+				"other": [1,2,3]
+			}`,
+			check: func(t *testing.T, schema avro.Schema) {
+				rec := schema.(*avro.PrimitiveSchema)
+				assert.Equal(t, map[string]any{
+					"precision": 10.0,
+					"scale":     3.0,
+					"other":     []any{1.0, 2.0, 3.0},
+				}, rec.Props())
+				assert.Equal(t, avro.Date, rec.Logical().Type())
+			},
+		},
+		{
+			name: "primitive-decimal-logical-type",
+			schema: `{
+				"type": "bytes",
+				"logicalType": "decimal",
+				"precision": 10,
+				"scale": 3,
+				"other": [1,2,3]
+			}`,
+			check: func(t *testing.T, schema avro.Schema) {
+				rec := schema.(*avro.PrimitiveSchema)
+				assert.Equal(t, map[string]any{
+					"other": []any{1.0, 2.0, 3.0},
+				}, rec.Props())
+				assert.Equal(t, avro.Decimal, rec.Logical().Type())
+			},
+		},
+		{
+			name: "primitive-invalid-decimal-logical-type-bad-values", // scale is too high
+			schema: `{
+				"type": "bytes",
+				"logicalType": "decimal",
+				"precision": 10,
+				"scale": 20,
+				"other": [1,2,3]
+			}`,
+			check: func(t *testing.T, schema avro.Schema) {
+				rec := schema.(*avro.PrimitiveSchema)
+				assert.Equal(t, map[string]any{
+					"logicalType": "decimal",
+					"precision":   10.0,
+					"scale":       20.0,
+					"other":       []any{1.0, 2.0, 3.0},
+				}, rec.Props())
+			},
+		},
+		{
+			name: "primitive-invalid-decimal-logical-type-bad-type", // precision and scale aren't ints
+			schema: `{
+				"type": "bytes",
+				"logicalType": "decimal",
+				"precision": "abc",
+				"scale": "def",
+				"other": [1,2,3]
+			}`,
+			check: func(t *testing.T, schema avro.Schema) {
+				rec := schema.(*avro.PrimitiveSchema)
+				assert.Equal(t, map[string]any{
+					"logicalType": "decimal",
+					"precision":   "abc",
+					"scale":       "def",
+					"other":       []any{1.0, 2.0, 3.0},
+				}, rec.Props())
+			},
+		},
+		{
+			name: "null",
+			schema: `{
+				"type": "null",
+				"name": "SomeMap",
+				"logicalType": "weights",
+				"precision": "abc",
+				"scale": "def",
+				"other": [1,2,3]
+			}`,
+			check: func(t *testing.T, schema avro.Schema) {
+				rec := schema.(*avro.NullSchema)
+				assert.Equal(t, map[string]any{
+					"name":        "SomeMap",
+					"logicalType": "weights",
+					"precision":   "abc",
+					"scale":       "def",
+					"other":       []any{1.0, 2.0, 3.0},
+				}, rec.Props())
+			},
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			schema, err := avro.Parse(testCase.schema)
+			require.NoError(t, err)
+			testCase.check(t, schema)
+		})
+	}
+}
+
+func TestNewSchema_IgnoresInvalidProperties(t *testing.T) {
+	t.Run("record", func(t *testing.T) {
+		rec, err := avro.NewRecordSchema("abc.def.Xyz", "", nil,
+			avro.WithProps(map[string]any{
+				// invalid (conflict with other type properties)
+				"name":      123,
+				"namespace": "abc",
+				"doc":       "blah",
+				"fields":    []any{1, 2, 3},
+				"aliases":   "foo",
+				"type":      false,
+				// valid
+				"other":       true,
+				"logicalType": "baz",
+			}))
+		require.NoError(t, err)
+		assert.Equal(t, map[string]any{
+			"other":       true,
+			"logicalType": "baz",
+		}, rec.Props())
+	})
+	t.Run("enum", func(t *testing.T) {
+		rec, err := avro.NewEnumSchema("abc.def.Xyz", "", []string{"ABC"},
+			avro.WithProps(map[string]any{
+				// invalid (conflict with other type properties)
+				"name":      123,
+				"namespace": "abc",
+				"doc":       "blah",
+				"symbols":   []any{1, 2, 3},
+				"aliases":   "foo",
+				"type":      false,
+				"default":   123.456,
+				// valid
+				"other":       true,
+				"logicalType": "baz",
+			}))
+		require.NoError(t, err)
+		assert.Equal(t, map[string]any{
+			"other":       true,
+			"logicalType": "baz",
+		}, rec.Props())
+	})
+	t.Run("fixed-no-logical-type", func(t *testing.T) {
+		rec, err := avro.NewFixedSchema("abc.def.Xyz", "", 10, nil,
+			avro.WithProps(map[string]any{
+				// invalid (conflict with other type properties)
+				"name":      123,
+				"namespace": "abc",
+				"size":      []any{1, 2, 3},
+				"aliases":   "foo",
+				"type":      false,
+				// valid
+				"doc":         "blah",
+				"other":       true,
+				"logicalType": "baz",
+				"precision":   "abc",
+				"scale":       "def",
+			}))
+		require.NoError(t, err)
+		assert.Equal(t, map[string]any{
+			"doc":         "blah",
+			"other":       true,
+			"logicalType": "baz",
+			"precision":   "abc",
+			"scale":       "def",
+		}, rec.Props())
+	})
+	t.Run("fixed-logical-type", func(t *testing.T) {
+		rec, err := avro.NewFixedSchema("abc.def.Xyz", "", 10, avro.NewPrimitiveLogicalSchema(avro.Duration),
+			avro.WithProps(map[string]any{
+				// invalid (conflict with other type properties)
+				"name":        123,
+				"namespace":   "abc",
+				"size":        []any{1, 2, 3},
+				"aliases":     "foo",
+				"type":        false,
+				"logicalType": "baz",
+				// valid
+				"doc":       "blah",
+				"other":     true,
+				"precision": "abc",
+				"scale":     "def",
+			}))
+		require.NoError(t, err)
+		assert.Equal(t, map[string]any{
+			"doc":       "blah",
+			"other":     true,
+			"precision": "abc",
+			"scale":     "def",
+		}, rec.Props())
+	})
+	t.Run("fixed-decimal-logical-type", func(t *testing.T) {
+		rec, err := avro.NewFixedSchema("abc.def.Xyz", "", 10, avro.NewDecimalLogicalSchema(10, 0),
+			avro.WithProps(map[string]any{
+				// invalid (conflict with other type properties)
+				"name":        123,
+				"namespace":   "abc",
+				"size":        []any{1, 2, 3},
+				"aliases":     "foo",
+				"type":        false,
+				"logicalType": "baz",
+				"precision":   "abc",
+				"scale":       "def",
+				// valid
+				"doc":   "blah",
+				"other": true,
+			}))
+		require.NoError(t, err)
+		assert.Equal(t, map[string]any{
+			"doc":   "blah",
+			"other": true,
+		}, rec.Props())
+	})
+	t.Run("array", func(t *testing.T) {
+		rec := avro.NewArraySchema(avro.NewPrimitiveSchema(avro.String, nil),
+			avro.WithProps(map[string]any{
+				// invalid (conflict with other type properties)
+				"items": []any{1, 2, 3},
+				"type":  false,
+				// valid
+				"name":        123,
+				"namespace":   "abc",
+				"doc":         "blah",
+				"aliases":     "foo",
+				"other":       true,
+				"logicalType": "baz",
+			}))
+		assert.Equal(t, map[string]any{
+			"name":        123,
+			"namespace":   "abc",
+			"doc":         "blah",
+			"aliases":     "foo",
+			"other":       true,
+			"logicalType": "baz",
+		}, rec.Props())
+	})
+	t.Run("map", func(t *testing.T) {
+		rec := avro.NewMapSchema(avro.NewPrimitiveSchema(avro.String, nil),
+			avro.WithProps(map[string]any{
+				// invalid (conflict with other type properties)
+				"values": []any{1, 2, 3},
+				"type":   false,
+				// valid
+				"name":        123,
+				"namespace":   "abc",
+				"doc":         "blah",
+				"aliases":     "foo",
+				"other":       true,
+				"logicalType": "baz",
+			}))
+		assert.Equal(t, map[string]any{
+			"name":        123,
+			"namespace":   "abc",
+			"doc":         "blah",
+			"aliases":     "foo",
+			"other":       true,
+			"logicalType": "baz",
+		}, rec.Props())
+	})
+	t.Run("primitive-no-logical-type", func(t *testing.T) {
+		rec := avro.NewPrimitiveSchema(avro.Long, nil,
+			avro.WithProps(map[string]any{
+				// invalid (conflict with other type properties)
+				"type": false,
+				// valid
+				"name":        123,
+				"namespace":   "abc",
+				"size":        []any{1, 2, 3},
+				"aliases":     "foo",
+				"doc":         "blah",
+				"other":       true,
+				"logicalType": "baz",
+				"precision":   "abc",
+				"scale":       "def",
+			}))
+		assert.Equal(t, map[string]any{
+			"name":        123,
+			"namespace":   "abc",
+			"size":        []any{1, 2, 3},
+			"aliases":     "foo",
+			"doc":         "blah",
+			"other":       true,
+			"logicalType": "baz",
+			"precision":   "abc",
+			"scale":       "def",
+		}, rec.Props())
+	})
+	t.Run("primitive-logical-type", func(t *testing.T) {
+		rec := avro.NewPrimitiveSchema(avro.Long, avro.NewPrimitiveLogicalSchema(avro.TimestampMicros),
+			avro.WithProps(map[string]any{
+				// invalid (conflict with other type properties)
+				"type":        false,
+				"logicalType": "baz",
+				// valid
+				"name":      123,
+				"namespace": "abc",
+				"size":      []any{1, 2, 3},
+				"aliases":   "foo",
+				"doc":       "blah",
+				"other":     true,
+				"precision": "abc",
+				"scale":     "def",
+			}))
+		assert.Equal(t, map[string]any{
+			"name":      123,
+			"namespace": "abc",
+			"size":      []any{1, 2, 3},
+			"aliases":   "foo",
+			"doc":       "blah",
+			"other":     true,
+			"precision": "abc",
+			"scale":     "def",
+		}, rec.Props())
+	})
+	t.Run("primitive-decimal-logical-type", func(t *testing.T) {
+		rec := avro.NewPrimitiveSchema(avro.Bytes, avro.NewDecimalLogicalSchema(10, 0),
+			avro.WithProps(map[string]any{
+				// invalid (conflict with other type properties)
+				"type":        false,
+				"logicalType": "baz",
+				"precision":   "abc",
+				"scale":       "def",
+				// valid
+				"name":      123,
+				"namespace": "abc",
+				"size":      []any{1, 2, 3},
+				"aliases":   "foo",
+				"doc":       "blah",
+				"other":     true,
+			}))
+		assert.Equal(t, map[string]any{
+			"name":      123,
+			"namespace": "abc",
+			"size":      []any{1, 2, 3},
+			"aliases":   "foo",
+			"doc":       "blah",
+			"other":     true,
+		}, rec.Props())
+	})
+	t.Run("null", func(t *testing.T) {
+		rec := avro.NewNullSchema(
+			avro.WithProps(map[string]any{
+				// invalid (conflict with other type properties)
+				"type": false,
+				// valid
+				"name":        123,
+				"namespace":   "abc",
+				"doc":         "blah",
+				"aliases":     "foo",
+				"other":       true,
+				"logicalType": "baz",
+				"precision":   "abc",
+				"scale":       "def",
+			}))
+		assert.Equal(t, map[string]any{
+			"name":        123,
+			"namespace":   "abc",
+			"doc":         "blah",
+			"aliases":     "foo",
+			"other":       true,
+			"logicalType": "baz",
+			"precision":   "abc",
+			"scale":       "def",
+		}, rec.Props())
+	})
 }

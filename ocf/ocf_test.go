@@ -1074,6 +1074,7 @@ func TestWithSchemaMarshaler(t *testing.T) {
 				"name": "meta",
 				"type": {
 					"type": "array",
+					"logicalType": "map",
 					"items": {
 						"type": "record",
 						"name": "FooMetadataEntry",

@@ -24,6 +24,10 @@ func TestSchema_JSON(t *testing.T) {
 			json:  `"null"`,
 		},
 		{
+			input: `{"type":"null","other":"foo"}`,
+			json:  `{"type":"null","other":"foo"}`,
+		},
+		{
 			input: `"boolean"`,
 			json:  `"boolean"`,
 		},
