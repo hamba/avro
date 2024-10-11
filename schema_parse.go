@@ -135,13 +135,7 @@ func parseComplexType(namespace string, m map[string]any, seen seenCache, cache 
 	typ := Type(str)
 
 	switch typ {
-	case Null:
-		// TODO: Per the spec, "null" is a primitive type so should be permitted to
-		//       have other properties/metadata.
-		//       	https://avro.apache.org/docs/1.12.0/specification/#primitive-types
-		return &NullSchema{}, nil
-
-	case String, Bytes, Int, Long, Float, Double, Boolean:
+	case String, Bytes, Int, Long, Float, Double, Boolean, Null:
 		return parsePrimitive(typ, m)
 
 	case Record, Error:
@@ -172,6 +166,9 @@ type primitiveSchema struct {
 
 func parsePrimitive(typ Type, m map[string]any) (Schema, error) {
 	if len(m) == 0 {
+		if typ == Null {
+			return &NullSchema{}, nil
+		}
 		return NewPrimitiveSchema(typ, nil), nil
 	}
 
@@ -191,6 +188,9 @@ func parsePrimitive(typ Type, m map[string]any) (Schema, error) {
 		}
 	}
 
+	if typ == Null {
+		return NewNullSchema(WithProps(p.Props)), nil
+	}
 	return NewPrimitiveSchema(typ, logical, WithProps(p.Props)), nil
 }
 

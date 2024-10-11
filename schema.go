@@ -1429,7 +1429,20 @@ func (s *FixedSchema) CacheFingerprint() [32]byte {
 
 // NullSchema is an Avro null type schema.
 type NullSchema struct {
+	properties
 	fingerprinter
+}
+
+// NewNullSchema creates a new NullSchema.
+func NewNullSchema(opts ...SchemaOption) *NullSchema {
+	var cfg schemaConfig
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
+	return &NullSchema{
+		properties: newProperties(cfg.props, primitiveReserved),
+	}
 }
 
 // Type returns the type of the schema.
@@ -1444,7 +1457,16 @@ func (s *NullSchema) String() string {
 
 // MarshalJSON marshals the schema to json.
 func (s *NullSchema) MarshalJSON() ([]byte, error) {
-	return []byte(`"null"`), nil
+	if len(s.props) == 0 {
+		return []byte(`"null"`), nil
+	}
+	buf := new(bytes.Buffer)
+	buf.WriteString(`{"type":"null"`)
+	if err := s.marshalPropertiesToJSON(buf); err != nil {
+		return nil, err
+	}
+	buf.WriteString("}")
+	return buf.Bytes(), nil
 }
 
 // Fingerprint returns the SHA256 fingerprint of the schema.

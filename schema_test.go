@@ -58,6 +58,7 @@ func TestNullSchema(t *testing.T) {
 	schemas := []string{
 		`null`,
 		`{"type":"null"}`,
+		`{"type":"null", "other-property": 123, "another-property": ["a","b","c"]}`,
 	}
 
 	for _, schm := range schemas {
@@ -1892,6 +1893,27 @@ func TestParse_PreservesAllProperties(t *testing.T) {
 				}, rec.Props())
 			},
 		},
+		{
+			name: "null",
+			schema: `{
+				"type": "null",
+				"name": "SomeMap",
+				"logicalType": "weights",
+				"precision": "abc",
+				"scale": "def",
+				"other": [1,2,3]
+			}`,
+			check: func(t *testing.T, schema avro.Schema) {
+				rec := schema.(*avro.NullSchema)
+				assert.Equal(t, map[string]any{
+					"name":        "SomeMap",
+					"logicalType": "weights",
+					"precision":   "abc",
+					"scale":       "def",
+					"other":       []any{1.0, 2.0, 3.0},
+				}, rec.Props())
+			},
+		},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -2139,6 +2161,32 @@ func TestNewSchema_IgnoresInvalidProperties(t *testing.T) {
 			"aliases":   "foo",
 			"doc":       "blah",
 			"other":     true,
+		}, rec.Props())
+	})
+	t.Run("null", func(t *testing.T) {
+		rec := avro.NewNullSchema(
+			avro.WithProps(map[string]any{
+				// invalid (conflict with other type properties)
+				"type": false,
+				// valid
+				"name":        123,
+				"namespace":   "abc",
+				"doc":         "blah",
+				"aliases":     "foo",
+				"other":       true,
+				"logicalType": "baz",
+				"precision":   "abc",
+				"scale":       "def",
+			}))
+		assert.Equal(t, map[string]any{
+			"name":        123,
+			"namespace":   "abc",
+			"doc":         "blah",
+			"aliases":     "foo",
+			"other":       true,
+			"logicalType": "baz",
+			"precision":   "abc",
+			"scale":       "def",
 		}, rec.Props())
 	})
 }
