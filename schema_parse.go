@@ -161,9 +161,8 @@ func parseComplexType(namespace string, m map[string]any, seen seenCache, cache 
 }
 
 type primitiveSchema struct {
-	Type        string         `mapstructure:"type"`
-	LogicalType string         `mapstructure:"logicalType"`
-	Props       map[string]any `mapstructure:",remain"`
+	Type  string         `mapstructure:"type"`
+	Props map[string]any `mapstructure:",remain"`
 }
 
 func parsePrimitive(typ Type, m map[string]any) (Schema, error) {
@@ -183,10 +182,10 @@ func parsePrimitive(typ Type, m map[string]any) (Schema, error) {
 	}
 
 	var logical LogicalSchema
-	if p.LogicalType != "" {
-		logical = parsePrimitiveLogicalType(typ, p.LogicalType, p.Props)
-		if logical == nil {
-			preserveLogicalType(p.LogicalType, &p.Props)
+	if logicalType := logicalTypeProperty(p.Props); logicalType != "" {
+		logical = parsePrimitiveLogicalType(typ, logicalType, p.Props)
+		if logical != nil {
+			delete(p.Props, "logicalType")
 		}
 	}
 
@@ -240,9 +239,6 @@ func parseRecord(typ Type, namespace string, m map[string]any, seen seenCache, c
 	}
 	if r.Namespace == "" {
 		r.Namespace = namespace
-	}
-	if err := checkLogicalType(r.Props); err != nil {
-		return nil, err
 	}
 
 	if !hasKey(meta.Keys, "fields") {
@@ -360,9 +356,6 @@ func parseEnum(namespace string, m map[string]any, seen seenCache, cache *Schema
 	if e.Namespace == "" {
 		e.Namespace = namespace
 	}
-	if err := checkLogicalType(e.Props); err != nil {
-		return nil, err
-	}
 
 	enum, err := NewEnumSchema(e.Name, e.Namespace, e.Symbols,
 		WithDefault(e.Default), WithAliases(e.Aliases), WithDoc(e.Doc), WithProps(e.Props),
@@ -406,9 +399,6 @@ func parseArray(namespace string, m map[string]any, seen seenCache, cache *Schem
 	if err != nil {
 		return nil, err
 	}
-	if err := checkLogicalType(a.Props); err != nil {
-		return nil, err
-	}
 
 	return NewArraySchema(schema, WithProps(a.Props)), nil
 }
@@ -435,9 +425,6 @@ func parseMap(namespace string, m map[string]any, seen seenCache, cache *SchemaC
 	if err != nil {
 		return nil, err
 	}
-	if err := checkLogicalType(ms.Props); err != nil {
-		return nil, err
-	}
 
 	return NewMapSchema(schema, WithProps(ms.Props)), nil
 }
@@ -456,13 +443,12 @@ func parseUnion(namespace string, v []any, seen seenCache, cache *SchemaCache) (
 }
 
 type fixedSchema struct {
-	Name        string         `mapstructure:"name"`
-	Namespace   string         `mapstructure:"namespace"`
-	Aliases     []string       `mapstructure:"aliases"`
-	Type        string         `mapstructure:"type"`
-	Size        int            `mapstructure:"size"`
-	LogicalType string         `mapstructure:"logicalType"`
-	Props       map[string]any `mapstructure:",remain"`
+	Name      string         `mapstructure:"name"`
+	Namespace string         `mapstructure:"namespace"`
+	Aliases   []string       `mapstructure:"aliases"`
+	Type      string         `mapstructure:"type"`
+	Size      int            `mapstructure:"size"`
+	Props     map[string]any `mapstructure:",remain"`
 }
 
 func parseFixed(namespace string, m map[string]any, seen seenCache, cache *SchemaCache) (Schema, error) {
@@ -486,10 +472,10 @@ func parseFixed(namespace string, m map[string]any, seen seenCache, cache *Schem
 	}
 
 	var logical LogicalSchema
-	if f.LogicalType != "" {
-		logical = parseFixedLogicalType(f.Size, f.LogicalType, f.Props)
-		if logical == nil {
-			preserveLogicalType(f.LogicalType, &f.Props)
+	if logicalType := logicalTypeProperty(f.Props); logicalType != "" {
+		logical = parseFixedLogicalType(f.Size, logicalType, f.Props)
+		if logical != nil {
+			delete(f.Props, "logicalType")
 		}
 	}
 
@@ -643,23 +629,9 @@ func (c seenCache) Add(name string) error {
 	return nil
 }
 
-func preserveLogicalType(logicalType string, props *map[string]any) {
-	if logicalType == "" {
-		return // nothing to preserve
+func logicalTypeProperty(props map[string]any) string {
+	if lt, ok := props["logicalType"].(string); ok {
+		return lt
 	}
-	if *props == nil {
-		*props = make(map[string]any, 1)
-	}
-	(*props)["logicalType"] = logicalType
-}
-
-func checkLogicalType(props map[string]any) error {
-	val, ok := props["logicalType"]
-	if !ok {
-		return nil
-	}
-	if _, isString := val.(string); !isString {
-		return fmt.Errorf(`"logicalType" attribute must be a string, got %T`, val)
-	}
-	return nil
+	return ""
 }

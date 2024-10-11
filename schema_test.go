@@ -1696,6 +1696,30 @@ func TestParse_PreservesAllProperties(t *testing.T) {
 			},
 		},
 		{
+			name: "fixed-invalid-logical-type",
+			schema: `{
+				"type": "fixed",
+				"name": "SomeFixed",
+				"size": 16,
+				"logicalType": {"foo": "bar", "baz": ["x","y","z"]},
+				"precision": "abc",
+				"scale": "def",
+				"other": [1,2,3]
+			}`,
+			check: func(t *testing.T, schema avro.Schema) {
+				rec := schema.(*avro.FixedSchema)
+				assert.Equal(t, map[string]any{
+					"logicalType": map[string]any{
+						"foo": "bar",
+						"baz": []any{"x", "y", "z"},
+					},
+					"precision": "abc",
+					"scale":     "def",
+					"other":     []any{1.0, 2.0, 3.0},
+				}, rec.Props())
+			},
+		},
+		{
 			name: "fixed-decimal-logical-type",
 			schema: `{
 				"type": "fixed",
@@ -1816,6 +1840,30 @@ func TestParse_PreservesAllProperties(t *testing.T) {
 					"precision":   "abc",
 					"scale":       "def",
 					"other":       []any{1.0, 2.0, 3.0},
+				}, rec.Props())
+			},
+		},
+		{
+			name: "primitive-invalid-logical-type",
+			schema: `{
+				"type": "string",
+				"name": "SomeString",
+				"logicalType": {"foo": "bar", "baz": ["x","y","z"]},
+				"precision": "abc",
+				"scale": "def",
+				"other": [1,2,3]
+			}`,
+			check: func(t *testing.T, schema avro.Schema) {
+				rec := schema.(*avro.PrimitiveSchema)
+				assert.Equal(t, map[string]any{
+					"name": "SomeString",
+					"logicalType": map[string]any{
+						"foo": "bar",
+						"baz": []any{"x", "y", "z"},
+					},
+					"precision": "abc",
+					"scale":     "def",
+					"other":     []any{1.0, 2.0, 3.0},
 				}, rec.Props())
 			},
 		},
