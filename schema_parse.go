@@ -121,10 +121,12 @@ func parsePrimitiveType(namespace, s string, cache *SchemaCache) (Schema, error)
 
 func parseComplexType(namespace string, m map[string]any, seen seenCache, cache *SchemaCache) (Schema, error) {
 	if val, ok := m["type"].([]any); ok {
-		// TODO: According to the spec, this is not allowed:
-		//       	https://avro.apache.org/docs/1.12.0/specification/#schema-declaration
-		//       The "type" property in an object must be a string. A union type will be a slice,
-		//       but not an object with a "type" property that is a slice.
+		// Note: According to the spec, this is not allowed:
+		// 		https://avro.apache.org/docs/1.12.0/specification/#schema-declaration
+		// The "type" property in an object must be a string. A union type will be a slice,
+		// but NOT an object with a "type" property that is a slice.
+		// Might be advisable to remove this call (tradeoff between better conformance
+		// with the spec vs. possible backwards-compatibility issue).
 		return parseUnion(namespace, val, seen, cache)
 	}
 
@@ -194,7 +196,7 @@ func parsePrimitive(typ Type, m map[string]any) (Schema, error) {
 	return NewPrimitiveSchema(typ, logical, WithProps(p.Props)), nil
 }
 
-func parsePrimitiveLogicalType(typ Type, lt string, otherProps map[string]any) LogicalSchema {
+func parsePrimitiveLogicalType(typ Type, lt string, props map[string]any) LogicalSchema {
 	ltyp := LogicalType(lt)
 	if (typ == String && ltyp == UUID) ||
 		(typ == Int && ltyp == Date) ||
@@ -208,21 +210,20 @@ func parsePrimitiveLogicalType(typ Type, lt string, otherProps map[string]any) L
 	}
 
 	if typ == Bytes && ltyp == Decimal {
-		return parseDecimalLogicalType(-1, otherProps)
+		return parseDecimalLogicalType(-1, props)
 	}
 
 	return nil // otherwise, not a recognized logical type
 }
 
 type recordSchema struct {
-	Type        string           `mapstructure:"type"`
-	LogicalType string           `mapstructure:"logicalType"`
-	Name        string           `mapstructure:"name"`
-	Namespace   string           `mapstructure:"namespace"`
-	Aliases     []string         `mapstructure:"aliases"`
-	Doc         string           `mapstructure:"doc"`
-	Fields      []map[string]any `mapstructure:"fields"`
-	Props       map[string]any   `mapstructure:",remain"`
+	Type      string           `mapstructure:"type"`
+	Name      string           `mapstructure:"name"`
+	Namespace string           `mapstructure:"namespace"`
+	Aliases   []string         `mapstructure:"aliases"`
+	Doc       string           `mapstructure:"doc"`
+	Fields    []map[string]any `mapstructure:"fields"`
+	Props     map[string]any   `mapstructure:",remain"`
 }
 
 func parseRecord(typ Type, namespace string, m map[string]any, seen seenCache, cache *SchemaCache) (Schema, error) {
@@ -240,7 +241,9 @@ func parseRecord(typ Type, namespace string, m map[string]any, seen seenCache, c
 	if r.Namespace == "" {
 		r.Namespace = namespace
 	}
-	preserveLogicalType(r.LogicalType, &r.Props)
+	if err := checkLogicalType(r.Props); err != nil {
+		return nil, err
+	}
 
 	if !hasKey(meta.Keys, "fields") {
 		return nil, errors.New("avro: record must have an array of fields")
@@ -332,15 +335,14 @@ func parseField(namespace string, m map[string]any, seen seenCache, cache *Schem
 }
 
 type enumSchema struct {
-	Name        string         `mapstructure:"name"`
-	Namespace   string         `mapstructure:"namespace"`
-	Aliases     []string       `mapstructure:"aliases"`
-	Type        string         `mapstructure:"type"`
-	LogicalType string         `mapstructure:"logicalType"`
-	Doc         string         `mapstructure:"doc"`
-	Symbols     []string       `mapstructure:"symbols"`
-	Default     string         `mapstructure:"default"`
-	Props       map[string]any `mapstructure:",remain"`
+	Name      string         `mapstructure:"name"`
+	Namespace string         `mapstructure:"namespace"`
+	Aliases   []string       `mapstructure:"aliases"`
+	Type      string         `mapstructure:"type"`
+	Doc       string         `mapstructure:"doc"`
+	Symbols   []string       `mapstructure:"symbols"`
+	Default   string         `mapstructure:"default"`
+	Props     map[string]any `mapstructure:",remain"`
 }
 
 func parseEnum(namespace string, m map[string]any, seen seenCache, cache *SchemaCache) (Schema, error) {
@@ -358,7 +360,9 @@ func parseEnum(namespace string, m map[string]any, seen seenCache, cache *Schema
 	if e.Namespace == "" {
 		e.Namespace = namespace
 	}
-	preserveLogicalType(e.LogicalType, &e.Props)
+	if err := checkLogicalType(e.Props); err != nil {
+		return nil, err
+	}
 
 	enum, err := NewEnumSchema(e.Name, e.Namespace, e.Symbols,
 		WithDefault(e.Default), WithAliases(e.Aliases), WithDoc(e.Doc), WithProps(e.Props),
@@ -381,10 +385,9 @@ func parseEnum(namespace string, m map[string]any, seen seenCache, cache *Schema
 }
 
 type arraySchema struct {
-	Type        string         `mapstructure:"type"`
-	LogicalType string         `mapstructure:"logicalType"`
-	Items       any            `mapstructure:"items"`
-	Props       map[string]any `mapstructure:",remain"`
+	Type  string         `mapstructure:"type"`
+	Items any            `mapstructure:"items"`
+	Props map[string]any `mapstructure:",remain"`
 }
 
 func parseArray(namespace string, m map[string]any, seen seenCache, cache *SchemaCache) (Schema, error) {
@@ -403,16 +406,17 @@ func parseArray(namespace string, m map[string]any, seen seenCache, cache *Schem
 	if err != nil {
 		return nil, err
 	}
-	preserveLogicalType(a.LogicalType, &a.Props)
+	if err := checkLogicalType(a.Props); err != nil {
+		return nil, err
+	}
 
 	return NewArraySchema(schema, WithProps(a.Props)), nil
 }
 
 type mapSchema struct {
-	Type        string         `mapstructure:"type"`
-	LogicalType string         `mapstructure:"logicalType"`
-	Values      any            `mapstructure:"values"`
-	Props       map[string]any `mapstructure:",remain"`
+	Type   string         `mapstructure:"type"`
+	Values any            `mapstructure:"values"`
+	Props  map[string]any `mapstructure:",remain"`
 }
 
 func parseMap(namespace string, m map[string]any, seen seenCache, cache *SchemaCache) (Schema, error) {
@@ -431,7 +435,9 @@ func parseMap(namespace string, m map[string]any, seen seenCache, cache *SchemaC
 	if err != nil {
 		return nil, err
 	}
-	preserveLogicalType(ms.LogicalType, &ms.Props)
+	if err := checkLogicalType(ms.Props); err != nil {
+		return nil, err
+	}
 
 	return NewMapSchema(schema, WithProps(ms.Props)), nil
 }
@@ -505,13 +511,13 @@ func parseFixed(namespace string, m map[string]any, seen seenCache, cache *Schem
 	return fixed, nil
 }
 
-func parseFixedLogicalType(size int, lt string, otherProps map[string]any) LogicalSchema {
+func parseFixedLogicalType(size int, lt string, props map[string]any) LogicalSchema {
 	ltyp := LogicalType(lt)
 	switch {
 	case ltyp == Duration && size == 12:
 		return NewPrimitiveLogicalSchema(Duration)
 	case ltyp == Decimal:
-		return parseDecimalLogicalType(size, otherProps)
+		return parseDecimalLogicalType(size, props)
 	}
 
 	return nil
@@ -522,19 +528,19 @@ type decimalSchema struct {
 	Scale     int `mapstructure:"scale"`
 }
 
-func parseDecimalLogicalType(size int, otherProps map[string]any) LogicalSchema {
+func parseDecimalLogicalType(size int, props map[string]any) LogicalSchema {
 	var (
 		d    decimalSchema
 		meta mapstructure.Metadata
 	)
-	if err := decodeMap(otherProps, &d, &meta); err != nil {
+	if err := decodeMap(props, &d, &meta); err != nil {
 		return nil
 	}
 	decType := newDecimalLogicalType(size, d.Precision, d.Scale)
 	if decType != nil {
 		// Remove the properties that we consumed
-		delete(otherProps, "precision")
-		delete(otherProps, "scale")
+		delete(props, "precision")
+		delete(props, "scale")
 	}
 	return decType
 }
@@ -645,4 +651,15 @@ func preserveLogicalType(logicalType string, props *map[string]any) {
 		*props = make(map[string]any, 1)
 	}
 	(*props)["logicalType"] = logicalType
+}
+
+func checkLogicalType(props map[string]any) error {
+	val, ok := props["logicalType"]
+	if !ok {
+		return nil
+	}
+	if _, isString := val.(string); !isString {
+		return fmt.Errorf(`"logicalType" attribute must be a string, got %T`, val)
+	}
+	return nil
 }

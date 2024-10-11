@@ -27,14 +27,16 @@ var nullDefault nullDefaultType = struct{}{}
 var (
 	// Note: order matches the order of properties as they are named in the spec.
 	// 	https://avro.apache.org/docs/1.12.0/specification
-	recordReserved                   = []string{"type", "name", "namespace", "doc", "aliases", "fields"}
-	fieldReserved                    = []string{"name", "doc", "type", "order", "aliases", "default"}
-	enumReserved                     = []string{"type", "name", "namespace", "aliases", "doc", "symbols", "default"}
-	arrayReserved                    = []string{"type", "items"}
-	mapReserved                      = []string{"type", "values"}
-	fixedReserved                    = []string{"type", "name", "namespace", "aliases", "size"}
-	fixedWithLogicalTypeReserved     = []string{"type", "name", "namespace", "aliases", "size", "logicalType"}
-	fixedWithDecimalTypeReserved     = []string{"type", "name", "namespace", "aliases", "size", "logicalType", "precision", "scale"}
+	recordReserved               = []string{"type", "name", "namespace", "doc", "aliases", "fields"}
+	fieldReserved                = []string{"name", "doc", "type", "order", "aliases", "default"}
+	enumReserved                 = []string{"type", "name", "namespace", "aliases", "doc", "symbols", "default"}
+	arrayReserved                = []string{"type", "items"}
+	mapReserved                  = []string{"type", "values"}
+	fixedReserved                = []string{"type", "name", "namespace", "aliases", "size"}
+	fixedWithLogicalTypeReserved = []string{"type", "name", "namespace", "aliases", "size", "logicalType"}
+	fixedWithDecimalTypeReserved = []string{
+		"type", "name", "namespace", "aliases", "size", "logicalType", "precision", "scale",
+	}
 	primitiveReserved                = []string{"type"}
 	primitiveWithLogicalTypeReserved = []string{"type", "logicalType"}
 	primitiveWithDecimalTypeReserved = []string{"type", "logicalType", "precision", "scale"}
