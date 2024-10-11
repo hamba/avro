@@ -1,0 +1,43 @@
+{
+  "name": "foo.bar.baz.Bar",
+  "type": "record",
+  "fields": [
+    {
+      "name": "name",
+      "type": "string",
+      "field-id": 1
+    },
+    {
+      "name": "id",
+      "type": "long",
+      "field-id": 2
+    },
+    {
+      "name": "meta",
+      "type": {
+        "type": "array",
+        "items": {
+          "name": "foo.bar.baz.FooMetadataEntry",
+          "type": "record",
+          "fields": [
+            {
+              "name": "key",
+              "type": "string",
+              "field-id": 4
+            },
+            {
+              "name": "values",
+              "type": {
+                "type": "array",
+                "items": "string",
+                "element-id": 6
+              },
+              "field-id": 5
+            }
+          ]
+        }
+      },
+      "field-id": 3
+    }
+  ]
+}
