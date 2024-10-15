@@ -225,6 +225,42 @@ func TestDecoder_UnionPtrReversedNull(t *testing.T) {
 	assert.Nil(t, got)
 }
 
+func TestDecoder_UnionNullableMap(t *testing.T) {
+	tt := []struct {
+		name string
+		data []byte
+		want map[string]string
+	}{{
+		name: "WithData",
+		data: []byte{0x02, 0x01, 0x10, 0x06, 0x66, 0x6F, 0x6F, 0x06, 0x66, 0x6F, 0x6F, 0x00},
+		want: map[string]string{"foo": "foo"},
+	}, {
+		name: "Empty",
+		data: []byte{0x02, 0x00},
+		want: map[string]string{},
+	}, {
+		name: "Null",
+		data: []byte{0x00},
+		want: nil,
+	}}
+
+	schema := `["null", {"type":"map", "values": "string"}]`
+
+	for _, test := range tt {
+		t.Run(test.name, func(t *testing.T) {
+			defer ConfigTeardown()
+
+			dec, _ := avro.NewDecoder(schema, bytes.NewReader(test.data))
+
+			var got map[string]string
+			err := dec.Decode(&got)
+
+			require.NoError(t, err)
+			assert.Equal(t, test.want, got)
+		})
+	}
+}
+
 func TestDecoder_UnionNullableSlice(t *testing.T) {
 	defer ConfigTeardown()
 

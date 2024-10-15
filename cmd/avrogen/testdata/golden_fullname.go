@@ -4,6 +4,8 @@ package testpkg
 // Test is a test struct.
 type ABTest struct {
 	// SomeString is a string.
-	SomeString string `avro:"someString"`
-	SomeInt    int    `avro:"someInt"`
+	SomeString        string          `avro:"someString"`
+	SomeInt           int             `avro:"someInt"`
+	SomeNullableMap   *map[string]int `avro:"someNullableMap"`
+	SomeNullableSlice *[]int          `avro:"someNullableSlice"`
 }
