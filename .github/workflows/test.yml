@@ -44,7 +44,7 @@ jobs:
         uses: jandelgado/gcov2lcov-action@v1
 
       - name: Coveralls
-        uses: coverallsapp/github-action@v2.3.3
+        uses: coverallsapp/github-action@v2.3.4
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path-to-lcov: coverage.lcov
