@@ -12,7 +12,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/modern-go/reflect2 v1.0.2
 	github.com/stretchr/testify v1.9.0
-	golang.org/x/tools v0.27.0
+	golang.org/x/tools v0.28.0
 )
 
 require (
@@ -20,6 +20,6 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	golang.org/x/mod v0.22.0 // indirect
-	golang.org/x/sync v0.9.0 // indirect
+	golang.org/x/sync v0.10.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
