@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/hamba/avro/v2"
+	"github.com/justtrackio/avro/v2"
 )
 
 // DecoderFunc is a function used to customize the Decoder.

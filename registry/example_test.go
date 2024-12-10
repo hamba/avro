@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/hamba/avro/v2/registry"
+	"github.com/justtrackio/avro/v2/registry"
 )
 
 func Example() {

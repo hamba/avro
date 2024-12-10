@@ -13,7 +13,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/ettle/strcase"
-	"github.com/hamba/avro/v2"
+	"github.com/justtrackio/avro/v2"
 	"golang.org/x/tools/imports"
 )
 
@@ -124,7 +124,7 @@ func WithEncoders(b bool) OptsFunc {
 	return func(g *Generator) {
 		g.encoders = b
 		if b {
-			g.thirdPartyImports = append(g.thirdPartyImports, "github.com/hamba/avro/v2")
+			g.thirdPartyImports = append(g.thirdPartyImports, "github.com/justtrackio/avro/v2")
 		}
 	}
 }
@@ -242,7 +242,7 @@ func NewGenerator(pkg string, tags map[string]TagStyle, opts ...OptsFunc) *Gener
 	}
 
 	g.nameCaser = strcase.NewCaser(
-		true, // use standard Golint's initialisms
+		false, // use standard Golint's initialisms
 		initialisms,
 		nil, // use default word split function
 	)
@@ -395,7 +395,7 @@ func (g *Generator) resolveLogicalSchema(logicalType avro.LogicalType) string {
 		g.addImport("math/big")
 	}
 	if strings.Contains(typ, "avro") {
-		g.addThirdPartyImport("github.com/hamba/avro/v2")
+		g.addThirdPartyImport("github.com/justtrackio/avro/v2")
 	}
 	return typ
 }

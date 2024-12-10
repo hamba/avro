@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"container/heap"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -10,8 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/hamba/avro/v2"
-	"github.com/hamba/avro/v2/gen"
+	"github.com/justtrackio/avro/v2"
+	"github.com/justtrackio/avro/v2/gen"
 	"golang.org/x/tools/imports"
 )
 
@@ -89,7 +91,14 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 		gen.WithFullSchema(cfg.FullSchema),
 	}
 	g := gen.NewGenerator(cfg.Pkg, tags, opts...)
-	for _, file := range flgs.Args() {
+
+	files, err := sortFiles(flgs.Args())
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
+		return 2
+	}
+
+	for _, file := range files {
 		schema, err := avro.ParseFiles(filepath.Clean(file))
 		if err != nil {
 			_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
@@ -116,6 +125,167 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 		return 4
 	}
 	return 0
+}
+
+type doc struct {
+	Type      avro.Type
+	Name      string
+	Namespace string
+	Fields    []field
+}
+
+type field struct {
+	Name string
+	Type any
+}
+
+type graph map[string]map[string]struct{}
+
+func sortFiles(args []string) ([]string, error) {
+	deps := make(graph)
+
+	paths := make(map[string]string)
+	for _, filePath := range args {
+		file, err := os.Open(filepath.Clean(filePath))
+		if err != nil {
+			return nil, err
+		}
+
+		asBytes, err := io.ReadAll(file)
+		if err != nil {
+			return nil, err
+		}
+
+		var doc doc
+		if err := json.Unmarshal(asBytes, &doc); err != nil {
+			return nil, err
+		}
+
+		name := fmt.Sprintf("%s.%s", doc.Namespace, doc.Name)
+		paths[name] = filePath
+
+		if _, ok := deps[name]; !ok {
+			deps[name] = make(map[string]struct{})
+		}
+
+		for _, f := range doc.Fields {
+			for _, dep := range getDependencies(f.Type) {
+				if !strings.Contains(dep, ".") {
+					dep = fmt.Sprintf("%s.%s", doc.Namespace, dep)
+				}
+
+				if _, ok := deps[dep]; !ok {
+					deps[dep] = make(map[string]struct{})
+				}
+
+				deps[dep][name] = struct{}{}
+			}
+		}
+	}
+
+	indegree := make(map[string]int)
+	for node := range deps {
+		indegree[node] = 0
+	}
+
+	for _, neighbours := range deps {
+		for neighbor := range neighbours {
+			indegree[neighbor]++
+		}
+	}
+
+	sorted, err := kahnTopologicSort(deps, indegree)
+	if err != nil {
+		return nil, err
+	}
+
+	var sortedPaths []string
+	for _, it := range sorted {
+		if path, ok := paths[it]; ok {
+			sortedPaths = append(sortedPaths, path)
+		} else {
+			return nil, fmt.Errorf("could not find path for %s", it)
+		}
+	}
+
+	return sortedPaths, nil
+}
+
+type MinHeap []string
+
+func (h MinHeap) Len() int           { return len(h) }
+func (h MinHeap) Less(i, j int) bool { return h[i] < h[j] }
+func (h MinHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+func (h *MinHeap) Push(x any) {
+	*h = append(*h, x.(string))
+}
+
+func (h *MinHeap) Pop() any {
+	old := *h
+	n := len(old)
+	x := old[n-1]
+	*h = old[:n-1]
+	return x
+}
+
+func kahnTopologicSort(deps graph, indegree map[string]int) ([]string, error) {
+	queue := &MinHeap{}
+	heap.Init(queue)
+
+	var result []string
+
+	for node, deg := range indegree {
+		if deg == 0 {
+			heap.Push(queue, node)
+		}
+	}
+
+	for queue.Len() > 0 {
+		front := heap.Pop(queue)
+		node := front.(string)
+		result = append(result, node)
+
+		for neighbor := range deps[node] {
+			indegree[neighbor]--
+			if indegree[neighbor] == 0 {
+				heap.Push(queue, neighbor)
+			}
+		}
+	}
+
+	if len(result) != len(deps) {
+		return nil, fmt.Errorf("could not sort files, since they contain a cyclic dependency, or files are missing")
+	}
+
+	return result, nil
+}
+
+func isBuildIn(t string) bool {
+	switch avro.Type(t) {
+	case avro.String, avro.Bytes, avro.Fixed, avro.Int, avro.Long, avro.Double, avro.Boolean, avro.Null, avro.Float, avro.Array, avro.Map:
+		return true
+	}
+
+	return false
+}
+
+func getDependencies(t any) (deps []string) {
+	switch val := t.(type) {
+	case nil:
+		return deps
+	case string:
+		if !isBuildIn(val) {
+			deps = append(deps, val)
+		}
+	case []any:
+		for _, it := range val {
+			deps = append(deps, getDependencies(it)...)
+		}
+	case map[string]any:
+		deps = append(deps, getDependencies(val["type"])...)
+	}
+
+	return
 }
 
 func writeOut(filename string, stdout io.Writer, bytes []byte) error {
