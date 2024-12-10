@@ -5,6 +5,8 @@
   "doc": "Test is a test struct",
   "fields": [
     { "name": "someString", "type": "string", "doc": "SomeString is a string" },
-    { "name": "someInt", "type": "int" }
+    { "name": "someInt", "type": "int" },
+    { "name":  "someNullableMap", "type":  ["null", {"type": "map", "values": "int"}]},
+    { "name":  "someNullableSlice", "type":  ["null", {"type": "array", "items": "int"}]}
   ]
 }

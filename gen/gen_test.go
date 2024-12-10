@@ -186,6 +186,60 @@ func TestStruct_ConfigurableLogicalTypes(t *testing.T) {
 	}
 }
 
+func TestStruct_GenPlain(t *testing.T) {
+	tt := []struct {
+		name, schema string
+		lines        []string
+		cfg          gen.Config
+	}{
+		{
+			name: "Map",
+			schema: `{
+  "type": "record",
+  "name": "test",
+  "fields": [
+    { "name": "someRegularMap", "type": {"type": "map", "values": "int"}},
+    { "name":  "someNullableMap", "type":  ["null", {"type": "map", "values": "int"}]}
+  ]
+}`,
+			lines: []string{
+				"SomeRegularMap map[string]int `avro:\"someRegularMap\"`",
+				"SomeNullableMap map[string]int `avro:\"someNullableMap\"`",
+			},
+			cfg: gen.Config{PackageName: "Something", PlainMap: true},
+		}, {
+			name: "Slice",
+			schema: `{
+  "type": "record",
+  "name": "test",
+  "fields": [
+
+	{ "name":  "someRegularSlice", "type": {"type": "array", "items": "int"}},
+	{ "name":  "someNullableSlice", "type":  ["null", {"type": "array", "items": "int"}]}
+  ]
+}`,
+			lines: []string{
+				"SomeRegularSlice []int `avro:\"someRegularSlice\"`",
+				"SomeNullableSlice []int `avro:\"someNullableSlice\"`",
+			},
+			cfg: gen.Config{PackageName: "Something", PlainSlice: true},
+		},
+	}
+
+	for _, test := range tt {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, lines := generate(t, test.schema, test.cfg)
+
+			for _, line := range test.lines {
+				assert.Contains(t, lines, line)
+			}
+
+		})
+	}
+}
+
 func TestStruct_GenFromRecordSchema(t *testing.T) {
 	fileName := "testdata/golden.go"
 	gc := gen.Config{PackageName: "Something"}
