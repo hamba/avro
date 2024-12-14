@@ -8,11 +8,13 @@ import (
 // Test is a test struct.
 type Test struct {
 	// SomeString is a string.
-	SomeString string `avro:"someString"`
-	SomeInt    int    `avro:"someInt"`
+	SomeString        string          `avro:"someString"`
+	SomeInt           int             `avro:"someInt"`
+	SomeNullableMap   *map[string]int `avro:"someNullableMap"`
+	SomeNullableSlice *[]int          `avro:"someNullableSlice"`
 }
 
-var schemaTest = avro.MustParse(`{"name":"a.b.test","type":"record","fields":[{"name":"someString","type":"string"},{"name":"someInt","type":"int"}]}`)
+var schemaTest = avro.MustParse(`{"name":"a.b.test","type":"record","fields":[{"name":"someString","type":"string"},{"name":"someInt","type":"int"},{"name":"someNullableMap","type":["null",{"type":"map","values":"int"}]},{"name":"someNullableSlice","type":["null",{"type":"array","items":"int"}]}]}`)
 
 // Schema returns the schema for Test.
 func (o *Test) Schema() avro.Schema {

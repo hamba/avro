@@ -256,6 +256,43 @@ func TestEncoder_UnionPtrNotNullable(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestEncoder_UnionNullableMap(t *testing.T) {
+	tt := []struct {
+		name string
+		data map[string]string
+		want []byte
+	}{{
+		name: "WithData",
+		data: map[string]string{"foo": "foo"},
+		want: []byte{0x02, 0x01, 0x10, 0x06, 0x66, 0x6F, 0x6F, 0x06, 0x66, 0x6F, 0x6F, 0x00},
+	}, {
+		name: "Empty",
+		data: map[string]string{},
+		want: []byte{0x02, 0x00},
+	}, {
+		name: "Null",
+		data: nil,
+		want: []byte{0x00},
+	}}
+
+	schema := `["null", {"type":"map", "values": "string"}]`
+
+	for _, test := range tt {
+		t.Run(test.name, func(t *testing.T) {
+			defer ConfigTeardown()
+
+			buf := bytes.NewBuffer([]byte{})
+			enc, err := avro.NewEncoder(schema, buf)
+			require.NoError(t, err)
+
+			err = enc.Encode(test.data)
+
+			require.NoError(t, err)
+			assert.Equal(t, test.want, buf.Bytes())
+		})
+	}
+}
+
 func TestEncoder_UnionNullableSlice(t *testing.T) {
 	defer ConfigTeardown()
 
