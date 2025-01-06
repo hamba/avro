@@ -24,19 +24,29 @@ const (
 	ZStandard CodecName = "zstandard"
 )
 
-func resolveCodec(name CodecName, lvl int) (Codec, error) {
+type codecOptions struct {
+	DeflateCompressionLevel int
+	ZStandardOptions        zstdOptions
+}
+
+type zstdOptions struct {
+	EOptions []zstd.EOption
+	DOptions []zstd.DOption
+}
+
+func resolveCodec(name CodecName, codecOpts codecOptions) (Codec, error) {
 	switch name {
 	case Null, "":
 		return &NullCodec{}, nil
 
 	case Deflate:
-		return &DeflateCodec{compLvl: lvl}, nil
+		return &DeflateCodec{compLvl: codecOpts.DeflateCompressionLevel}, nil
 
 	case Snappy:
 		return &SnappyCodec{}, nil
 
 	case ZStandard:
-		return newZStandardCodec(), nil
+		return newZStandardCodec(codecOpts.ZStandardOptions), nil
 
 	default:
 		return nil, fmt.Errorf("unknown codec %s", name)
@@ -132,9 +142,9 @@ type ZStandardCodec struct {
 	encoder *zstd.Encoder
 }
 
-func newZStandardCodec() *ZStandardCodec {
-	decoder, _ := zstd.NewReader(nil)
-	encoder, _ := zstd.NewWriter(nil)
+func newZStandardCodec(opts zstdOptions) *ZStandardCodec {
+	decoder, _ := zstd.NewReader(nil, opts.DOptions...)
+	encoder, _ := zstd.NewWriter(nil, opts.EOptions...)
 	return &ZStandardCodec{
 		decoder: decoder,
 		encoder: encoder,
