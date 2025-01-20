@@ -86,7 +86,7 @@ func (d *digest) Sum(in []byte) []byte {
 	return append(in, byte(s>>56), byte(s>>48), byte(s>>40), byte(s>>32), byte(s>>24), byte(s>>16), byte(s>>8), byte(s))
 }
 
-// Sum returns the MD5 checksum of the data.
+// Sum returns the CRC64 checksum of the data, in big-endian byte order.
 func Sum(data []byte) [Size]byte {
 	d := digest{crc: Empty, tab: crc64Table}
 	d.Reset()
@@ -94,4 +94,21 @@ func Sum(data []byte) [Size]byte {
 	s := d.Sum64()
 	//nolint:lll
 	return [Size]byte{byte(s >> 56), byte(s >> 48), byte(s >> 40), byte(s >> 32), byte(s >> 24), byte(s >> 16), byte(s >> 8), byte(s)}
+}
+
+// SumLittleEndian returns the CRC64 checksum of the data, in little-endian byte order.
+func SumLittleEndian(data []byte) [Size]byte {
+	d := digest{crc: Empty, tab: crc64Table}
+	_, _ = d.Write(data)
+	s := d.Sum64()
+	return [Size]byte{
+		byte(s),
+		byte(s >> 8),
+		byte(s >> 16),
+		byte(s >> 24),
+		byte(s >> 32),
+		byte(s >> 40),
+		byte(s >> 48),
+		byte(s >> 56),
+	}
 }
