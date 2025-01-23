@@ -187,7 +187,8 @@ func (d *Decoder) readBlock() int64 {
 	size := d.reader.ReadLong()
 
 	// Read the blocks data
-	if count > 0 {
+	switch {
+	case count > 0:
 		data := make([]byte, size)
 		d.reader.Read(data)
 
@@ -197,8 +198,9 @@ func (d *Decoder) readBlock() int64 {
 		}
 
 		d.resetReader.Reset(data)
-	} else if size > 0 {
-		// Skip the block data
+
+	case size > 0:
+		// Skip the block data when count is 0
 		data := make([]byte, size)
 		d.reader.Read(data)
 	}
