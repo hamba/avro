@@ -197,6 +197,10 @@ func (d *Decoder) readBlock() int64 {
 		}
 
 		d.resetReader.Reset(data)
+	} else if size > 0 {
+		// Skip the block data
+		data := make([]byte, size)
+		d.reader.Read(data)
 	}
 
 	// Read the sync.
