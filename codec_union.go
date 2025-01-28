@@ -382,6 +382,13 @@ func (d *unionResolvedDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 
 	d.decoders[i].Decode(newPtr, r)
 	*pObj = typ.UnsafeIndirect(newPtr)
+
+	if d.cfg.config.UnionDecodeAnyIntoMap {
+		name := schemaTypeName(schema)
+		obj := map[string]any{}
+		obj[name] = *pObj
+		*pObj = obj
+	}
 }
 
 func unionResolutionName(schema Schema) string {

@@ -44,6 +44,13 @@ type Config struct {
 	// UnionResolutionError.
 	PartialUnionTypeResolution bool
 
+	// UnionDecodeAnyIntoMap enables decoding for non-null unions values to be decoded into a `map`
+	// type, with the key being the name of the union variant, and the value being the decoded union.
+	//
+	// This option can be useful when working with generic avro data, and aligns the decoded native values
+	// with the JSON encoding of Avro data based on the spec.
+	UnionDecodeAnyIntoMap bool
+
 	// Disable caching layer for encoders and decoders, forcing them to get rebuilt on every
 	// call to Marshal() and Unmarshal()
 	DisableCaching bool
