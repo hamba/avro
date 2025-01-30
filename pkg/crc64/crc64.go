@@ -13,6 +13,17 @@ func init() {
 // Size is the of a CRC-64 checksum in bytes.
 const Size = 8
 
+// ByteOrder denotes how integers are encoded into bytes. The ByteOrder
+// interface in encoding/binary cancels some optimizations, so use a more
+// direct implementation.
+type ByteOrder int
+
+// ByteOrder constants.
+const (
+	LittleEndian ByteOrder = iota
+	BigEndian
+)
+
 // Empty is the empty checksum.
 const Empty = 0xc15d213aa4d7a795
 
@@ -38,16 +49,28 @@ func buildTable() {
 }
 
 type digest struct {
-	crc uint64
-	tab *Table
+	crc       uint64
+	tab       *Table
+	byteOrder ByteOrder
 }
 
 // New creates a new hash.Hash64 computing the Avro CRC-64 checksum.
 // Its Sum method will lay the value out in big-endian byte order.
 func New() hash.Hash64 {
+	return newDigest(BigEndian)
+}
+
+// NewWithByteOrder creates a new hash.Hash64 computing the Avro CRC-64
+// checksum. Its Sum method will lay the value out in specified byte order.
+func NewWithByteOrder(byteOrder ByteOrder) hash.Hash64 {
+	return newDigest(byteOrder)
+}
+
+func newDigest(byteOrder ByteOrder) *digest {
 	return &digest{
-		crc: Empty,
-		tab: crc64Table,
+		crc:       Empty,
+		tab:       crc64Table,
+		byteOrder: byteOrder,
 	}
 }
 
@@ -82,16 +105,50 @@ func (d *digest) Sum64() uint64 {
 
 // Sum returns the checksum as a byte slice, using the given byte slice.
 func (d *digest) Sum(in []byte) []byte {
-	s := d.Sum64()
-	return append(in, byte(s>>56), byte(s>>48), byte(s>>40), byte(s>>32), byte(s>>24), byte(s>>16), byte(s>>8), byte(s))
+	b := d.sumBytes()
+	return append(in, b[:]...)
 }
 
-// Sum returns the MD5 checksum of the data.
-func Sum(data []byte) [Size]byte {
-	d := digest{crc: Empty, tab: crc64Table}
-	d.Reset()
-	_, _ = d.Write(data)
+// sumBytes returns the checksum as a byte array in digest byte order.
+func (d *digest) sumBytes() [Size]byte {
 	s := d.Sum64()
-	//nolint:lll
-	return [Size]byte{byte(s >> 56), byte(s >> 48), byte(s >> 40), byte(s >> 32), byte(s >> 24), byte(s >> 16), byte(s >> 8), byte(s)}
+
+	switch d.byteOrder {
+	case LittleEndian:
+		return [Size]byte{
+			byte(s),
+			byte(s >> 8),
+			byte(s >> 16),
+			byte(s >> 24),
+			byte(s >> 32),
+			byte(s >> 40),
+			byte(s >> 48),
+			byte(s >> 56),
+		}
+	case BigEndian:
+		return [Size]byte{
+			byte(s >> 56),
+			byte(s >> 48),
+			byte(s >> 40),
+			byte(s >> 32),
+			byte(s >> 24),
+			byte(s >> 16),
+			byte(s >> 8),
+			byte(s),
+		}
+	}
+	panic("unknown byte order")
+}
+
+// Sum returns the CRC64 checksum of the data, in big-endian byte order.
+func Sum(data []byte) [Size]byte {
+	return SumWithByteOrder(data, BigEndian)
+}
+
+// SumWithByteOrder returns the CRC64 checksum of the data, in specified byte
+// order.
+func SumWithByteOrder(data []byte, byteOrder ByteOrder) [Size]byte {
+	d := newDigest(byteOrder)
+	_, _ = d.Write(data)
+	return d.sumBytes()
 }
