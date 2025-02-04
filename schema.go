@@ -106,9 +106,10 @@ type FingerprintType string
 
 // Fingerprint type constants.
 const (
-	CRC64Avro FingerprintType = "CRC64-AVRO"
-	MD5       FingerprintType = "MD5"
-	SHA256    FingerprintType = "SHA256"
+	CRC64Avro   FingerprintType = "CRC64-AVRO"
+	CRC64AvroLE FingerprintType = "CRC64-AVRO-LE"
+	MD5         FingerprintType = "MD5"
+	SHA256      FingerprintType = "SHA256"
 )
 
 // SchemaCache is a cache of schemas.
@@ -305,6 +306,9 @@ func (f *fingerprinter) FingerprintUsing(typ FingerprintType, stringer fmt.Strin
 	switch typ {
 	case CRC64Avro:
 		h := crc64.Sum(data)
+		fingerprint = h[:]
+	case CRC64AvroLE:
+		h := crc64.SumWithByteOrder(data, crc64.LittleEndian)
 		fingerprint = h[:]
 	case MD5:
 		h := md5.Sum(data)

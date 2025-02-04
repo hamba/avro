@@ -1217,6 +1217,12 @@ func TestSchema_FingerprintUsing(t *testing.T) {
 			want:   []byte{0x63, 0xdd, 0x24, 0xe7, 0xcc, 0x25, 0x8f, 0x8a},
 		},
 		{
+			name:   "Null CRC64-AVRO-LE",
+			schema: "null",
+			typ:    avro.CRC64AvroLE,
+			want:   []byte{0x8a, 0x8f, 0x25, 0xcc, 0xe7, 0x24, 0xdd, 0x63},
+		},
+		{
 			name:   "Null MD5",
 			schema: "null",
 			typ:    avro.MD5,

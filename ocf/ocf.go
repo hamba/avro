@@ -5,6 +5,7 @@ package ocf
 
 import (
 	"bytes"
+	"compress/flate"
 	"crypto/rand"
 	"encoding/json"
 	"errors"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/hamba/avro/v2"
 	"github.com/hamba/avro/v2/internal/bytesx"
+	"github.com/klauspost/compress/zstd"
 )
 
 const (
@@ -54,6 +56,7 @@ type Header struct {
 type decoderConfig struct {
 	DecoderConfig avro.API
 	SchemaCache   *avro.SchemaCache
+	CodecOptions  codecOptions
 }
 
 // DecoderFunc represents a configuration function for Decoder.
@@ -71,6 +74,13 @@ func WithDecoderConfig(wCfg avro.API) DecoderFunc {
 func WithDecoderSchemaCache(cache *avro.SchemaCache) DecoderFunc {
 	return func(cfg *decoderConfig) {
 		cfg.SchemaCache = cache
+	}
+}
+
+// WithZStandardDecoderOptions sets the options for the ZStandard decoder.
+func WithZStandardDecoderOptions(opts ...zstd.DOption) DecoderFunc {
+	return func(cfg *decoderConfig) {
+		cfg.CodecOptions.ZStandardOptions.DOptions = append(cfg.CodecOptions.ZStandardOptions.DOptions, opts...)
 	}
 }
 
@@ -93,6 +103,9 @@ func NewDecoder(r io.Reader, opts ...DecoderFunc) (*Decoder, error) {
 	cfg := decoderConfig{
 		DecoderConfig: avro.DefaultConfig,
 		SchemaCache:   avro.DefaultSchemaCache,
+		CodecOptions: codecOptions{
+			DeflateCompressionLevel: flate.DefaultCompression,
+		},
 	}
 	for _, opt := range opts {
 		opt(&cfg)
@@ -100,7 +113,7 @@ func NewDecoder(r io.Reader, opts ...DecoderFunc) (*Decoder, error) {
 
 	reader := avro.NewReader(r, 1024)
 
-	h, err := readHeader(reader, cfg.SchemaCache)
+	h, err := readHeader(reader, cfg.SchemaCache, cfg.CodecOptions)
 	if err != nil {
 		return nil, fmt.Errorf("decoder: %w", err)
 	}
@@ -174,7 +187,8 @@ func (d *Decoder) readBlock() int64 {
 	size := d.reader.ReadLong()
 
 	// Read the blocks data
-	if count > 0 {
+	switch {
+	case count > 0:
 		data := make([]byte, size)
 		d.reader.Read(data)
 
@@ -184,6 +198,11 @@ func (d *Decoder) readBlock() int64 {
 		}
 
 		d.resetReader.Reset(data)
+
+	case size > 0:
+		// Skip the block data when count is 0
+		data := make([]byte, size)
+		d.reader.Read(data)
 	}
 
 	// Read the sync.
@@ -197,14 +216,14 @@ func (d *Decoder) readBlock() int64 {
 }
 
 type encoderConfig struct {
-	BlockLength      int
-	CodecName        CodecName
-	CodecCompression int
-	Metadata         map[string][]byte
-	Sync             [16]byte
-	EncodingConfig   avro.API
-	SchemaCache      *avro.SchemaCache
-	SchemaMarshaler  func(avro.Schema) ([]byte, error)
+	BlockLength     int
+	CodecName       CodecName
+	CodecOptions    codecOptions
+	Metadata        map[string][]byte
+	Sync            [16]byte
+	EncodingConfig  avro.API
+	SchemaCache     *avro.SchemaCache
+	SchemaMarshaler func(avro.Schema) ([]byte, error)
 }
 
 // EncoderFunc represents a configuration function for Encoder.
@@ -229,7 +248,14 @@ func WithCodec(codec CodecName) EncoderFunc {
 func WithCompressionLevel(compLvl int) EncoderFunc {
 	return func(cfg *encoderConfig) {
 		cfg.CodecName = Deflate
-		cfg.CodecCompression = compLvl
+		cfg.CodecOptions.DeflateCompressionLevel = compLvl
+	}
+}
+
+// WithZStandardEncoderOptions sets the options for the ZStandard encoder.
+func WithZStandardEncoderOptions(opts ...zstd.EOption) EncoderFunc {
+	return func(cfg *encoderConfig) {
+		cfg.CodecOptions.ZStandardOptions.EOptions = append(cfg.CodecOptions.ZStandardOptions.EOptions, opts...)
 	}
 }
 
@@ -316,7 +342,7 @@ func newEncoder(schema avro.Schema, w io.Writer, cfg encoderConfig) (*Encoder, e
 
 		if info.Size() > 0 {
 			reader := avro.NewReader(file, 1024)
-			h, err := readHeader(reader, cfg.SchemaCache)
+			h, err := readHeader(reader, cfg.SchemaCache, cfg.CodecOptions)
 			if err != nil {
 				return nil, err
 			}
@@ -354,7 +380,7 @@ func newEncoder(schema avro.Schema, w io.Writer, cfg encoderConfig) (*Encoder, e
 		_, _ = rand.Read(header.Sync[:])
 	}
 
-	codec, err := resolveCodec(cfg.CodecName, cfg.CodecCompression)
+	codec, err := resolveCodec(cfg.CodecName, cfg.CodecOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -379,13 +405,15 @@ func newEncoder(schema avro.Schema, w io.Writer, cfg encoderConfig) (*Encoder, e
 
 func computeEncoderConfig(opts []EncoderFunc) encoderConfig {
 	cfg := encoderConfig{
-		BlockLength:      100,
-		CodecName:        Null,
-		CodecCompression: -1,
-		Metadata:         map[string][]byte{},
-		EncodingConfig:   avro.DefaultConfig,
-		SchemaCache:      avro.DefaultSchemaCache,
-		SchemaMarshaler:  DefaultSchemaMarshaler,
+		BlockLength: 100,
+		CodecName:   Null,
+		CodecOptions: codecOptions{
+			DeflateCompressionLevel: flate.DefaultCompression,
+		},
+		Metadata:        map[string][]byte{},
+		EncodingConfig:  avro.DefaultConfig,
+		SchemaCache:     avro.DefaultSchemaCache,
+		SchemaMarshaler: DefaultSchemaMarshaler,
 	}
 	for _, opt := range opts {
 		opt(&cfg)
@@ -469,7 +497,7 @@ type ocfHeader struct {
 	Sync   [16]byte
 }
 
-func readHeader(reader *avro.Reader, schemaCache *avro.SchemaCache) (*ocfHeader, error) {
+func readHeader(reader *avro.Reader, schemaCache *avro.SchemaCache, codecOpts codecOptions) (*ocfHeader, error) {
 	var h Header
 	reader.ReadVal(HeaderSchema, &h)
 	if reader.Error != nil {
@@ -484,7 +512,7 @@ func readHeader(reader *avro.Reader, schemaCache *avro.SchemaCache) (*ocfHeader,
 		return nil, err
 	}
 
-	codec, err := resolveCodec(CodecName(h.Meta[codecKey]), -1)
+	codec, err := resolveCodec(CodecName(h.Meta[codecKey]), codecOpts)
 	if err != nil {
 		return nil, err
 	}

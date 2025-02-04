@@ -34,7 +34,7 @@ func ExampleNewDecoder() {
 		// Do something with the data
 	}
 
-	if dec.Error() != nil {
+	if err := dec.Error(); err != nil {
 		log.Fatal(err)
 	}
 }
