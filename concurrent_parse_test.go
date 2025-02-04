@@ -10,9 +10,8 @@ import (
 
 func TestConcurrentParse(t *testing.T) {
 	var wg sync.WaitGroup
-	const numThreads = 50000
 
-	for i := 0; i < numThreads; i++ {
+	for i := 0; i < 50000; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
