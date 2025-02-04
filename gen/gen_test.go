@@ -18,13 +18,13 @@ import (
 var update = flag.Bool("update", false, "Update golden files")
 
 func TestStruct_InvalidSchemaYieldsErr(t *testing.T) {
-	err := gen.Struct(`asd`, &bytes.Buffer{}, gen.Config{})
+	err := gen.Struct(`asd`, nil, &bytes.Buffer{}, gen.Config{})
 
 	assert.Error(t, err)
 }
 
 func TestStruct_NonRecordSchemasAreNotSupported(t *testing.T) {
-	err := gen.Struct(`{"type": "string"}`, &bytes.Buffer{}, gen.Config{})
+	err := gen.Struct(`{"type": "string"}`, nil, &bytes.Buffer{}, gen.Config{})
 
 	require.Error(t, err)
 	assert.Contains(t, strings.ToLower(err.Error()), "only")
@@ -286,8 +286,8 @@ func TestGenerator(t *testing.T) {
 	require.NoError(t, err)
 
 	g := gen.NewGenerator("something", map[string]gen.TagStyle{})
-	g.Parse(unionSchema)
-	g.Parse(mainSchema)
+	g.Parse(unionSchema, nil)
+	g.Parse(mainSchema, nil)
 
 	var buf bytes.Buffer
 	err = g.Write(&buf)
@@ -311,7 +311,11 @@ func generate(t *testing.T, schema string, gc gen.Config) ([]byte, []string) {
 	t.Helper()
 
 	buf := &bytes.Buffer{}
-	err := gen.Struct(schema, buf, gc)
+	schemaMetadata := gen.SchemaMetadata{
+		Subject: "test",
+		Version: 1,
+	}
+	err := gen.Struct(schema, &schemaMetadata, buf, gc)
 	require.NoError(t, err)
 
 	b := make([]byte, buf.Len())
@@ -335,5 +339,5 @@ func removeSpaceAndEmptyLines(goCode []byte) []string {
 // removeMoreThanOneConsecutiveSpaces replaces all sequences of more than one space, with a single one
 func removeMoreThanOneConsecutiveSpaces(lineBytes []byte) string {
 	lines := strings.TrimSpace(string(lineBytes))
-	return strings.Join(regexp.MustCompile("\\s+|\\t+").Split(lines, -1), " ")
+	return strings.Join(regexp.MustCompile(`\s+|\t+`).Split(lines, -1), " ")
 }
