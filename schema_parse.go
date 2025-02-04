@@ -64,7 +64,17 @@ func ParseFiles(paths ...string) (Schema, error) {
 
 // ParseBytes parses a schema byte slice.
 func ParseBytes(schema []byte) (Schema, error) {
-	return ParseBytesWithCache(schema, "", DefaultSchemaCache)
+	var internalCache = &SchemaCache{}
+	DefaultSchemaCache.cache.Range(func(key, value any) bool {
+		internalCache.Add(key.(string), value.(Schema))
+		return true
+	})
+	s, err := ParseBytesWithCache(schema, "", internalCache)
+	internalCache.cache.Range(func(key, value any) bool {
+		DefaultSchemaCache.Add(key.(string), value.(Schema))
+		return true
+	})
+	return s, err
 }
 
 // ParseBytesWithCache parses a schema byte slice using the given namespace and schema cache.
