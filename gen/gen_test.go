@@ -18,13 +18,13 @@ import (
 var update = flag.Bool("update", false, "Update golden files")
 
 func TestStruct_InvalidSchemaYieldsErr(t *testing.T) {
-	err := gen.Struct(`asd`, nil, &bytes.Buffer{}, gen.Config{})
+	err := gen.StructWithMetadata(`asd`, nil, &bytes.Buffer{}, gen.Config{})
 
 	assert.Error(t, err)
 }
 
 func TestStruct_NonRecordSchemasAreNotSupported(t *testing.T) {
-	err := gen.Struct(`{"type": "string"}`, nil, &bytes.Buffer{}, gen.Config{})
+	err := gen.StructWithMetadata(`{"type": "string"}`, nil, &bytes.Buffer{}, gen.Config{})
 
 	require.Error(t, err)
 	assert.Contains(t, strings.ToLower(err.Error()), "only")
@@ -315,7 +315,7 @@ func generate(t *testing.T, schema string, gc gen.Config) ([]byte, []string) {
 		Subject: "test",
 		Version: 1,
 	}
-	err := gen.Struct(schema, &schemaMetadata, buf, gc)
+	err := gen.StructWithMetadata(schema, &schemaMetadata, buf, gc)
 	require.NoError(t, err)
 
 	b := make([]byte, buf.Len())

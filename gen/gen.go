@@ -70,16 +70,25 @@ var (
 )
 
 // Struct generates Go structs based on the schema and writes them to w.
-func Struct(s string, schemaMetadata *SchemaMetadata, w io.Writer, cfg Config) error {
+func Struct(s string, w io.Writer, cfg Config) error {
+	return StructWithMetadata(s, nil, w, cfg)
+}
+
+func StructFromSchema(schema avro.Schema, w io.Writer, cfg Config) error {
+	return StructFromSchemaWithMetadata(schema, nil, w, cfg)
+}
+
+// StructWithMetadata generates Go structs based on the schema and writes them to w.
+func StructWithMetadata(s string, schemaMetadata *SchemaMetadata, w io.Writer, cfg Config) error {
 	schema, err := avro.Parse(s)
 	if err != nil {
 		return err
 	}
-	return StructFromSchema(schema, schemaMetadata, w, cfg)
+	return StructFromSchemaWithMetadata(schema, schemaMetadata, w, cfg)
 }
 
-// StructFromSchema generates Go structs based on the schema and writes them to w.
-func StructFromSchema(schema avro.Schema, schemaMetadata *SchemaMetadata, w io.Writer, cfg Config) error {
+// StructFromSchemaWithMetadata generates Go structs based on the schema and writes them to w.
+func StructFromSchemaWithMetadata(schema avro.Schema, schemaMetadata *SchemaMetadata, w io.Writer, cfg Config) error {
 	rec, ok := schema.(*avro.RecordSchema)
 	if !ok {
 		return errors.New("can only generate Go code from Record Schemas")
