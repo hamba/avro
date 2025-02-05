@@ -19,6 +19,7 @@ const (
 	version = {{ .Metadata.Version }}
 )
 {{- end }}
+
 {{- range .Typedefs }}
 	{{- if len .Doc }}
 	// {{ .Doc }}
