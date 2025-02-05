@@ -6,7 +6,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/hamba/avro/v2/registry"
 	"io"
 	"os"
 	"path/filepath"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/hamba/avro/v2"
 	"github.com/hamba/avro/v2/gen"
+	"github.com/hamba/avro/v2/registry"
 	"golang.org/x/tools/imports"
 )
 
