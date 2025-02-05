@@ -252,6 +252,6 @@ additional features. This will be not be considered a breaking change.
 
 ## Who uses hamba/avro?
 
-- [Apache Arrow for Go](https://github.com/apache/arrow/tree/main/go)
+- [Apache Arrow for Go](https://github.com/apache/arrow-go)
 - [confluent-kafka-go](https://github.com/confluentinc/confluent-kafka-go)
 - [pulsar-client-go](https://github.com/apache/pulsar-client-go)

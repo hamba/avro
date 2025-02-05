@@ -59,7 +59,7 @@ func BenchmarkZstdEncodeDecodeLowEntropyLong(b *testing.B) {
 
 	input := makeTestData(8762, func() byte { return 'a' })
 
-	codec, err := resolveCodec(ZStandard, 0)
+	codec, err := resolveCodec(ZStandard, codecOptions{})
 	require.NoError(b, err)
 
 	b.ReportAllocs()
@@ -74,7 +74,7 @@ func BenchmarkZstdEncodeDecodeLowEntropyLong(b *testing.B) {
 func BenchmarkZstdEncodeDecodeHighEntropyLong(b *testing.B) {
 	input := makeTestData(8762, func() byte { return byte(rand.Uint32()) })
 
-	codec, err := resolveCodec(ZStandard, 0)
+	codec, err := resolveCodec(ZStandard, codecOptions{})
 	require.NoError(b, err)
 
 	b.ReportAllocs()
@@ -87,7 +87,7 @@ func BenchmarkZstdEncodeDecodeHighEntropyLong(b *testing.B) {
 }
 
 func verifyZstdEncodeDecode(t *testing.T, input []byte) {
-	codec, err := resolveCodec(ZStandard, 0)
+	codec, err := resolveCodec(ZStandard, codecOptions{})
 	require.NoError(t, err)
 
 	compressed := codec.Encode(input)

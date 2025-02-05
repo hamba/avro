@@ -82,6 +82,40 @@ func TestDigest_BlockSize(t *testing.T) {
 	assert.Equal(t, 1, hash.BlockSize())
 }
 
+func TestGoldenSumWithByteOrder(t *testing.T) {
+	tests := []struct {
+		in string
+		be []byte
+		le []byte
+	}{
+		{
+			in: `"null"`,
+			be: []byte{0x63, 0xdd, 0x24, 0xe7, 0xcc, 0x25, 0x8f, 0x8a},
+			le: []byte{0x8a, 0x8f, 0x25, 0xcc, 0xe7, 0x24, 0xdd, 0x63},
+		},
+		{
+			in: `{"name":"foo","type":"fixed","size":15}`,
+			be: []byte{0x18, 0x60, 0x2e, 0xc3, 0xed, 0x31, 0xa5, 0x04},
+			le: []byte{0x04, 0xa5, 0x31, 0xed, 0xc3, 0x2e, 0x60, 0x18},
+		},
+		{
+			in: `{"name":"foo","type":"record","fields":[{"name":"f1","type":"boolean"}]}`,
+			be: []byte{0x6c, 0xd8, 0xea, 0xf1, 0xc9, 0x68, 0xa3, 0x3b},
+			le: []byte{0x3b, 0xa3, 0x68, 0xc9, 0xf1, 0xea, 0xd8, 0x6c},
+		},
+	}
+
+	for i, test := range tests {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			got := SumWithByteOrder([]byte(test.in), BigEndian)
+			assert.Equal(t, test.be, got[:])
+
+			got = SumWithByteOrder([]byte(test.in), LittleEndian)
+			assert.Equal(t, test.le, got[:])
+		})
+	}
+}
+
 func bench(b *testing.B, size int64) {
 	b.SetBytes(size)
 
@@ -113,5 +147,29 @@ func BenchmarkCrc64(b *testing.B) {
 	})
 	b.Run("1KB", func(b *testing.B) {
 		bench(b, 1<<10)
+	})
+}
+
+func BenchmarkSum(b *testing.B) {
+	data := make([]byte, 4<<10)
+	for i := range data {
+		data[i] = byte(i)
+	}
+
+	b.Run("BigEndian", func(b *testing.B) {
+		b.SetBytes(int64(len(data)))
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = SumWithByteOrder(data, BigEndian)
+		}
+	})
+	b.Run("LittleEndian", func(b *testing.B) {
+		b.SetBytes(int64(len(data)))
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = SumWithByteOrder(data, LittleEndian)
+		}
 	})
 }
