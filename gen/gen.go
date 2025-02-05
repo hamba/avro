@@ -27,13 +27,7 @@ type Config struct {
 	StrictTypes  bool
 	Initialisms  []string
 	LogicalTypes []LogicalType
-	Metadata     *SchemaMetadata
-}
-
-// SchemaMetadata contains schema registry metadata
-type SchemaMetadata struct {
-	Subject string
-	Version int
+	Metadata     any
 }
 
 // TagStyle defines the styling for a tag.
@@ -177,7 +171,7 @@ func WithFullSchema(b bool) OptsFunc {
 }
 
 // WithMetadata configures the generator to store the metadata within the generation context.
-func WithMetadata(m *SchemaMetadata) OptsFunc {
+func WithMetadata(m any) OptsFunc {
 	return func(g *Generator) {
 		g.metadata = m
 	}
@@ -228,7 +222,7 @@ type Generator struct {
 	strictTypes  bool
 	initialisms  []string
 	logicalTypes map[avro.LogicalType]LogicalType
-	metadata     *SchemaMetadata
+	metadata     any
 
 	imports           []string
 	thirdPartyImports []string
@@ -467,7 +461,7 @@ func (g *Generator) Write(w io.Writer) error {
 		Imports           []string
 		ThirdPartyImports []string
 		Typedefs          []typedef
-		Metadata          *SchemaMetadata
+		Metadata          any
 	}{
 		WithEncoders: g.encoders,
 		PackageName:  g.pkg,

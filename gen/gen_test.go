@@ -211,37 +211,6 @@ func TestStruct_ConfigurableLogicalTypes(t *testing.T) {
 	}
 }
 
-func TestStruct_MetadataConstants(t *testing.T) {
-	schema := `{
-  "type": "record",
-  "name": "test",
-  "fields": [
-    { "name": "id", "type": {"type": "string"} }
-  ]
-}`
-
-	gc := gen.Config{
-		PackageName: "Something",
-		Metadata: &gen.SchemaMetadata{
-			Subject: "test",
-			Version: 1,
-		},
-	}
-	_, lines := generate(t, schema, gc)
-
-	for _, expected := range []string{
-		"package something",
-		"const (",
-		"subject = \"test\"",
-		"version = 1",
-		"type Test struct {",
-		"ID string `avro:\"id\"`",
-		"}",
-	} {
-		assert.Contains(t, lines, expected)
-	}
-}
-
 func TestStruct_GenFromRecordSchema(t *testing.T) {
 	fileName := "testdata/golden.go"
 	gc := gen.Config{PackageName: "Something"}

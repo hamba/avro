@@ -13,13 +13,6 @@ package {{ .PackageName }}
 	)
 {{ end }}
 
-{{- if .Metadata }}
-const (
-	subject = "{{ .Metadata.Subject }}"
-	version = {{ .Metadata.Version }}
-)
-{{- end }}
-
 {{- range .Typedefs }}
 	{{- if len .Doc }}
 	// {{ replace .Doc "\n" "\n// " -1 }}
