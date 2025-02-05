@@ -94,46 +94,50 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 		gen.WithFullSchema(cfg.FullSchema),
 	}
 
-	g := gen.NewGenerator(cfg.Pkg, tags, opts...)
-
 	ctx := context.Background()
 
-	for _, entry := range flgs.Args() {
-		var schema avro.Schema
-		var schemaMetadata *gen.SchemaMetadata
+	var g *gen.Generator
 
-		if cfg.SchemaRegistry != "" {
-			client, err := registry.NewClient(cfg.SchemaRegistry)
-			if err != nil {
-				_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
-				return 2
-			}
+	if cfg.SchemaRegistry != "" {
+		entry := flgs.Args()[0]
 
-			subject, version, err := parseSubjectVersion(entry)
-			if err != nil {
-				_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
-				return 2
-			}
-
-			schemaMetadata = &gen.SchemaMetadata{
-				Subject: subject,
-				Version: version,
-			}
-
-			schema, err = client.GetSchemaByVersion(ctx, subject, version)
-			if err != nil {
-				_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
-				return 2
-			}
-		} else {
-			schema, err = avro.ParseFiles(filepath.Clean(entry))
-			if err != nil {
-				_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
-				return 2
-			}
+		client, err := registry.NewClient(cfg.SchemaRegistry)
+		if err != nil {
+			_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
+			return 2
 		}
 
-		g.Parse(schema, schemaMetadata)
+		subject, version, err := parseSubjectVersion(entry)
+		if err != nil {
+			_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
+			return 2
+		}
+
+		schemaMetadata := gen.SchemaMetadata{
+			Subject: subject,
+			Version: version,
+		}
+
+		schema, err := client.GetSchemaByVersion(ctx, subject, version)
+		if err != nil {
+			_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
+			return 2
+		}
+
+		g = gen.NewGenerator(cfg.Pkg, tags, append(opts, gen.WithMetadata(&schemaMetadata))...)
+		g.Parse(schema)
+	} else {
+		g = gen.NewGenerator(cfg.Pkg, tags, opts...)
+
+		for _, entry := range flgs.Args() {
+			schema, err := avro.ParseFiles(filepath.Clean(entry))
+			if err != nil {
+				_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
+				return 2
+			}
+
+			g.Parse(schema)
+		}
 	}
 
 	var buf bytes.Buffer

@@ -13,6 +13,12 @@ package {{ .PackageName }}
 	)
 {{ end }}
 
+{{- if .Metadata }}
+const (
+	subject = "{{ .Metadata.Subject }}"
+	version = {{ .Metadata.Version }}
+)
+{{- end }}
 {{- range .Typedefs }}
 	{{- if len .Doc }}
 	// {{ .Doc }}
@@ -45,18 +51,6 @@ package {{ .PackageName }}
 		func (o *{{ .Name }}) Schema() avro.Schema {
 		return schema{{ .Name }}
 		}
-
-		{{- if .SchemaMetadata }}
-			// Subject returns the schema registry subject for {{ .Name }}.
-			func (o *{{ .Name }}) Subject() string {
-			return "{{ .SchemaMetadata.Subject }}"
-			}
-
-			// Version returns the schema registry version for {{ .Name }}.
-			func (o *{{ .Name }}) Version() int {
-			return {{ .SchemaMetadata.Version }}
-			}
-		{{- end }}
 
 		// Unmarshal decodes b into the receiver.
 		func (o *{{ .Name }}) Unmarshal(b []byte) error {

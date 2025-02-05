@@ -18,13 +18,13 @@ import (
 var update = flag.Bool("update", false, "Update golden files")
 
 func TestStruct_InvalidSchemaYieldsErr(t *testing.T) {
-	err := gen.StructWithMetadata(`asd`, nil, &bytes.Buffer{}, gen.Config{})
+	err := gen.Struct(`asd`, &bytes.Buffer{}, gen.Config{})
 
 	assert.Error(t, err)
 }
 
 func TestStruct_NonRecordSchemasAreNotSupported(t *testing.T) {
-	err := gen.StructWithMetadata(`{"type": "string"}`, nil, &bytes.Buffer{}, gen.Config{})
+	err := gen.Struct(`{"type": "string"}`, &bytes.Buffer{}, gen.Config{})
 
 	require.Error(t, err)
 	assert.Contains(t, strings.ToLower(err.Error()), "only")
@@ -186,6 +186,37 @@ func TestStruct_ConfigurableLogicalTypes(t *testing.T) {
 	}
 }
 
+func TestStruct_MetadataConstants(t *testing.T) {
+	schema := `{
+  "type": "record",
+  "name": "test",
+  "fields": [
+    { "name": "id", "type": {"type": "string"} }
+  ]
+}`
+
+	gc := gen.Config{
+		PackageName: "Something",
+		Metadata: &gen.SchemaMetadata{
+			Subject: "test",
+			Version: 1,
+		},
+	}
+	_, lines := generate(t, schema, gc)
+
+	for _, expected := range []string{
+		"package something",
+		"const (",
+		"subject = \"test\"",
+		"version = 1",
+		"type Test struct {",
+		"ID string `avro:\"id\"`",
+		"}",
+	} {
+		assert.Contains(t, lines, expected)
+	}
+}
+
 func TestStruct_GenFromRecordSchema(t *testing.T) {
 	fileName := "testdata/golden.go"
 	gc := gen.Config{PackageName: "Something"}
@@ -286,8 +317,8 @@ func TestGenerator(t *testing.T) {
 	require.NoError(t, err)
 
 	g := gen.NewGenerator("something", map[string]gen.TagStyle{})
-	g.Parse(unionSchema, nil)
-	g.Parse(mainSchema, nil)
+	g.Parse(unionSchema)
+	g.Parse(mainSchema)
 
 	var buf bytes.Buffer
 	err = g.Write(&buf)
@@ -311,11 +342,7 @@ func generate(t *testing.T, schema string, gc gen.Config) ([]byte, []string) {
 	t.Helper()
 
 	buf := &bytes.Buffer{}
-	schemaMetadata := gen.SchemaMetadata{
-		Subject: "test",
-		Version: 1,
-	}
-	err := gen.StructWithMetadata(schema, &schemaMetadata, buf, gc)
+	err := gen.Struct(schema, buf, gc)
 	require.NoError(t, err)
 
 	b := make([]byte, buf.Len())
@@ -339,5 +366,5 @@ func removeSpaceAndEmptyLines(goCode []byte) []string {
 // removeMoreThanOneConsecutiveSpaces replaces all sequences of more than one space, with a single one
 func removeMoreThanOneConsecutiveSpaces(lineBytes []byte) string {
 	lines := strings.TrimSpace(string(lineBytes))
-	return strings.Join(regexp.MustCompile(`\s+|\t+`).Split(lines, -1), " ")
+	return strings.Join(regexp.MustCompile("\\s+|\\t+").Split(lines, -1), " ")
 }

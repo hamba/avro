@@ -225,16 +225,6 @@ func (o *Test) Schema() avro.Schema {
 	return schemaTest
 }
 
-// Subject returns the schema registry subject for Test.
-func (o *Test) Subject() string {
-	return "test"
-}
-
-// Version returns the schema registry version for Test.
-func (o *Test) Version() int {
-	return 1
-}
-
 // Unmarshal decodes b into the receiver.
 func (o *Test) Unmarshal(b []byte) error {
 	return avro.Unmarshal(o.Schema(), b, o)

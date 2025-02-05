@@ -27,6 +27,7 @@ type Config struct {
 	StrictTypes  bool
 	Initialisms  []string
 	LogicalTypes []LogicalType
+	Metadata     *SchemaMetadata
 }
 
 // SchemaMetadata contains schema registry metadata
@@ -71,24 +72,15 @@ var (
 
 // Struct generates Go structs based on the schema and writes them to w.
 func Struct(s string, w io.Writer, cfg Config) error {
-	return StructWithMetadata(s, nil, w, cfg)
-}
-
-func StructFromSchema(schema avro.Schema, w io.Writer, cfg Config) error {
-	return StructFromSchemaWithMetadata(schema, nil, w, cfg)
-}
-
-// StructWithMetadata generates Go structs based on the schema and writes them to w.
-func StructWithMetadata(s string, schemaMetadata *SchemaMetadata, w io.Writer, cfg Config) error {
 	schema, err := avro.Parse(s)
 	if err != nil {
 		return err
 	}
-	return StructFromSchemaWithMetadata(schema, schemaMetadata, w, cfg)
+	return StructFromSchema(schema, w, cfg)
 }
 
-// StructFromSchemaWithMetadata generates Go structs based on the schema and writes them to w.
-func StructFromSchemaWithMetadata(schema avro.Schema, schemaMetadata *SchemaMetadata, w io.Writer, cfg Config) error {
+// StructFromSchema generates Go structs based on the schema and writes them to w.
+func StructFromSchema(schema avro.Schema, w io.Writer, cfg Config) error {
 	rec, ok := schema.(*avro.RecordSchema)
 	if !ok {
 		return errors.New("can only generate Go code from Record Schemas")
@@ -100,12 +92,13 @@ func StructFromSchemaWithMetadata(schema avro.Schema, schemaMetadata *SchemaMeta
 		WithInitialisms(cfg.Initialisms),
 		WithStrictTypes(cfg.StrictTypes),
 		WithFullSchema(cfg.FullSchema),
+		WithMetadata(cfg.Metadata),
 	}
 	for _, opt := range cfg.LogicalTypes {
 		opts = append(opts, WithLogicalType(opt))
 	}
 	g := NewGenerator(strcase.ToSnake(cfg.PackageName), cfg.Tags, opts...)
-	g.Parse(rec, schemaMetadata)
+	g.Parse(rec)
 
 	buf := &bytes.Buffer{}
 	if err := g.Write(buf); err != nil {
@@ -183,6 +176,13 @@ func WithFullSchema(b bool) OptsFunc {
 	}
 }
 
+// WithMetadata configures the generator to store the metadata within the generation context.
+func WithMetadata(m *SchemaMetadata) OptsFunc {
+	return func(g *Generator) {
+		g.metadata = m
+	}
+}
+
 // LogicalType used when the name of the "LogicalType" field in the Avro schema matches the Name attribute.
 type LogicalType struct {
 	// Name of the LogicalType
@@ -228,6 +228,7 @@ type Generator struct {
 	strictTypes  bool
 	initialisms  []string
 	logicalTypes map[avro.LogicalType]LogicalType
+	metadata     *SchemaMetadata
 
 	imports           []string
 	thirdPartyImports []string
@@ -273,21 +274,16 @@ func (g *Generator) Reset() {
 }
 
 // Parse parses an avro schema into Go types.
-func (g *Generator) Parse(schema avro.Schema, schemaMetadata *SchemaMetadata) {
-	_ = g.generate(schema, schemaMetadata, 0)
+func (g *Generator) Parse(schema avro.Schema) {
+	_ = g.generate(schema)
 }
 
-func (g *Generator) generate(schema avro.Schema, schemaMetadata *SchemaMetadata, level int) string {
+func (g *Generator) generate(schema avro.Schema) string {
 	switch s := schema.(type) {
 	case *avro.RefSchema:
-		return g.resolveRefSchema(s, level)
+		return g.resolveRefSchema(s)
 	case *avro.RecordSchema:
-		var actualSchemaMetadata *SchemaMetadata
-		if level < 1 {
-			actualSchemaMetadata = schemaMetadata
-		}
-
-		return g.resolveRecordSchema(s, actualSchemaMetadata, level)
+		return g.resolveRecordSchema(s)
 	case *avro.PrimitiveSchema:
 		typ := primitiveMappings[s.Type()]
 		if ls := s.Logical(); ls != nil {
@@ -300,7 +296,7 @@ func (g *Generator) generate(schema avro.Schema, schemaMetadata *SchemaMetadata,
 		}
 		return typ
 	case *avro.ArraySchema:
-		return "[]" + g.generate(s.Items(), nil, level+1)
+		return "[]" + g.generate(s.Items())
 	case *avro.EnumSchema:
 		return "string"
 	case *avro.FixedSchema:
@@ -310,9 +306,9 @@ func (g *Generator) generate(schema avro.Schema, schemaMetadata *SchemaMetadata,
 		}
 		return typ
 	case *avro.MapSchema:
-		return "map[string]" + g.generate(s.Values(), nil, level+1)
+		return "map[string]" + g.generate(s.Values())
 	case *avro.UnionSchema:
-		return g.resolveUnionTypes(s, level)
+		return g.resolveUnionTypes(s)
 	default:
 		return ""
 	}
@@ -325,16 +321,16 @@ func (g *Generator) resolveTypeName(s avro.NamedSchema) string {
 	return g.nameCaser.ToPascal(s.Name())
 }
 
-func (g *Generator) resolveRecordSchema(schema *avro.RecordSchema, schemaMetadata *SchemaMetadata, level int) string {
+func (g *Generator) resolveRecordSchema(schema *avro.RecordSchema) string {
 	fields := make([]field, len(schema.Fields()))
 	for i, f := range schema.Fields() {
-		typ := g.generate(f.Type(), nil, level+1)
+		typ := g.generate(f.Type())
 		fields[i] = g.newField(g.nameCaser.ToPascal(f.Name()), typ, f.Doc(), f.Name(), f.Props())
 	}
 
 	typeName := g.resolveTypeName(schema)
 	if !g.hasTypeDef(typeName) {
-		g.typedefs = append(g.typedefs, newType(typeName, schema.Doc(), fields, g.rawSchema(schema), schemaMetadata, schema.Props()))
+		g.typedefs = append(g.typedefs, newType(typeName, schema.Doc(), fields, g.rawSchema(schema), schema.Props()))
 	}
 	return typeName
 }
@@ -360,20 +356,20 @@ func (g *Generator) hasTypeDef(name string) bool {
 	return false
 }
 
-func (g *Generator) resolveRefSchema(s *avro.RefSchema, level int) string {
+func (g *Generator) resolveRefSchema(s *avro.RefSchema) string {
 	if sx, ok := s.Schema().(*avro.RecordSchema); ok {
 		return g.resolveTypeName(sx)
 	}
-	return g.generate(s.Schema(), nil, level+1)
+	return g.generate(s.Schema())
 }
 
-func (g *Generator) resolveUnionTypes(s *avro.UnionSchema, level int) string {
+func (g *Generator) resolveUnionTypes(s *avro.UnionSchema) string {
 	types := make([]string, 0, len(s.Types()))
 	for _, elem := range s.Types() {
 		if _, ok := elem.(*avro.NullSchema); ok {
 			continue
 		}
-		types = append(types, g.generate(elem, nil, level+1))
+		types = append(types, g.generate(elem))
 	}
 	if s.Nullable() {
 		return "*" + types[0]
@@ -470,33 +466,33 @@ func (g *Generator) Write(w io.Writer) error {
 		Imports           []string
 		ThirdPartyImports []string
 		Typedefs          []typedef
+		Metadata          *SchemaMetadata
 	}{
 		WithEncoders: g.encoders,
 		PackageName:  g.pkg,
 		PackageDoc:   g.pkgdoc,
 		Imports:      append(g.imports, g.thirdPartyImports...),
 		Typedefs:     g.typedefs,
+		Metadata:     g.metadata,
 	}
 	return parsed.Execute(w, data)
 }
 
 type typedef struct {
-	Name           string
-	Doc            string
-	Fields         []field
-	Schema         string
-	SchemaMetadata *SchemaMetadata
-	Props          map[string]any
+	Name   string
+	Doc    string
+	Fields []field
+	Schema string
+	Props  map[string]any
 }
 
-func newType(name, doc string, fields []field, schema string, schemaMetadata *SchemaMetadata, props map[string]any) typedef {
+func newType(name, doc string, fields []field, schema string, props map[string]any) typedef {
 	return typedef{
-		Name:           name,
-		Doc:            ensureTrailingPeriod(doc),
-		Fields:         fields,
-		Schema:         schema,
-		SchemaMetadata: schemaMetadata,
-		Props:          props,
+		Name:   name,
+		Doc:    ensureTrailingPeriod(doc),
+		Fields: fields,
+		Schema: schema,
+		Props:  props,
 	}
 }
 
