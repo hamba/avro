@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="ALL" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="46b2698c-886c-4eb7-9ec7-b91542dc4c4f" name="Changes" comment="formatting">
+      <change beforePath="$PROJECT_DIR$/gen/gen.go" beforeDir="false" afterPath="$PROJECT_DIR$/gen/gen.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gen/gen_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/gen/gen_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gen/output_template.tmpl" beforeDir="false" afterPath="$PROJECT_DIR$/gen/output_template.tmpl" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="GOROOT" url="file:///usr/lib/golang" />
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 8
+}</component>
+  <component name="ProjectId" id="2q6uItoFb6veRf3WemKlaCpTEQ3" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Go Build.go build github.com/hamba/avro/v2/cmd/avrogen.executor&quot;: &quot;Run&quot;,
+    &quot;Go Test.TestDecoder_RecordStructInvalidData in github.com/hamba/avro/v2.executor&quot;: &quot;Debug&quot;,
+    &quot;Go Test.TestStruct_MetadataConstants in github.com/hamba/avro/v2/gen.executor&quot;: &quot;Debug&quot;,
+    &quot;Go Test.TestStruct_MultilineDoc in github.com/hamba/avro/v2/gen.executor&quot;: &quot;Run&quot;,
+    &quot;Go Test.gen_test.go.executor&quot;: &quot;Run&quot;,
+    &quot;Go Test.main_test.go.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.formatter.settings.were.checked&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.migrated.go.modules.settings&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.modules.go.list.on.any.changes.was.set&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;go.import.settings.migrated&quot;: &quot;true&quot;,
+    &quot;go.sdk.automatically.set&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/ekazakas/git/ekazakas/heetch/avro&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;
+  }
+}</component>
+  <component name="RunManager" selected="Go Test.TestStruct_MultilineDoc in github.com/hamba/avro/v2/gen">
+    <configuration name="TestDecoder_RecordStructInvalidData in github.com/hamba/avro/v2" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="avro" />
+      <working_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <package value="github.com/hamba/avro/v2" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <framework value="gotest" />
+      <pattern value="^\QTestDecoder_RecordStructInvalidData\E$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="TestStruct_MetadataConstants in github.com/hamba/avro/v2/gen" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="avro" />
+      <working_directory value="$PROJECT_DIR$/gen" />
+      <root_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <package value="github.com/hamba/avro/v2/gen" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <framework value="gotest" />
+      <pattern value="^\QTestStruct_MetadataConstants\E$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="TestStruct_MultilineDoc in github.com/hamba/avro/v2/gen" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="avro" />
+      <working_directory value="$PROJECT_DIR$/gen" />
+      <root_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <package value="github.com/hamba/avro/v2/gen" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <framework value="gotest" />
+      <pattern value="^\QTestStruct_MultilineDoc\E$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="gen_test.go" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="avro" />
+      <working_directory value="$PROJECT_DIR$/gen" />
+      <root_directory value="$PROJECT_DIR$" />
+      <kind value="FILE" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$/gen/gen_test.go" />
+      <framework value="gotest" />
+      <method v="2" />
+    </configuration>
+    <configuration name="main_test.go" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="avro" />
+      <working_directory value="$PROJECT_DIR$/cmd/avrogen" />
+      <root_directory value="$PROJECT_DIR$" />
+      <kind value="FILE" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$/cmd/avrogen/main_test.go" />
+      <framework value="gotest" />
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Go Test.TestStruct_MultilineDoc in github.com/hamba/avro/v2/gen" />
+      <item itemvalue="Go Test.TestDecoder_RecordStructInvalidData in github.com/hamba/avro/v2" />
+      <item itemvalue="Go Test.TestStruct_MetadataConstants in github.com/hamba/avro/v2/gen" />
+      <item itemvalue="Go Test.gen_test.go" />
+      <item itemvalue="Go Test.main_test.go" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Go Test.TestStruct_MultilineDoc in github.com/hamba/avro/v2/gen" />
+        <item itemvalue="Go Test.TestDecoder_RecordStructInvalidData in github.com/hamba/avro/v2" />
+        <item itemvalue="Go Test.gen_test.go" />
+        <item itemvalue="Go Test.main_test.go" />
+        <item itemvalue="Go Test.TestStruct_MetadataConstants in github.com/hamba/avro/v2/gen" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-gosdk-d297c17c1fbd-85c80fddc9a6-org.jetbrains.plugins.go.sharedIndexes.bundled-GO-243.23654.166" />
+        <option value="bundled-js-predefined-d6986cc7102b-822845ee3bb5-JavaScript-GO-243.23654.166" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Updates after review" />
+    <MESSAGE value="formatting" />
+    <option name="LAST_COMMIT_MESSAGE" value="formatting" />
+  </component>
+  <component name="VgoProject">
+    <settings-migrated>true</settings-migrated>
+  </component>
+</project>
