@@ -453,6 +453,7 @@ func (g *Generator) Write(w io.Writer) error {
 			"upperCamel": strcase.ToPascal,
 			"camel":      strcase.ToCamel,
 			"snake":      strcase.ToSnake,
+			"replace":    strings.Replace,
 		}).
 		Parse(g.template)
 	if err != nil {
