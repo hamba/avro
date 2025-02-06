@@ -117,6 +117,7 @@ func newEncoderContext(cfg *frozenConfig) *encoderContext {
 	}
 }
 
+//nolint:dupl
 func decoderOfType(d *decoderContext, schema Schema, typ reflect2.Type) ValDecoder {
 	if dec := createDecoderOfMarshaler(schema, typ); dec != nil {
 		return dec
@@ -189,6 +190,7 @@ func (e *onePtrEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 	e.enc.Encode(noescape(unsafe.Pointer(&ptr)), w)
 }
 
+//nolint:dupl
 func encoderOfType(e *encoderContext, schema Schema, typ reflect2.Type) ValEncoder {
 	if enc := createEncoderOfMarshaler(schema, typ); enc != nil {
 		return enc
