@@ -27,6 +27,7 @@ type Config struct {
 	StrictTypes  bool
 	Initialisms  []string
 	LogicalTypes []LogicalType
+	Metadata     any
 }
 
 // TagStyle defines the styling for a tag.
@@ -85,6 +86,7 @@ func StructFromSchema(schema avro.Schema, w io.Writer, cfg Config) error {
 		WithInitialisms(cfg.Initialisms),
 		WithStrictTypes(cfg.StrictTypes),
 		WithFullSchema(cfg.FullSchema),
+		WithMetadata(cfg.Metadata),
 	}
 	for _, opt := range cfg.LogicalTypes {
 		opts = append(opts, WithLogicalType(opt))
@@ -168,6 +170,13 @@ func WithFullSchema(b bool) OptsFunc {
 	}
 }
 
+// WithMetadata configures the generator to store the metadata within the generation context.
+func WithMetadata(m any) OptsFunc {
+	return func(g *Generator) {
+		g.metadata = m
+	}
+}
+
 // LogicalType used when the name of the "LogicalType" field in the Avro schema matches the Name attribute.
 type LogicalType struct {
 	// Name of the LogicalType
@@ -213,6 +222,7 @@ type Generator struct {
 	strictTypes  bool
 	initialisms  []string
 	logicalTypes map[avro.LogicalType]LogicalType
+	metadata     any
 
 	imports           []string
 	thirdPartyImports []string
@@ -451,12 +461,14 @@ func (g *Generator) Write(w io.Writer) error {
 		Imports           []string
 		ThirdPartyImports []string
 		Typedefs          []typedef
+		Metadata          any
 	}{
 		WithEncoders: g.encoders,
 		PackageName:  g.pkg,
 		PackageDoc:   g.pkgdoc,
 		Imports:      append(g.imports, g.thirdPartyImports...),
 		Typedefs:     g.typedefs,
+		Metadata:     g.metadata,
 	}
 	return parsed.Execute(w, data)
 }

@@ -2,31 +2,35 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/hamba/avro/v2"
 	"github.com/hamba/avro/v2/gen"
+	"github.com/hamba/avro/v2/registry"
 	"golang.org/x/tools/imports"
 )
 
 type config struct {
 	TemplateFileName string
 
-	Pkg         string
-	PkgDoc      string
-	Out         string
-	Tags        string
-	FullName    bool
-	Encoders    bool
-	FullSchema  bool
-	StrictTypes bool
-	Initialisms string
+	Pkg            string
+	PkgDoc         string
+	Out            string
+	Tags           string
+	FullName       bool
+	Encoders       bool
+	FullSchema     bool
+	StrictTypes    bool
+	Initialisms    string
+	SchemaRegistry string
 }
 
 func main() {
@@ -47,6 +51,7 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 	flgs.BoolVar(&cfg.StrictTypes, "strict-types", false, "Use strict type sizes (e.g. int32) during generation.")
 	flgs.StringVar(&cfg.Initialisms, "initialisms", "", "Custom initialisms <VAL>[,...] for struct and field names.")
 	flgs.StringVar(&cfg.TemplateFileName, "template-filename", "", "Override output template with one loaded from file.")
+	flgs.StringVar(&cfg.SchemaRegistry, "schemaregistry", "", "The URL to schema registry, e.g.: http://localhost:8081.")
 	flgs.Usage = func() {
 		_, _ = fmt.Fprintln(stderr, "Usage: avrogen [options] schemas")
 		_, _ = fmt.Fprintln(stderr, "Options:")
@@ -88,13 +93,38 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 		gen.WithStrictTypes(cfg.StrictTypes),
 		gen.WithFullSchema(cfg.FullSchema),
 	}
+
 	g := gen.NewGenerator(cfg.Pkg, tags, opts...)
-	for _, file := range flgs.Args() {
-		schema, err := avro.ParseFiles(filepath.Clean(file))
-		if err != nil {
-			_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
-			return 2
+	for _, entry := range flgs.Args() {
+		var schema avro.Schema
+
+		switch cfg.SchemaRegistry {
+		case "":
+			schema, err = avro.ParseFiles(filepath.Clean(entry))
+			if err != nil {
+				_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
+				return 2
+			}
+		default:
+			client, err := registry.NewClient(cfg.SchemaRegistry)
+			if err != nil {
+				_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
+				return 2
+			}
+
+			subject, version, err := parseSubjectVersion(entry)
+			if err != nil {
+				_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
+				return 2
+			}
+
+			schema, err = client.GetSchemaByVersion(context.Background(), subject, version)
+			if err != nil {
+				_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
+				return 2
+			}
 		}
+
 		g.Parse(schema)
 	}
 
@@ -204,4 +234,18 @@ func loadTemplate(templateFileName string) ([]byte, error) {
 		return nil, nil
 	}
 	return os.ReadFile(filepath.Clean(templateFileName))
+}
+
+func parseSubjectVersion(entry string) (string, int, error) {
+	parts := strings.Split(entry, ":")
+	if len(parts) != 2 {
+		return "", -1, errors.New("entry must be of format subject:version")
+	}
+
+	version, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return "", -1, err
+	}
+
+	return parts[0], version, nil
 }
