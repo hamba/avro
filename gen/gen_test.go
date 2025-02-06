@@ -100,6 +100,30 @@ func TestStruct_MultilineDoc(t *testing.T) {
 	}
 }
 
+func TestStruct_EscapeBacktick(t *testing.T) {
+	schema := `{
+  "type": "record",
+  "name": "Test",
+  "doc": "Test record doc with ` + "`" + `backticks` + "`" + `",
+  "fields": [
+    { "name": "someString", "type": "string" }
+  ]
+}`
+	gc := gen.Config{
+		PackageName: "Something",
+		Encoders:    true,
+		FullSchema:  true,
+	}
+
+	_, lines := generate(t, schema, gc)
+
+	for _, expected := range []string{
+		"var schemaTest = avro.MustParse(`{\"name\":\"Test\",\"doc\":\"Test record doc with ` + \"`\" + `backticks` + \"`\" + `\",\"type\":\"record\",\"fields\":[{\"name\":\"someString\",\"type\":\"string\"}]}`)",
+	} {
+		assert.Contains(t, lines, expected)
+	}
+}
+
 func TestStruct_HandlesAdditionalInitialisms(t *testing.T) {
 	schema := `{
   "type": "record",
