@@ -19,6 +19,13 @@ func TestGenericDecode(t *testing.T) {
 		wantErr require.ErrorAssertionFunc
 	}{
 		{
+			name:    "Null",
+			data:    []byte{},
+			schema:  "null",
+			want:    nil,
+			wantErr: require.NoError,
+		},
+		{
 			name:    "Bool",
 			data:    []byte{0x01},
 			schema:  "boolean",

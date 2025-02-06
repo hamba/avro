@@ -336,10 +336,11 @@ func TestEncoder_RecordMap(t *testing.T) {
 	"name": "test",
 	"fields" : [
 		{"name": "a", "type": "long"},
-	    {"name": "b", "type": "string"}
+	    {"name": "b", "type": "string"},
+		{"name": "c", "type": "null"}
 	]
 }`
-	obj := map[string]any{"a": int64(27), "b": "foo"}
+	obj := map[string]any{"a": int64(27), "b": "foo", "c": nil}
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)

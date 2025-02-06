@@ -130,6 +130,8 @@ func decoderOfType(d *decoderContext, schema Schema, typ reflect2.Type) ValDecod
 	}
 
 	switch schema.Type() {
+	case Null:
+		return &nullCodec{}
 	case String, Bytes, Int, Long, Float, Double, Boolean:
 		return createDecoderOfNative(schema.(*PrimitiveSchema), typ)
 	case Record:
@@ -197,8 +199,10 @@ func encoderOfType(e *encoderContext, schema Schema, typ reflect2.Type) ValEncod
 	}
 
 	switch schema.Type() {
-	case String, Bytes, Int, Long, Float, Double, Boolean, Null:
-		return createEncoderOfNative(schema, typ)
+	case Null:
+		return &nullCodec{}
+	case String, Bytes, Int, Long, Float, Double, Boolean:
+		return createEncoderOfNative(schema.(*PrimitiveSchema), typ)
 	case Record:
 		key := cacheKey{fingerprint: schema.Fingerprint(), rtype: typ.RType()}
 		defEnc := &deferEncoder{}
