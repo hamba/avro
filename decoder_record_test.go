@@ -243,7 +243,8 @@ func TestDecoder_RecordMap(t *testing.T) {
 	"fields" : [
 		{"name": "a", "type": "long"},
 	    {"name": "b", "type": "string"},
-		{"name": "c", "type": ["null","string"]}
+		{"name": "c", "type": ["null","string"]},
+		{"name": "d", "type": "null"}
 	]
 }`
 	dec, err := avro.NewDecoder(schema, bytes.NewReader(data))
@@ -253,7 +254,7 @@ func TestDecoder_RecordMap(t *testing.T) {
 	err = dec.Decode(&got)
 
 	require.NoError(t, err)
-	assert.Equal(t, map[string]any{"a": int64(27), "b": "foo", "c": "foo"}, got)
+	assert.Equal(t, map[string]any{"a": int64(27), "b": "foo", "c": "foo", "d": nil}, got)
 }
 
 func TestDecoder_RecordMapInvalidKey(t *testing.T) {
