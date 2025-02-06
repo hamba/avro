@@ -94,13 +94,18 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 		gen.WithFullSchema(cfg.FullSchema),
 	}
 
-	ctx := context.Background()
-
 	g := gen.NewGenerator(cfg.Pkg, tags, opts...)
 	for _, entry := range flgs.Args() {
 		var schema avro.Schema
 
-		if cfg.SchemaRegistry != "" {
+		switch cfg.SchemaRegistry {
+		case "":
+			schema, err = avro.ParseFiles(filepath.Clean(entry))
+			if err != nil {
+				_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
+				return 2
+			}
+		default:
 			client, err := registry.NewClient(cfg.SchemaRegistry)
 			if err != nil {
 				_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
@@ -113,13 +118,7 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 				return 2
 			}
 
-			schema, err = client.GetSchemaByVersion(ctx, subject, version)
-			if err != nil {
-				_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
-				return 2
-			}
-		} else {
-			schema, err = avro.ParseFiles(filepath.Clean(entry))
+			schema, err = client.GetSchemaByVersion(context.Background(), subject, version)
 			if err != nil {
 				_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
 				return 2
