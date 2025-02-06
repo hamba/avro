@@ -39,7 +39,7 @@ package {{ .PackageName }}
 	}
 
 	{{- if $encoders }}
-		var schema{{ .Name }} = avro.MustParse(`{{ .Schema }}`)
+		var schema{{ .Name }} = avro.MustParse(`{{ replace .Schema "`" "` + \"`\" + `" -1 }}`)
 
 		// Schema returns the schema for {{ .Name }}.
 		func (o *{{ .Name }}) Schema() avro.Schema {
