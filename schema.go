@@ -131,6 +131,17 @@ func (c *SchemaCache) Get(name string) Schema {
 	return nil
 }
 
+// AddAll adds all schemas from the given cache to the current cache.
+func (c *SchemaCache) AddAll(cache *SchemaCache) {
+	if cache == nil {
+		return
+	}
+	cache.cache.Range(func(key, value interface{}) bool {
+		c.cache.Store(key, value)
+		return true
+	})
+}
+
 // Schemas is a slice of Schemas.
 type Schemas []Schema
 
