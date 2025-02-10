@@ -39,6 +39,8 @@ func genericReceiver(schema Schema) (reflect2.Type, error) {
 	}
 
 	switch schema.Type() {
+	case Null:
+		return reflect2.TypeOf((*null)(nil)), nil
 	case Boolean:
 		var v bool
 		return reflect2.TypeOf(v), nil
