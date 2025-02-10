@@ -181,7 +181,7 @@ func createDecoderOfNative(schema *PrimitiveSchema, typ reflect2.Type) ValDecode
 }
 
 //nolint:maintidx // Splitting this would not make it simpler.
-func createEncoderOfNative(schema Schema, typ reflect2.Type) ValEncoder {
+func createEncoderOfNative(schema *PrimitiveSchema, typ reflect2.Type) ValEncoder {
 	switch typ.Kind() {
 	case reflect.Bool:
 		if schema.Type() != Boolean {
@@ -323,10 +323,6 @@ func createEncoderOfNative(schema Schema, typ reflect2.Type) ValEncoder {
 		return &bytesDecimalPtrCodec{prec: dec.Precision(), scale: dec.Scale()}
 	}
 
-	if schema.Type() == Null {
-		return &nullCodec{}
-	}
-
 	return &errorEncoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s", typ.String(), schema.Type())}
 }
 
@@ -349,6 +345,8 @@ func getLogicalType(schema Schema) LogicalType {
 }
 
 type nullCodec struct{}
+
+func (*nullCodec) Decode(unsafe.Pointer, *Reader) {}
 
 func (*nullCodec) Encode(unsafe.Pointer, *Writer) {}
 

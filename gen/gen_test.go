@@ -75,6 +75,55 @@ func TestStruct_HandlesGoInitialisms(t *testing.T) {
 	assert.Contains(t, lines, "type HTTPRecord struct {")
 }
 
+func TestStruct_MultilineDoc(t *testing.T) {
+	schema := `{
+  "type": "record",
+  "name": "Test",
+  "doc": "Test record doc\nMultiline record comments",
+  "fields": [
+    { "name": "someString", "type": "string", "doc": "Test field doc\nMultiline field comments" }
+  ]
+}`
+	gc := gen.Config{
+		PackageName: "Something",
+	}
+
+	_, lines := generate(t, schema, gc)
+
+	for _, expected := range []string{
+		"// Test record doc",
+		"// Multiline record comments.",
+		"// Test field doc",
+		"// Multiline field comments.",
+	} {
+		assert.Contains(t, lines, expected)
+	}
+}
+
+func TestStruct_EscapeBacktick(t *testing.T) {
+	schema := `{
+  "type": "record",
+  "name": "Test",
+  "doc": "Test record doc with ` + "`" + `backticks` + "`" + `",
+  "fields": [
+    { "name": "someString", "type": "string" }
+  ]
+}`
+	gc := gen.Config{
+		PackageName: "Something",
+		Encoders:    true,
+		FullSchema:  true,
+	}
+
+	_, lines := generate(t, schema, gc)
+
+	for _, expected := range []string{
+		"var schemaTest = avro.MustParse(`{\"name\":\"Test\",\"doc\":\"Test record doc with ` + \"`\" + `backticks` + \"`\" + `\",\"type\":\"record\",\"fields\":[{\"name\":\"someString\",\"type\":\"string\"}]}`)",
+	} {
+		assert.Contains(t, lines, expected)
+	}
+}
+
 func TestStruct_HandlesAdditionalInitialisms(t *testing.T) {
 	schema := `{
   "type": "record",
