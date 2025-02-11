@@ -1,30 +1,4 @@
-package avro_test
-
-import (
-	"sync"
-	"testing"
-
-	"github.com/hamba/avro/v2"
-	"github.com/stretchr/testify/require"
-)
-
-func TestConcurrentParse(t *testing.T) {
-	var wg sync.WaitGroup
-
-	for i := 0; i < 10000; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			_, err := avro.Parse(testSchema())
-			require.NoError(t, err)
-		}()
-	}
-
-	wg.Wait()
-}
-
-func testSchema() string {
-	return `{
+{
   "type": "record",
   "name": "FootballUpdateEvent",
   "namespace": "com.example.avro",
@@ -144,5 +118,4 @@ func testSchema() string {
       "default": {}
     }
   ]
-}`
 }
