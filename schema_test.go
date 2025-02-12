@@ -3,6 +3,7 @@ package avro_test
 import (
 	"encoding/json"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/hamba/avro/v2"
@@ -2243,4 +2244,19 @@ func TestNewSchema_IgnoresInvalidProperties(t *testing.T) {
 			"scale":       "def",
 		}, rec.Props())
 	})
+}
+
+func TestConcurrentParse(t *testing.T) {
+	var wg sync.WaitGroup
+
+	for i := 0; i < 10000; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := avro.ParseFiles("testdata/concurrent-schema.avsc")
+			require.NoError(t, err)
+		}()
+	}
+
+	wg.Wait()
 }

@@ -74,11 +74,17 @@ func ParseBytesWithCache(schema []byte, namespace string, cache *SchemaCache) (S
 		json = string(schema)
 	}
 
+	internalCache := &SchemaCache{}
+	internalCache.AddAll(cache)
+
 	seen := seenCache{}
-	s, err := parseType(namespace, json, seen, cache)
+	s, err := parseType(namespace, json, seen, internalCache)
 	if err != nil {
 		return nil, err
 	}
+
+	cache.AddAll(internalCache)
+
 	return derefSchema(s), nil
 }
 
