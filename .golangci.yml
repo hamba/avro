@@ -1,6 +1,5 @@
 run:
   tests: false
-  deadline: 5m
 
 linters-settings:
   gofumpt:
