@@ -264,13 +264,21 @@ func createEncoderOfNative(schema *PrimitiveSchema, typ reflect2.Type) ValEncode
 			return &float32DoubleCodec{}
 		case Float:
 			return &float32Codec{}
+		case Int:
+			return &longConvCodec[int32]{encode: createLongEncoder[float32, int32](typ, schema.Type())}
+		case Long:
+			return &longConvCodec[int64]{encode: createLongEncoder[float32, int64](typ, schema.Type())}
 		}
 
 	case reflect.Float64:
-		if schema.Type() != Double {
-			break
+		switch schema.Type() {
+		case Double:
+			return &float64Codec{}
+		case Int:
+			return &longConvCodec[int32]{encode: createLongEncoder[float64, int32](typ, schema.Type())}
+		case Long:
+			return &longConvCodec[int64]{encode: createLongEncoder[float64, int64](typ, schema.Type())}
 		}
-		return &float64Codec{}
 
 	case reflect.String:
 		if schema.Type() != String {
@@ -390,10 +398,20 @@ func (*longCodec[T]) Encode(ptr unsafe.Pointer, w *Writer) {
 
 type longConvCodec[T largeInt] struct {
 	convert func(*Reader) int64
+	encode  func(ptr unsafe.Pointer) (int64, error)
 }
 
 func (c *longConvCodec[T]) Decode(ptr unsafe.Pointer, r *Reader) {
 	*((*T)(ptr)) = T(c.convert(r))
+}
+
+func (c *longConvCodec[T]) Encode(ptr unsafe.Pointer, w *Writer) {
+	v, err := c.encode(ptr)
+	if err == nil {
+		w.WriteLong(v)
+	} else if w.Error == nil {
+		w.Error = err
+	}
 }
 
 type float32Codec struct{}
