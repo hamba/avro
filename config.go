@@ -109,7 +109,7 @@ type API interface {
 	DecoderOf(schema Schema, typ reflect2.Type) ValDecoder
 
 	// EncoderOf returns the value encoder for a given schema and type.
-	EncoderOf(schema Schema, tpy reflect2.Type) ValEncoder
+	EncoderOf(schema Schema, typ reflect2.Type) ValEncoder
 
 	// Register registers names to their types for resolution. All primitive types are pre-registered.
 	Register(name string, obj any)
