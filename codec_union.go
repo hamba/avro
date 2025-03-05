@@ -155,6 +155,12 @@ func (e *mapUnionEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 		return
 	}
 
+	// encode a nil array as an empty array
+	if schema.Type() == Array && val == nil {
+		// element data type doesn't matter since it won't even look at the array contents
+		val = []struct{}{}
+	}
+
 	elemType := reflect2.TypeOf(val)
 	elemPtr := reflect2.PtrOf(val)
 
@@ -366,11 +372,11 @@ func (d *unionResolvedDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 	switch typ.Kind() {
 	case reflect.Map:
 		mapType := typ.(*reflect2.UnsafeMapType)
-		newPtr = mapType.UnsafeMakeMap(1)
+		newPtr = mapType.UnsafeMakeMap(0)
 
 	case reflect.Slice:
 		mapType := typ.(*reflect2.UnsafeSliceType)
-		newPtr = mapType.UnsafeMakeSlice(1, 1)
+		newPtr = mapType.UnsafeMakeSlice(0, 0)
 
 	case reflect.Ptr:
 		elemType := typ.(*reflect2.UnsafePtrType).Elem()

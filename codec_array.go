@@ -42,6 +42,10 @@ func (d *arrayDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 	var size int
 	sliceType := d.typ
 
+	if sliceType.UnsafeIsNil(ptr) {
+		sliceType.UnsafeSet(ptr, sliceType.UnsafeMakeSlice(0, 0))
+	}
+
 	for {
 		l, _ := r.ReadBlockHeader()
 		if l == 0 {

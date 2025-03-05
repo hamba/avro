@@ -94,6 +94,61 @@ func TestEncoder_FixedRatInvalidLogicalSchema(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestEncoder_FixedString_Positive(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"fixed", "name": "test", "size": 6,"logicalType":"decimal","precision":4,"scale":2}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode("346.8")
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x00, 0x00, 0x00, 0x00, 0x87, 0x78}, buf.Bytes())
+}
+
+func TestEncoder_FixedString_Negative(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"fixed", "name": "test", "size": 6, "logicalType":"decimal","precision":4,"scale":2}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode("-346.8")
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0xFF, 0xFF, 0xFF, 0xFF, 0x78, 0x88}, buf.Bytes())
+}
+
+func TestEncoder_FixedString_Zero(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"fixed", "name": "test", "size": 6,"logicalType":"decimal","precision":4,"scale":2}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode("0")
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, buf.Bytes())
+}
+
+func TestEncoder_FixedString_Invalid(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"fixed", "name": "test", "size": 6,"logicalType":"decimal","precision":4,"scale":2}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode("foo")
+
+	assert.Error(t, err)
+}
+
 func TestEncoder_FixedLogicalDuration(t *testing.T) {
 	defer ConfigTeardown()
 

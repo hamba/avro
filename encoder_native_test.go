@@ -2,6 +2,7 @@ package avro_test
 
 import (
 	"bytes"
+	"math"
 	"math/big"
 	"testing"
 	"time"
@@ -63,6 +64,90 @@ func TestEncoder_Int(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, []byte{0x36}, buf.Bytes())
+}
+
+func TestEncoder_IntFromFloat32(t *testing.T) {
+	t.Run("is integer", func(t *testing.T) {
+		defer ConfigTeardown()
+
+		schema := "int"
+		buf := bytes.NewBuffer([]byte{})
+		enc, err := avro.NewEncoder(schema, buf)
+		require.NoError(t, err)
+
+		err = enc.Encode(float32(27))
+
+		require.NoError(t, err)
+		assert.Equal(t, []byte{0x36}, buf.Bytes())
+	})
+
+	t.Run("is not integer", func(t *testing.T) {
+		defer ConfigTeardown()
+
+		schema := "int"
+		buf := bytes.NewBuffer([]byte{})
+		enc, err := avro.NewEncoder(schema, buf)
+		require.NoError(t, err)
+
+		err = enc.Encode(float32(1.15))
+
+		assert.Error(t, err)
+	})
+
+	t.Run("is out of range", func(t *testing.T) {
+		defer ConfigTeardown()
+
+		schema := "int"
+		buf := bytes.NewBuffer([]byte{})
+		enc, err := avro.NewEncoder(schema, buf)
+		require.NoError(t, err)
+
+		err = enc.Encode(float32(math.MaxInt32 + 1))
+
+		assert.Error(t, err)
+	})
+}
+
+func TestEncoder_IntFromFloat64(t *testing.T) {
+	t.Run("is integer", func(t *testing.T) {
+		defer ConfigTeardown()
+
+		schema := "int"
+		buf := bytes.NewBuffer([]byte{})
+		enc, err := avro.NewEncoder(schema, buf)
+		require.NoError(t, err)
+
+		err = enc.Encode(float64(27))
+
+		require.NoError(t, err)
+		assert.Equal(t, []byte{0x36}, buf.Bytes())
+	})
+
+	t.Run("is not integer", func(t *testing.T) {
+		defer ConfigTeardown()
+
+		schema := "int"
+		buf := bytes.NewBuffer([]byte{})
+		enc, err := avro.NewEncoder(schema, buf)
+		require.NoError(t, err)
+
+		err = enc.Encode(float64(1.15))
+
+		assert.Error(t, err)
+	})
+
+	t.Run("is out of range", func(t *testing.T) {
+		defer ConfigTeardown()
+
+		schema := "int"
+		buf := bytes.NewBuffer([]byte{})
+		enc, err := avro.NewEncoder(schema, buf)
+		require.NoError(t, err)
+
+		err = enc.Encode(float64(math.MaxInt32 + 1))
+
+		assert.Error(t, err)
+	})
 }
 
 func TestEncoder_IntInvalidSchema(t *testing.T) {
@@ -280,6 +365,90 @@ func TestEncoder_Int64FromInt(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, []byte{0x80, 0x80, 0x80, 0x80, 0x10}, buf.Bytes())
+}
+
+func TestEncoder_Int64FromFloat32(t *testing.T) {
+	t.Run("is integer", func(t *testing.T) {
+		defer ConfigTeardown()
+
+		schema := "long"
+		buf := bytes.NewBuffer([]byte{})
+		enc, err := avro.NewEncoder(schema, buf)
+		require.NoError(t, err)
+
+		err = enc.Encode(float32(27))
+
+		require.NoError(t, err)
+		assert.Equal(t, []byte{0x36}, buf.Bytes())
+	})
+
+	t.Run("is not integer", func(t *testing.T) {
+		defer ConfigTeardown()
+
+		schema := "long"
+		buf := bytes.NewBuffer([]byte{})
+		enc, err := avro.NewEncoder(schema, buf)
+		require.NoError(t, err)
+
+		err = enc.Encode(float32(1.15))
+
+		assert.Error(t, err)
+	})
+
+	t.Run("is out of range", func(t *testing.T) {
+		defer ConfigTeardown()
+
+		schema := "long"
+		buf := bytes.NewBuffer([]byte{})
+		enc, err := avro.NewEncoder(schema, buf)
+		require.NoError(t, err)
+
+		err = enc.Encode(float32(math.MaxInt64 + 1))
+
+		assert.Error(t, err)
+	})
+}
+
+func TestEncoder_Int64FromFloat64(t *testing.T) {
+	t.Run("is integer", func(t *testing.T) {
+		defer ConfigTeardown()
+
+		schema := "long"
+		buf := bytes.NewBuffer([]byte{})
+		enc, err := avro.NewEncoder(schema, buf)
+		require.NoError(t, err)
+
+		err = enc.Encode(float64(27))
+
+		require.NoError(t, err)
+		assert.Equal(t, []byte{0x36}, buf.Bytes())
+	})
+
+	t.Run("is not integer", func(t *testing.T) {
+		defer ConfigTeardown()
+
+		schema := "long"
+		buf := bytes.NewBuffer([]byte{})
+		enc, err := avro.NewEncoder(schema, buf)
+		require.NoError(t, err)
+
+		err = enc.Encode(float64(1.15))
+
+		assert.Error(t, err)
+	})
+
+	t.Run("is out of range", func(t *testing.T) {
+		defer ConfigTeardown()
+
+		schema := "long"
+		buf := bytes.NewBuffer([]byte{})
+		enc, err := avro.NewEncoder(schema, buf)
+		require.NoError(t, err)
+
+		err = enc.Encode(float64(math.MaxInt64 + 1))
+
+		assert.Error(t, err)
+	})
 }
 
 func TestEncoder_Int64InvalidSchema(t *testing.T) {

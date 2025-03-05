@@ -29,8 +29,8 @@ func createDecoderOfFixed(fixed *FixedSchema, typ reflect2.Type) ValDecoder {
 		elemType := ptrType.Elem()
 
 		ls := fixed.Logical()
-		tpy1 := elemType.Type1()
-		if elemType.Kind() != reflect.Struct || !tpy1.ConvertibleTo(ratType) || ls == nil ||
+		typ1 := elemType.Type1()
+		if elemType.Kind() != reflect.Struct || !typ1.ConvertibleTo(ratType) || ls == nil ||
 			ls.Type() != Decimal {
 			break
 		}
@@ -65,21 +65,25 @@ func createEncoderOfFixed(fixed *FixedSchema, typ reflect2.Type) ValEncoder {
 		if fixed.Size() != 8 {
 			break
 		}
-
 		return &fixedUint64Codec{}
 	case reflect.Ptr:
 		ptrType := typ.(*reflect2.UnsafePtrType)
 		elemType := ptrType.Elem()
 
 		ls := fixed.Logical()
-		tpy1 := elemType.Type1()
-		if elemType.Kind() != reflect.Struct || !tpy1.ConvertibleTo(ratType) || ls == nil ||
-			ls.Type() != Decimal {
+		typ1 := elemType.Type1()
+		if elemType.Kind() != reflect.Struct || !typ1.ConvertibleTo(ratType) || ls == nil || ls.Type() != Decimal {
 			break
 		}
 		dec := ls.(*DecimalLogicalSchema)
-		return &fixedDecimalCodec{prec: dec.Precision(), scale: dec.Scale(), size: fixed.Size()}
-
+		return &fixedDecimalCodec{typ: typ, fixed: fixed, prec: dec.Precision(), scale: dec.Scale(), size: fixed.Size()}
+	case reflect.String:
+		ls := fixed.Logical()
+		if ls.Type() != Decimal {
+			break
+		}
+		dec := ls.(*DecimalLogicalSchema)
+		return &fixedDecimalCodec{typ: typ, fixed: fixed, prec: dec.Precision(), scale: dec.Scale(), size: fixed.Size()}
 	case reflect.Struct:
 		ls := fixed.Logical()
 		if ls == nil {
@@ -128,6 +132,8 @@ func (c *fixedCodec) Encode(ptr unsafe.Pointer, w *Writer) {
 }
 
 type fixedDecimalCodec struct {
+	typ   reflect2.Type
+	fixed *FixedSchema
 	prec  int
 	scale int
 	size  int
@@ -140,7 +146,20 @@ func (c *fixedDecimalCodec) Decode(ptr unsafe.Pointer, r *Reader) {
 }
 
 func (c *fixedDecimalCodec) Encode(ptr unsafe.Pointer, w *Writer) {
-	r := *((**big.Rat)(ptr))
+	var r *big.Rat
+	switch c.typ.Kind() {
+	case reflect.Ptr:
+		r = *((**big.Rat)(ptr))
+	case reflect.String:
+		s := *((*string)(ptr))
+		var ok bool
+		r, ok = (&big.Rat{}).SetString(s)
+		if !ok {
+			w.Error = fmt.Errorf("avro: %s with value %s is unsupported for Avro %s, size=%d", c.typ.String(), s, c.fixed.Type(), c.fixed.Size())
+			return
+		}
+	}
+
 	scale := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(c.scale)), nil)
 	i := (&big.Int{}).Mul(r.Num(), scale)
 	i = i.Div(i, r.Denom())
