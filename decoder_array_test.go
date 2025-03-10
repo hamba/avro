@@ -96,7 +96,7 @@ func TestDecoder_ArrayRecursiveStruct(t *testing.T) {
 	err := dec.Decode(&got)
 
 	assert.NoError(t, err)
-	assert.Equal(t, record{A: 1, B: []record{{A: 2}, {A: 3}}}, got)
+	assert.Equal(t, record{A: 1, B: []record{{A: 2, B: []record{}}, {A: 3, B: []record{}}}}, got)
 }
 
 func TestDecoder_ArraySliceError(t *testing.T) {

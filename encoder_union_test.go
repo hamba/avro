@@ -383,6 +383,74 @@ func TestEncoder_UnionInterfaceArray(t *testing.T) {
 	assert.Equal(t, []byte{0x02, 0x01, 0x02, 0x36, 0x00}, buf.Bytes())
 }
 
+func TestEncoder_UnionInterfaceArrayEmpty(t *testing.T) {
+	defer ConfigTeardown()
+
+	avro.Register("array:int", []int{})
+
+	schema := `["int", {"type": "array", "items": "int"}]`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	var val any = []int{}
+	err = enc.Encode(val)
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x02, 0x00}, buf.Bytes())
+}
+
+func TestEncoder_UnionInterfaceUnregisteredArray(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `["int", {"type": "array", "items": "int"}]`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	var val any = map[string]any{
+		"array": []int{27},
+	}
+	err = enc.Encode(val)
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x02, 0x01, 0x02, 0x36, 0x00}, buf.Bytes())
+}
+
+func TestEncoder_UnionInterfaceUnregisteredArrayEmpty(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `["int", {"type": "array", "items": "int"}]`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	var val any = map[string]any{
+		"array": []int{},
+	}
+	err = enc.Encode(val)
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x02, 0x00}, buf.Bytes())
+}
+
+func TestEncoder_UnionInterfaceUnregisteredArrayNull(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `["int", {"type": "array", "items": "int"}]`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	var val any = map[string]any{
+		"array": nil,
+	}
+	err = enc.Encode(val)
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x02, 0x00}, buf.Bytes())
+}
+
 func TestEncoder_UnionInterfaceNull(t *testing.T) {
 	defer ConfigTeardown()
 
