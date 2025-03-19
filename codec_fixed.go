@@ -29,8 +29,8 @@ func createDecoderOfFixed(fixed *FixedSchema, typ reflect2.Type) ValDecoder {
 		elemType := ptrType.Elem()
 
 		ls := fixed.Logical()
-		tpy1 := elemType.Type1()
-		if elemType.Kind() != reflect.Struct || !tpy1.ConvertibleTo(ratType) || ls == nil ||
+		typ1 := elemType.Type1()
+		if elemType.Kind() != reflect.Struct || !typ1.ConvertibleTo(ratType) || ls == nil ||
 			ls.Type() != Decimal {
 			break
 		}
@@ -72,8 +72,8 @@ func createEncoderOfFixed(fixed *FixedSchema, typ reflect2.Type) ValEncoder {
 		elemType := ptrType.Elem()
 
 		ls := fixed.Logical()
-		tpy1 := elemType.Type1()
-		if elemType.Kind() != reflect.Struct || !tpy1.ConvertibleTo(ratType) || ls == nil ||
+		typ1 := elemType.Type1()
+		if elemType.Kind() != reflect.Struct || !typ1.ConvertibleTo(ratType) || ls == nil ||
 			ls.Type() != Decimal {
 			break
 		}
