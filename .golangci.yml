@@ -1,18 +1,23 @@
+version: "2"
 run:
   tests: false
 
-linters-settings:
-  gofumpt:
-    extra-rules: true
-  gosec:
-    excludes:
-      - G115
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+  settings:
+    gofumpt:
+      extra-rules: true
+  exclusions:
+    generated: lax
 
 linters:
-  enable-all: true
+  default: all
   disable:
-    - cyclop # duplicate of gocyclo
-    - exportloopref # deprecated
+    - cyclop    # duplicate of gocyclo
     - depguard
     - err113
     - exhaustive
@@ -36,13 +41,16 @@ linters:
     - varnamelen
     - wrapcheck
     - wsl
-
-issues:
-  exclude-use-default: false
-  exclude:
-    - 'package-comments: should have a package comment'
-    - 'G103: Use of unsafe calls should be audited'
-  exclude-rules:
-  - path: (schema|protocol)\.go
-    linters:
-      - gosec
+  settings:
+    gosec:
+      excludes:
+        - G115
+        - G103
+  exclusions:
+    generated: lax
+    rules:
+      - linters:
+          - gosec
+        path: (schema|protocol)\.go
+      - path: (.+)\.go$
+        text: 'package-comments: should have a package comment'
