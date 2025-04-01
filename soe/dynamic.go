@@ -16,6 +16,7 @@ type DynamicDecoder struct {
 	resolver SchemaResolver
 }
 
+// NewDynamicDecoder returns a new DynamicDecoder for given API and resolver.
 func NewDynamicDecoder(api avro.API, resolver SchemaResolver) *DynamicDecoder {
 	return &DynamicDecoder{
 		api:      api,
@@ -23,6 +24,8 @@ func NewDynamicDecoder(api avro.API, resolver SchemaResolver) *DynamicDecoder {
 	}
 }
 
+// Decode unmarshals a value from SOE-encoded Avro binary using the schema
+// specified in the SOE header. Fails if schema is not known to resolver.
 func (d *DynamicDecoder) Decode(ctx context.Context, data []byte, v any) error {
 	fingerprint, data, err := ParseHeader(data)
 	if err != nil {
