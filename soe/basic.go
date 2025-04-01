@@ -10,9 +10,9 @@ import (
 // Codec marshals values to/from bytes, with the Avro binary payload wrapped in
 // an SOE frame containing the writer schema fingerprint.
 type Codec struct {
-	api         avro.API
-	schema      avro.Schema
-	header      []byte
+	api    avro.API
+	schema avro.Schema
+	header []byte
 }
 
 // NewCodec creates a new Codec for a Schema and the default config.
