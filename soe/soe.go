@@ -51,7 +51,7 @@ func BuildHeader(schema avro.Schema) ([]byte, error) {
 	return BuildHeaderForFingerprint(fingerprint)
 }
 
-// BuildHeader builds an SOE header from a fingerprint.
+// BuildHeaderForFingerprint builds an SOE header from a fingerprint.
 func BuildHeaderForFingerprint(fingerprint []byte) ([]byte, error) {
 	if len(fingerprint) != 8 {
 		return nil, fmt.Errorf("bad fingerprint length: %d", len(fingerprint))
