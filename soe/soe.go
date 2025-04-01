@@ -10,7 +10,7 @@ import (
 // https://avro.apache.org/docs/1.10.2/spec.html#single_object_encoding
 var Magic = []byte{0xc3, 0x01}
 
-// All generated Avro types implement this interface
+// AvroGenerated is implemented by all avrogen-generated Avro types.
 type AvroGenerated interface {
 	Unmarshal(b []byte) error
 	Marshal() ([]byte, error)
