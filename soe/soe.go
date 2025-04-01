@@ -7,6 +7,7 @@ import (
 	"github.com/hamba/avro/v2"
 )
 
+// Magic is the two-byte magic marker described in:
 // https://avro.apache.org/docs/1.10.2/spec.html#single_object_encoding
 var Magic = []byte{0xc3, 0x01}
 
