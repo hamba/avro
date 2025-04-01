@@ -7,10 +7,10 @@ import (
 // GenericCodec marshals/unmarshals AvroGenerated values to/from SOE-framed Avro
 // binary payloads. Must be instantiated with a pointer type, e.g.
 //
-//    c, _ := NewGenericCodec[*MyType]()
-//    val MyType
-//    c.Encode(val)
-//    c.Decode(&val)
+//	c, _ := NewGenericCodec[*MyType]()
+//	val MyType
+//	c.Encode(val)
+//	c.Decode(&val)
 //
 // It is a strongly typed version of soe.Codec.
 type GenericCodec[T any] struct {
