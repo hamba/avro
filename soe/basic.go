@@ -15,6 +15,11 @@ type Codec struct {
 	header      []byte
 }
 
+// NewCodec creates a new Codec for a Schema and the default config.
+func NewCodec(schema avro.Schema) (*Codec, error) {
+	return NewCodecWithAPI(schema, avro.DefaultConfig)
+}
+
 // NewCodecWithAPI creates a new Codec for a Schema and an API.
 func NewCodecWithAPI(schema avro.Schema, api avro.API) (*Codec, error) {
 	// Precompute SOE header

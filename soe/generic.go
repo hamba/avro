@@ -17,6 +17,11 @@ type GenericCodec[T any] struct {
 	codec *Codec
 }
 
+// NewGenericCodec creates a new GenericCodec for type T and the default config.
+func NewGenericCodec[T AvroGenerated]() (*GenericCodec[T], error) {
+	return NewGenericCodecWithAPI[T](avro.DefaultConfig)
+}
+
 // NewGenericCodecWithAPI creates a new GenericCodec for type T and an API.
 func NewGenericCodecWithAPI[T AvroGenerated](api avro.API) (*GenericCodec[T], error) {
 	schema := GetSchema[T]()
