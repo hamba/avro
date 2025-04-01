@@ -3,22 +3,15 @@ package soe_test
 import (
 	"testing"
 
-	"github.com/hamba/avro/v2"
 	"github.com/hamba/avro/v2/soe"
+	"github.com/hamba/avro/v2/soe/testdata"
 	"github.com/stretchr/testify/require"
 )
-
-type Value struct {
-	StringVal string `avro:"stringval"`
-	IntVal    int    `avro:"intval"`
-}
-
-var schema = avro.MustParse(`{"name":"value","type":"record","fields":[{"name":"stringval","type":"string"},{"name":"intval","type":"int"}]}`)
 
 func newCodec(t *testing.T) *soe.Codec {
 	t.Helper()
 
-	codec, err := soe.NewCodec(schema)
+	codec, err := soe.NewCodec(testdata.StringIntSchema)
 	require.NoError(t, err)
 
 	return codec
@@ -27,7 +20,7 @@ func newCodec(t *testing.T) *soe.Codec {
 func TestRoundtrip(t *testing.T) {
 	codec := newCodec(t)
 
-	v0 := Value{
+	v0 := testdata.StringInt{
 		StringVal: "abc",
 		IntVal:    123,
 	}
@@ -35,7 +28,7 @@ func TestRoundtrip(t *testing.T) {
 	data, err := codec.Encode(v0)
 	require.NoError(t, err)
 
-	var v1 Value
+	var v1 testdata.StringInt
 	err = codec.Decode(data, &v1)
 	require.NoError(t, err)
 	require.Equal(t, v0, v1)
@@ -50,7 +43,7 @@ func TestShortHeader(t *testing.T) {
 	}
 
 	// Both Decode and DecodeUnverified validate the length
-	var v1 Value
+	var v1 testdata.StringInt
 	err := codec.Decode(data, &v1)
 	require.ErrorContains(t, err, "too short")
 
@@ -70,7 +63,7 @@ func TestBadMagic(t *testing.T) {
 	}
 
 	// Both Decode and DecodeUnverified validate the magic
-	var v1 Value
+	var v1 testdata.StringInt
 	err := codec.Decode(data, &v1)
 	require.ErrorContains(t, err, "invalid magic")
 
@@ -91,7 +84,7 @@ func TestBadFingerprint(t *testing.T) {
 
 	// DecodeUnverified does not validate the fingerprint, and successfully
 	// decodes empty payload.
-	var v1 Value
+	var v1 testdata.StringInt
 	err := codec.DecodeUnverified(data, &v1)
 	require.NoError(t, err)
 
@@ -103,7 +96,7 @@ func TestBadFingerprint(t *testing.T) {
 func TestHeaderFormat(t *testing.T) {
 	codec := newCodec(t)
 
-	v0 := Value{}
+	v0 := testdata.StringInt{}
 	data, err := codec.Encode(v0)
 	require.NoError(t, err)
 
@@ -115,7 +108,7 @@ func TestHeaderFormat(t *testing.T) {
 	}
 
 	// Build an expected header from magic + schema fingerprint
-	expectedFingerprint, err := soe.ComputeFingerprint(schema)
+	expectedFingerprint, err := soe.ComputeFingerprint(testdata.StringIntSchema)
 	require.NoError(t, err)
 	expectedHeader := append(soe.Magic, expectedFingerprint...)
 
