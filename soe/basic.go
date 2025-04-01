@@ -44,26 +44,26 @@ func (c *Codec) Encode(v any) ([]byte, error) {
 	return append(c.header, data...), nil
 }
 
-// Decode unmarshals a value from SOE-encoded Avro binary.
-func (c *Codec) Decode(data []byte, v any) error {
-	_, data, err := ParseHeader(data)
-	if err != nil {
-		return err
-	}
-	return c.api.Unmarshal(c.schema, data, v)
-}
-
-// DecodeStrict unmarshals a value from SOE-encoded Avro binary, and fails if
+// Decode unmarshals a value from SOE-encoded Avro binary, and fails if
 // the schema fingerprint doesn't match the held schema.
-func (c *Codec) DecodeStrict(data []byte, v any) error {
+func (c *Codec) Decode(data []byte, v any) error {
 	fingerprint, data, err := ParseHeader(data)
 	if err != nil {
 		return err
 	}
-
 	expected := c.getFingerprint()
 	if !bytes.Equal(fingerprint, expected) {
 		return fmt.Errorf("bad fingerprint %x, expected %x", fingerprint, expected)
+	}
+	return c.api.Unmarshal(c.schema, data, v)
+}
+
+// DecodeUnverified unmarshals a value from SOE-encoded Avro binary without
+// validating the schema fingerprint.
+func (c *Codec) DecodeUnverified(data []byte, v any) error {
+	_, data, err := ParseHeader(data)
+	if err != nil {
+		return err
 	}
 	return c.api.Unmarshal(c.schema, data, v)
 }

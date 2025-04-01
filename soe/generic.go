@@ -39,13 +39,14 @@ func (c *GenericCodec[T]) Encode(v T) ([]byte, error) {
 	return c.codec.Encode(v)
 }
 
-// Decode unmarshals a typed value from SOE-encoded Avro binary.
+// Decode unmarshals a typed value from SOE-encoded Avro binary, and fails if
+// the schema fingerprint doesn't match the held schema.
 func (c *GenericCodec[T]) Decode(data []byte, v T) error {
 	return c.codec.Decode(data, v)
 }
 
-// DecodeStrict unmarshals a typed value from SOE-encoded Avro binary, and fails
-// if the schema fingerprint doesn't match the held schema.
-func (c *GenericCodec[T]) DecodeStrict(data []byte, v T) error {
-	return c.codec.DecodeStrict(data, v)
+// DecodeUnverified unmarshals a typed value from SOE-encoded Avro binary
+// without validating the schema fingerprint.
+func (c *GenericCodec[T]) DecodeUnverified(data []byte, v T) error {
+	return c.codec.DecodeUnverified(data, v)
 }

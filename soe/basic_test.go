@@ -18,7 +18,7 @@ var schema = avro.MustParse(`{"name":"value","type":"record","fields":[{"name":"
 func newCodec(t *testing.T) *soe.Codec {
 	t.Helper()
 
-	codec, err := soe.NewCodecWithAPI(schema, avro.DefaultConfig)
+	codec, err := soe.NewCodec(schema)
 	require.NoError(t, err)
 
 	return codec
@@ -49,12 +49,12 @@ func TestShortHeader(t *testing.T) {
 		0xc3, 0x01,
 	}
 
-	// Both Decode and DecodeStrict validate the length
+	// Both Decode and DecodeUnverified validate the length
 	var v1 Value
 	err := codec.Decode(data, &v1)
 	require.ErrorContains(t, err, "too short")
 
-	err = codec.DecodeStrict(data, &v1)
+	err = codec.DecodeUnverified(data, &v1)
 	require.ErrorContains(t, err, "too short")
 }
 
@@ -69,12 +69,12 @@ func TestBadMagic(t *testing.T) {
 		// No data payload
 	}
 
-	// Both Decode and DecodeStrict validate the magic
+	// Both Decode and DecodeUnverified validate the magic
 	var v1 Value
 	err := codec.Decode(data, &v1)
 	require.ErrorContains(t, err, "invalid magic")
 
-	err = codec.DecodeStrict(data, &v1)
+	err = codec.DecodeUnverified(data, &v1)
 	require.ErrorContains(t, err, "invalid magic")
 }
 
@@ -89,14 +89,14 @@ func TestBadFingerprint(t *testing.T) {
 		// No data payload
 	}
 
-	// Decode does not validate the fingerprint, and successfully decodes
-	// empty payload.
+	// DecodeUnverified does not validate the fingerprint, and successfully
+	// decodes empty payload.
 	var v1 Value
-	err := codec.Decode(data, &v1)
+	err := codec.DecodeUnverified(data, &v1)
 	require.NoError(t, err)
 
-	// DecodeStrict fails earlier due to fingerprint mismatch
-	err = codec.DecodeStrict(data, &v1)
+	// Decode fails earlier due to fingerprint mismatch
+	err = codec.Decode(data, &v1)
 	require.ErrorContains(t, err, "bad fingerprint")
 }
 
