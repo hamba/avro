@@ -17,6 +17,7 @@ type AvroGenerated interface {
 	Schema() avro.Schema
 }
 
+// GetSchema returns the avro.Schema associated with type T.
 func GetSchema[T AvroGenerated]() avro.Schema {
 	// The Schema method returns a global schema, so can be called on a nil
 	// receiver.
