@@ -10,22 +10,22 @@ import (
 //    val MyType
 //    enc.Encode(val)
 type GenericEncoder[T any] struct {
-	encoder *Encoder
+	codec *Codec
 }
 
 func NewGenericEncoder[T AvroGenerated](api avro.API) (*GenericEncoder[T], error) {
 	schema := GetSchema[T]()
-	encoder, err := NewEncoder(api, schema)
+	coder, err := NewCodecWithAPI(schema, api)
 	if err != nil {
 		return nil, err
 	}
 	return &GenericEncoder[T]{
-		encoder: encoder,
+		codec: coder,
 	}, nil
 }
 
 func (e *GenericEncoder[T]) Encode(v T) ([]byte, error) {
-	return e.encoder.Encode(v)
+	return e.codec.Encode(v)
 }
 
 // GenericDecoder decodes SOE-framed records into values whose type implement
@@ -34,24 +34,24 @@ func (e *GenericEncoder[T]) Encode(v T) ([]byte, error) {
 //    val MyType
 //    dec.Decode(data, &val)
 type GenericDecoder[T any] struct {
-	decoder *Decoder
+	codec *Codec
 }
 
 func NewGenericDecoder[T AvroGenerated](api avro.API) (*GenericDecoder[T], error) {
 	schema := GetSchema[T]()
-	decoder, err := NewDecoder(api, schema)
+	coder, err := NewCodecWithAPI(schema, api)
 	if err != nil {
 		return nil, err
 	}
 	return &GenericDecoder[T]{
-		decoder: decoder,
+		codec: coder,
 	}, nil
 }
 
 func (d *GenericDecoder[T]) Decode(data []byte, v T) error {
-	return d.decoder.Decode(data, v)
+	return d.codec.Decode(data, v)
 }
 
 func (d *GenericDecoder[T]) DecodeStrict(data []byte, v T) error {
-	return d.decoder.DecodeStrict(data, v)
+	return d.codec.DecodeStrict(data, v)
 }

@@ -7,73 +7,63 @@ import (
 	"github.com/hamba/avro/v2"
 )
 
-// Encoder marshals a value into bytes, and wraps the Avro binary payload in an
-// SOE frame containing the writer schema fingerprint.
-type Encoder struct {
-	api    avro.API
-	schema avro.Schema
-	header []byte
-}
-
-func NewEncoder(api avro.API, schema avro.Schema) (*Encoder, error) {
-	// Precompute an SOE header
-	hdr, err := BuildHeaderForSchema(schema)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Encoder{
-		api:    api,
-		schema: schema,
-		header: hdr,
-	}, nil
-}
-
-func (e *Encoder) Encode(v any) ([]byte, error) {
-	data, err := e.api.Marshal(e.schema, v)
-	if err != nil {
-		return nil, err
-	}
-	return append(e.header, data...), nil
-}
-
-// Decoder unmarshals SOE-framed records. Default decoding ignores the SOE
-// schema fingerprint, strict decoding verifies that it matches the given
-// schema.
-type Decoder struct {
+// Codec marshals values to/from bytes, with the Avro binary payload wrapped in
+// an SOE frame containing the writer schema fingerprint.
+type Codec struct {
 	api         avro.API
 	schema      avro.Schema
-	fingerprint []byte
+	header      []byte
 }
 
-func NewDecoder(api avro.API, schema avro.Schema) (*Decoder, error) {
-	fingerprint, err := ComputeFingerprint(schema)
+// NewCodecWithAPI creates a new Codec for a Schema and an API.
+func NewCodecWithAPI(schema avro.Schema, api avro.API) (*Codec, error) {
+	// Precompute SOE header
+	header, err := BuildHeaderForSchema(schema)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Decoder{
-		api:         api,
-		schema:      schema,
-		fingerprint: fingerprint,
+	return &Codec{
+		schema: schema,
+		api:    api,
+		header: header,
 	}, nil
 }
 
-func (d *Decoder) Decode(data []byte, v any) error {
+// Encode marshals a value to SOE-encoded Avro binary.
+func (c *Codec) Encode(v any) ([]byte, error) {
+	data, err := c.api.Marshal(c.schema, v)
+	if err != nil {
+		return nil, err
+	}
+	return append(c.header, data...), nil
+}
+
+// Decode unmarshals a value from SOE-encoded Avro binary.
+func (c *Codec) Decode(data []byte, v any) error {
 	_, data, err := ParseHeader(data)
 	if err != nil {
 		return err
 	}
-	return d.api.Unmarshal(d.schema, data, v)
+	return c.api.Unmarshal(c.schema, data, v)
 }
 
-func (d *Decoder) DecodeStrict(data []byte, v any) error {
+// DecodeStrict unmarshals a value from SOE-encoded Avro binary, and fails if
+// the schema fingerprint doesn't match the held schema.
+func (c *Codec) DecodeStrict(data []byte, v any) error {
 	fingerprint, data, err := ParseHeader(data)
 	if err != nil {
 		return err
 	}
-	if !bytes.Equal(d.fingerprint, fingerprint) {
-		return fmt.Errorf("bad fingerprint %x, expected %x", fingerprint, d.fingerprint)
+
+	expected := c.getFingerprint()
+	if !bytes.Equal(fingerprint, expected) {
+		return fmt.Errorf("bad fingerprint %x, expected %x", fingerprint, expected)
 	}
-	return d.api.Unmarshal(d.schema, data, v)
+	return c.api.Unmarshal(c.schema, data, v)
+}
+
+func (c *Codec) getFingerprint() []byte {
+	// We know the header is well-formed here, so make assumptions.
+	return c.header[2:]
 }
