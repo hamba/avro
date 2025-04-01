@@ -23,11 +23,10 @@ func NewCodec(schema avro.Schema) (*Codec, error) {
 // NewCodecWithAPI creates a new Codec for a Schema and an API.
 func NewCodecWithAPI(schema avro.Schema, api avro.API) (*Codec, error) {
 	// Precompute SOE header
-	header, err := BuildHeaderForSchema(schema)
+	header, err := BuildHeader(schema)
 	if err != nil {
 		return nil, err
 	}
-
 	return &Codec{
 		schema: schema,
 		api:    api,

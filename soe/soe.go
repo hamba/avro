@@ -41,19 +41,19 @@ func ParseHeader(data []byte) ([]byte, []byte, error) {
 	return data[2:10], data[10:], nil
 }
 
-// BuildHeader builds an SOE header from a fingerprint.
-func BuildHeader(fingerprint []byte) ([]byte, error) {
-	if len(fingerprint) != 8 {
-		return nil, fmt.Errorf("bad fingerprint length: %d", len(fingerprint))
-	}
-	return append(Magic, fingerprint...), nil
-}
-
 // BuildHeader builds an SOE header from a schema's fingerprint.
-func BuildHeaderForSchema(schema avro.Schema) ([]byte, error) {
+func BuildHeader(schema avro.Schema) ([]byte, error) {
 	fingerprint, err := ComputeFingerprint(schema)
 	if err != nil {
 		return nil, err
 	}
-	return BuildHeader(fingerprint)
+	return BuildHeaderForFingerprint(fingerprint)
+}
+
+// BuildHeader builds an SOE header from a fingerprint.
+func BuildHeaderForFingerprint(fingerprint []byte) ([]byte, error) {
+	if len(fingerprint) != 8 {
+		return nil, fmt.Errorf("bad fingerprint length: %d", len(fingerprint))
+	}
+	return append(Magic, fingerprint...), nil
 }
