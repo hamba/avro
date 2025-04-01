@@ -24,10 +24,13 @@ func GetSchema[T AvroGenerated]() avro.Schema {
 	return val.Schema()
 }
 
+// ComputeFingerprint returns an SOE-compatible (CRC64, little-endian) schema
+// fingerprint.
 func ComputeFingerprint(schema avro.Schema) ([]byte, error) {
 	return schema.FingerprintUsing(avro.CRC64AvroLE)
 }
 
+// ParseHeader validates SOE magic and splits data into fingerprint,rest.
 func ParseHeader(data []byte) ([]byte, []byte, error) {
 	if len(data) < 10 {
 		return nil, nil, fmt.Errorf("data too short: %x", data)
@@ -38,6 +41,7 @@ func ParseHeader(data []byte) ([]byte, []byte, error) {
 	return data[2:10], data[10:], nil
 }
 
+// BuildHeader builds an SOE header from a fingerprint.
 func BuildHeader(fingerprint []byte) ([]byte, error) {
 	if len(fingerprint) != 8 {
 		return nil, fmt.Errorf("bad fingerprint length: %d", len(fingerprint))
@@ -45,6 +49,7 @@ func BuildHeader(fingerprint []byte) ([]byte, error) {
 	return append(Magic, fingerprint...), nil
 }
 
+// BuildHeader builds an SOE header from a schema's fingerprint.
 func BuildHeaderForSchema(schema avro.Schema) ([]byte, error) {
 	fingerprint, err := ComputeFingerprint(schema)
 	if err != nil {
