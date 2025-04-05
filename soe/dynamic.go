@@ -16,8 +16,15 @@ type DynamicDecoder struct {
 	resolver SchemaResolver
 }
 
-// NewDynamicDecoder returns a new DynamicDecoder for given API and resolver.
-func NewDynamicDecoder(api avro.API, resolver SchemaResolver) *DynamicDecoder {
+// NewDynamicDecoder returns a new DynamicDecoder for a resolver the default
+// config.
+func NewDynamicDecoder(resolver SchemaResolver) *DynamicDecoder {
+	return NewDynamicDecoderWithAPI(resolver, avro.DefaultConfig)
+}
+
+// NewDynamicDecoder returns a new DynamicDecoder for the given resolver and
+// API.
+func NewDynamicDecoderWithAPI(resolver SchemaResolver, api avro.API) *DynamicDecoder {
 	return &DynamicDecoder{
 		api:      api,
 		resolver: resolver,
@@ -33,7 +40,7 @@ func (d *DynamicDecoder) Decode(ctx context.Context, data []byte, v any) error {
 	}
 	schema, err := d.resolver.GetSchema(ctx, fingerprint)
 	if err != nil {
-		return fmt.Errorf("getting schema: %w", err)
+		return fmt.Errorf("resolver: %w", err)
 	}
 	return d.api.Unmarshal(schema, data, v)
 }
