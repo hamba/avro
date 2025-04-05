@@ -22,8 +22,8 @@ func NewDynamicDecoder(resolver SchemaResolver) *DynamicDecoder {
 	return NewDynamicDecoderWithAPI(resolver, avro.DefaultConfig)
 }
 
-// NewDynamicDecoder returns a new DynamicDecoder for the given resolver and
-// API.
+// NewDynamicDecoderWithAPI returns a new DynamicDecoder for the given resolver
+// and API.
 func NewDynamicDecoderWithAPI(resolver SchemaResolver, api avro.API) *DynamicDecoder {
 	return &DynamicDecoder{
 		api:      api,
