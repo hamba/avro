@@ -8,17 +8,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newGenericCodec(t *testing.T) *soe.GenericCodec[*testdata.Generated] {
+func newTypedCodec(t *testing.T) *soe.TypedCodec[*testdata.Generated] {
 	t.Helper()
 
-	codec, err := soe.NewGenericCodec[*testdata.Generated]()
+	codec, err := soe.NewTypedCodec[*testdata.Generated]()
 	require.NoError(t, err)
 
 	return codec
 }
 
-func TestGenericRoundtrip(t *testing.T) {
-	codec := newGenericCodec(t)
+func TestTypedRoundtrip(t *testing.T) {
+	codec := newTypedCodec(t)
 
 	v0 := testdata.Generated{
 		Name: "bob",
@@ -34,8 +34,8 @@ func TestGenericRoundtrip(t *testing.T) {
 	require.Equal(t, v0, v1)
 }
 
-func TestGenericShortHeader(t *testing.T) {
-	codec := newGenericCodec(t)
+func TestTypedShortHeader(t *testing.T) {
+	codec := newTypedCodec(t)
 
 	// At least 10 bytes header required
 	data := []byte{
@@ -51,8 +51,8 @@ func TestGenericShortHeader(t *testing.T) {
 	require.ErrorContains(t, err, "too short")
 }
 
-func TestGenericBadMagic(t *testing.T) {
-	codec := newGenericCodec(t)
+func TestTypedBadMagic(t *testing.T) {
+	codec := newTypedCodec(t)
 
 	data := []byte{
 		// Invalid magic
@@ -71,8 +71,8 @@ func TestGenericBadMagic(t *testing.T) {
 	require.ErrorContains(t, err, "invalid magic")
 }
 
-func TestGenericBadFingerprint(t *testing.T) {
-	codec := newGenericCodec(t)
+func TestTypedBadFingerprint(t *testing.T) {
+	codec := newTypedCodec(t)
 
 	data := []byte{
 		// Good magic
@@ -93,8 +93,8 @@ func TestGenericBadFingerprint(t *testing.T) {
 	require.ErrorContains(t, err, "bad fingerprint")
 }
 
-func TestGenericHeaderFormat(t *testing.T) {
-	codec := newGenericCodec(t)
+func TestTypedHeaderFormat(t *testing.T) {
+	codec := newTypedCodec(t)
 
 	v0 := testdata.Generated{}
 	data, err := codec.Encode(&v0)
