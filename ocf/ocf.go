@@ -266,6 +266,14 @@ func WithMetadata(meta map[string][]byte) EncoderFunc {
 	}
 }
 
+// WithMetadataKeyVal sets a single key-value pair for the metadata on
+// the encoder header.
+func WithMetadataKeyVal(key string, val []byte) EncoderFunc {
+	return func(cfg *encoderConfig) {
+		cfg.Metadata[key] = val
+	}
+}
+
 // WithEncoderSchemaCache sets the schema cache for the encoder.
 // If not specified, defaults to avro.DefaultSchemaCache.
 func WithEncoderSchemaCache(cache *avro.SchemaCache) EncoderFunc {
