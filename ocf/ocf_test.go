@@ -1021,6 +1021,25 @@ func TestEncodeDecodeMetadata(t *testing.T) {
 	assert.Equal(t, []byte("foo"), dec.Metadata()["test"])
 }
 
+func TestEncodeDecodeMetadataKeyVal(t *testing.T) {
+	buf := &bytes.Buffer{}
+	enc, _ := ocf.NewEncoder(`"long"`, buf,
+		ocf.WithMetadataKeyVal("key1", []byte("val1")),
+		ocf.WithMetadataKeyVal("key2", []byte("val2")),
+	)
+
+	err := enc.Encode(int64(1))
+	require.NoError(t, err)
+
+	_ = enc.Close()
+
+	dec, err := ocf.NewDecoder(buf)
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte("val1"), dec.Metadata()["key1"])
+	assert.Equal(t, []byte("val2"), dec.Metadata()["key2"])
+}
+
 func TestEncode_WithSyncBlock(t *testing.T) {
 	buf := &bytes.Buffer{}
 	syncBlock := [16]byte{9, 9, 9, 9, 9, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
