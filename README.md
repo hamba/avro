@@ -103,23 +103,23 @@ the data.
 
 \** Please note that when the Go type is an unsigned integer care must be taken to ensure that information is not lost
 when converting between the Avro type and Go type. For example, storing a *negative* number in Avro of `int = -100`
-would be interpreted as `uint16 = 65,436` in Go. Another example would be storing numbers in Avro `int = 256` that 
-are larger than the Go type `uint8 = 0`. 
+would be interpreted as `uint16 = 65,436` in Go. Another example would be storing numbers in Avro `int = 256` that
+are larger than the Go type `uint8 = 0`.
 
 ##### Unions
 
 The following union types are accepted: `map[string]any`, `*T` and `any`.
 
-* **map[string]any:** If the union value is `nil`, a `nil` map will be en/decoded. 
+* **map[string]any:** If the union value is `nil`, a `nil` map will be en/decoded.
 When a non-`nil` union value is encountered, a single key is en/decoded. The key is the avro
-type name, or scheam full name in the case of a named schema (enum, fixed or record).
-* ***T:** This is allowed in a "nullable" union. A nullable union is defined as a two schema union, 
-with one of the types being `null` (ie. `["null", "string"]` or `["string", "null"]`), in this case 
+type name, or schema full name in the case of a named schema (enum, fixed or record).
+* ***T:** This is allowed in a "nullable" union. A nullable union is defined as a two schema union,
+with one of the types being `null` (ie. `["null", "string"]` or `["string", "null"]`), in this case
 a `*T` is allowed, with `T` matching the conversion table above. In the case of a slice, the slice can be used
 directly.
 * **any:** An `interface` can be provided and the type or name resolved. Primitive types
-are pre-registered, but named types, maps and slices will need to be registered with the `Register` function. 
-In the case of arrays and maps the enclosed schema type or name is postfix to the type with a `:` separator, 
+are pre-registered, but named types, maps and slices will need to be registered with the `Register` function.
+In the case of arrays and maps the enclosed schema type or name is postfix to the type with a `:` separator,
 e.g `"map:string"`. Behavior when a type cannot be resolved will depend on your chosen configuation options:
 	* !Config.UnionResolutionError && !Config.PartialUnionTypeResolution: the map type above is used
 	* Config.UnionResolutionError && !Config.PartialUnionTypeResolution: an error is returned
@@ -136,10 +136,17 @@ Enums may also implement `TextMarshaler` and `TextUnmarshaler`, and must resolve
 
 ##### Identical Underlying Types
 
-One type can be [ConvertibleTo](https://go.dev/ref/spec#Conversions) another type if they have identical underlying types. 
-A non-native type is allowed be used if it can be convertible to *time.Time*, *big.Rat* or *avro.LogicalDuration* for the particular of *LogicalTypes*.
+One type can be [ConvertibleTo](https://go.dev/ref/spec#Conversions) another type if they have identical underlying types.
+A non-native type is allowed to be used if it can be convertible to *time.Time*, *big.Rat* or *avro.LogicalDuration* for the particular of *LogicalTypes*.
 
 Ex.: `type Timestamp time.Time`
+
+##### Custom Type Conversion
+
+In case of incompatible types, custom type conversion functions can be registered with the `RegisterTypeConverters` function.
+This requires the use of `map[string]any` or `[]any`.
+The type conversion for encoding will receive the original value that is to be encoded, and must return a data type that is compatible with the schema, as specified in the table above.
+The type conversion for decoding will receive the decoded value with a data type that is compatible with the schema, and its return value will be used as the final decoded value.
 
 ##### Untrusted Input With Bytes and Strings
 
@@ -247,7 +254,7 @@ Note that this variable is global, so ideally you'd need to unset it after you'r
 ## Go Version Support
 
 This library supports the last two versions of Go. While the minimum Go version is
-not guaranteed to increase along side Go, it may jump from time to time to support 
+not guaranteed to increase along side Go, it may jump from time to time to support
 additional features. This will be not be considered a breaking change.
 
 ## Who uses hamba/avro?
