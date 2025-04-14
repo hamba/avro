@@ -106,19 +106,7 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 				return 2
 			}
 		default:
-			client, err := registry.NewClient(cfg.SchemaRegistry)
-			if err != nil {
-				_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
-				return 2
-			}
-
-			subject, version, err := parseSubjectVersion(entry)
-			if err != nil {
-				_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
-				return 2
-			}
-
-			schema, err = client.GetSchemaByVersion(context.Background(), subject, version)
+			schema, err = fetchSchemaFromRegistry(cfg.SchemaRegistry, entry)
 			if err != nil {
 				_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
 				return 2
@@ -236,16 +224,43 @@ func loadTemplate(templateFileName string) ([]byte, error) {
 	return os.ReadFile(filepath.Clean(templateFileName))
 }
 
-func parseSubjectVersion(entry string) (string, int, error) {
+func parseSubjectVersion(entry string) (string, string, error) {
 	parts := strings.Split(entry, ":")
 	if len(parts) != 2 {
-		return "", -1, errors.New("entry must be of format subject:version")
+		return "", "", errors.New("entry must be of format subject:version")
 	}
 
-	version, err := strconv.Atoi(parts[1])
+	return parts[0], parts[1], nil
+}
+
+func fetchSchemaFromRegistry(schemaRegistry string, entry string) (avro.Schema, error) {
+	client, err := registry.NewClient(schemaRegistry)
 	if err != nil {
-		return "", -1, err
+		return nil, err
 	}
 
-	return parts[0], version, nil
+	subject, version, err := parseSubjectVersion(entry)
+	if err != nil {
+		return nil, err
+	}
+
+	if version != "latest" {
+		v, err := strconv.Atoi(version)
+		if err != nil {
+			return nil, err
+		}
+		schema, err := client.GetSchemaByVersion(context.Background(), subject, v)
+		if err != nil {
+			return nil, err
+		}
+
+		return schema, nil
+	}
+
+	schema, err := client.GetLatestSchema(context.Background(), subject)
+	if err != nil {
+		return nil, err
+	}
+
+	return schema, nil
 }
