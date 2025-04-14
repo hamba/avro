@@ -244,12 +244,8 @@ func schemaFromRegistry(schemaRegistry, entry string) (avro.Schema, error) {
 		return nil, err
 	}
 
-	if version != "latest" {
-		v, err := strconv.Atoi(version)
-		if err != nil {
-			return nil, err
-		}
-		schema, err := client.GetSchemaByVersion(context.Background(), subject, v)
+	if version == "latest" {
+		schema, err := client.GetLatestSchema(context.Background(), subject)
 		if err != nil {
 			return nil, err
 		}
@@ -257,7 +253,11 @@ func schemaFromRegistry(schemaRegistry, entry string) (avro.Schema, error) {
 		return schema, nil
 	}
 
-	schema, err := client.GetLatestSchema(context.Background(), subject)
+	v, err := strconv.Atoi(version)
+	if err != nil {
+		return nil, err
+	}
+	schema, err := client.GetSchemaByVersion(context.Background(), subject, v)
 	if err != nil {
 		return nil, err
 	}
