@@ -106,7 +106,7 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 				return 2
 			}
 		default:
-			schema, err = fetchSchemaFromRegistry(cfg.SchemaRegistry, entry)
+			schema, err = schemaFromRegistry(cfg.SchemaRegistry, entry)
 			if err != nil {
 				_, _ = fmt.Fprintf(stderr, "Error: %v\n", err)
 				return 2
@@ -233,7 +233,7 @@ func parseSubjectVersion(entry string) (string, string, error) {
 	return parts[0], parts[1], nil
 }
 
-func fetchSchemaFromRegistry(schemaRegistry string, entry string) (avro.Schema, error) {
+func schemaFromRegistry(schemaRegistry string, entry string) (avro.Schema, error) {
 	client, err := registry.NewClient(schemaRegistry)
 	if err != nil {
 		return nil, err
