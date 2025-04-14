@@ -233,7 +233,7 @@ func parseSubjectVersion(entry string) (string, string, error) {
 	return parts[0], parts[1], nil
 }
 
-func schemaFromRegistry(schemaRegistry string, entry string) (avro.Schema, error) {
+func schemaFromRegistry(schemaRegistry, entry string) (avro.Schema, error) {
 	client, err := registry.NewClient(schemaRegistry)
 	if err != nil {
 		return nil, err
