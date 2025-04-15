@@ -10,6 +10,12 @@ import (
 	"github.com/modern-go/reflect2"
 )
 
+// UnionUnmarshaller for a payload decoded using the 'any' type which can be any of the mentioned types in the
+// Union.
+type UnionUnmarshaller interface {
+	UnmarshalUnion(payload any) error
+}
+
 func createDecoderOfUnion(d *decoderContext, schema *UnionSchema, typ reflect2.Type) ValDecoder {
 	switch typ.Kind() {
 	case reflect.Map:
@@ -24,13 +30,21 @@ func createDecoderOfUnion(d *decoderContext, schema *UnionSchema, typ reflect2.T
 		}
 		return decoderOfNullableUnion(d, schema, typ)
 	case reflect.Ptr:
+		if typ.Implements(reflect2.Type2(reflect.TypeFor[UnionUnmarshaller]())) {
+			dec, err := decoderOfResolvedUnion(d, schema, typ)
+			if err != nil {
+				return &errorDecoder{err: fmt.Errorf("avro: problem resolving decoder for Avro %s: %w", schema.Type(), err)}
+			}
+			return dec
+		}
+
 		if !schema.Nullable() {
 			break
 		}
 		return decoderOfNullableUnion(d, schema, typ)
 	case reflect.Interface:
 		if _, ok := typ.(*reflect2.UnsafeIFaceType); !ok {
-			dec, err := decoderOfResolvedUnion(d, schema)
+			dec, err := decoderOfResolvedUnion(d, schema, typ)
 			if err != nil {
 				return &errorDecoder{err: fmt.Errorf("avro: problem resolving decoder for Avro %s: %w", schema.Type(), err)}
 			}
@@ -39,6 +53,11 @@ func createDecoderOfUnion(d *decoderContext, schema *UnionSchema, typ reflect2.T
 	}
 
 	return &errorDecoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s", typ.String(), schema.Type())}
+}
+
+// UnionMarshaller returning the value to encode. Must be any of the types defined in the union schema.
+type UnionMarshaller interface {
+	MarshalUnion() (any, error)
 }
 
 func createEncoderOfUnion(e *encoderContext, schema *UnionSchema, typ reflect2.Type) ValEncoder {
@@ -58,8 +77,10 @@ func createEncoderOfUnion(e *encoderContext, schema *UnionSchema, typ reflect2.T
 		if !schema.Nullable() {
 			break
 		}
+
 		return encoderOfNullableUnion(e, schema, typ)
 	}
+
 	return encoderOfResolverUnion(e, schema, typ)
 }
 
@@ -289,7 +310,7 @@ func (e *unionNullableEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 	e.encoder.Encode(newPtr, w)
 }
 
-func decoderOfResolvedUnion(d *decoderContext, schema Schema) (ValDecoder, error) {
+func decoderOfResolvedUnion(d *decoderContext, schema Schema, typ reflect2.Type) (ValDecoder, error) {
 	union := schema.(*UnionSchema)
 
 	types := make([]reflect2.Type, len(union.Types()))
@@ -324,6 +345,7 @@ func decoderOfResolvedUnion(d *decoderContext, schema Schema) (ValDecoder, error
 		schema:   union,
 		types:    types,
 		decoders: decoders,
+		typ:      typ,
 	}, nil
 }
 
@@ -332,6 +354,7 @@ type unionResolvedDecoder struct {
 	schema   *UnionSchema
 	types    []reflect2.Type
 	decoders []ValDecoder
+	typ      reflect2.Type
 }
 
 func (d *unionResolvedDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
@@ -367,6 +390,7 @@ func (d *unionResolvedDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		return
 	}
 
+	isUnionUnmarshaller := d.typ.Implements(reflect2.Type2(reflect.TypeFor[UnionUnmarshaller]()))
 	typ := d.types[i]
 	var newPtr unsafe.Pointer
 	switch typ.Kind() {
@@ -387,7 +411,25 @@ func (d *unionResolvedDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 	}
 
 	d.decoders[i].Decode(newPtr, r)
-	*pObj = typ.UnsafeIndirect(newPtr)
+
+	res := typ.UnsafeIndirect(newPtr)
+	if isUnionUnmarshaller {
+		target := d.typ.Indirect(d.typ.New())
+		if typ.Kind() == reflect.Ptr {
+			elem := reflect2.TypeOfPtr(target).Elem().New()
+			target = elem
+		}
+
+		unionUnmarshaller := target.(UnionUnmarshaller)
+		if err := unionUnmarshaller.UnmarshalUnion(res); err != nil {
+			r.ReportError("Union", err.Error())
+		}
+
+		*((*unsafe.Pointer)(ptr)) = reflect2.PtrOf(target)
+		return
+	}
+
+	*pObj = res
 }
 
 func unionResolutionName(schema Schema) string {

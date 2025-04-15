@@ -1,5 +1,7 @@
 package avro_test
 
+import "errors"
+
 type TestInterface interface {
 	SomeFunc() int
 }
@@ -11,6 +13,34 @@ type TestRecord struct {
 
 func (*TestRecord) SomeFunc() int {
 	return 0
+}
+
+type UnionRecord struct {
+	Int  *int
+	Test *TestRecord
+}
+
+func (u *UnionRecord) MarshalUnion() (any, error) {
+	if u.Int != nil {
+		return *u.Int, nil
+	} else if u.Test != nil {
+		return *u.Test, nil
+	}
+
+	return nil, errors.New("no value to encode")
+}
+
+func (u *UnionRecord) UnmarshalUnion(payload any) error {
+	switch t := payload.(type) {
+	case int:
+		u.Int = &t
+	case *TestRecord:
+		u.Test = t
+	default:
+		return errors.New("unknown type during decode of union")
+	}
+
+	return nil
 }
 
 type TestPartialRecord struct {
