@@ -227,8 +227,8 @@ type Generator struct {
 	imports           []string
 	thirdPartyImports []string
 	typedefs          []typedef
-
-	nameCaser *strcase.Caser
+	typeenums         []typeenum
+	nameCaser         *strcase.Caser
 }
 
 // NewGenerator returns a generator.
@@ -298,7 +298,7 @@ func (g *Generator) generate(schema avro.Schema, metadata any) string {
 	case *avro.ArraySchema:
 		return "[]" + g.generate(s.Items(), metadata)
 	case *avro.EnumSchema:
-		return "string"
+		return g.resolveEnum(s)
 	case *avro.FixedSchema:
 		typ := fmt.Sprintf("[%d]byte", s.Size())
 		if ls := s.Logical(); ls != nil {
@@ -312,6 +312,11 @@ func (g *Generator) generate(schema avro.Schema, metadata any) string {
 	default:
 		return ""
 	}
+}
+
+func (g *Generator) resolveEnum(s *avro.EnumSchema) string {
+	g.typeenums = append(g.typeenums, newTypeEnum(s.Name(), s.Symbols()))
+	return s.Name()
 }
 
 func (g *Generator) resolveTypeName(s avro.NamedSchema) string {
@@ -471,6 +476,7 @@ func (g *Generator) Write(w io.Writer) error {
 		ThirdPartyImports []string
 		Typedefs          []typedef
 		Metadata          any
+		Typeenums         []typeenum
 	}{
 		WithEncoders: g.encoders,
 		PackageName:  g.pkg,
@@ -478,6 +484,7 @@ func (g *Generator) Write(w io.Writer) error {
 		Imports:      append(g.imports, g.thirdPartyImports...),
 		Typedefs:     g.typedefs,
 		Metadata:     g.metadata,
+		Typeenums:    g.typeenums,
 	}
 	return parsed.Execute(w, data)
 }
@@ -509,4 +516,16 @@ type field struct {
 	AvroFieldName string
 	Tags          map[string]TagStyle
 	Props         map[string]any
+}
+
+type typeenum struct {
+	Name    string
+	Symbols []string
+}
+
+func newTypeEnum(name string, symbols []string) typeenum {
+	return typeenum{
+		Name:    name,
+		Symbols: symbols,
+	}
 }
