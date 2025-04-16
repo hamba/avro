@@ -206,7 +206,7 @@ func parseInitialisms(raw string) ([]string, error) {
 		return []string{}, nil
 	}
 
-	result := []string{}
+	var result []string
 	for _, initialism := range strings.Split(raw, ",") {
 		if initialism != strings.ToUpper(initialism) {
 			return nil, fmt.Errorf("initialism %q must be fully in upper case", initialism)
@@ -224,7 +224,7 @@ func loadTemplate(templateFileName string) ([]byte, error) {
 	return os.ReadFile(filepath.Clean(templateFileName))
 }
 
-func parseSubjectVersion(entry string) (string, string, error) {
+func splitParameterEntry(entry string) (string, string, error) {
 	parts := strings.Split(entry, ":")
 	if len(parts) != 2 {
 		return "", "", errors.New("entry must be of format subject:version")
@@ -239,7 +239,7 @@ func schemaFromRegistry(schemaRegistry, entry string) (avro.Schema, error) {
 		return nil, err
 	}
 
-	subject, version, err := parseSubjectVersion(entry)
+	subject, version, err := splitParameterEntry(entry)
 	if err != nil {
 		return nil, err
 	}
