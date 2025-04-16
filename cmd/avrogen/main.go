@@ -206,7 +206,7 @@ func parseInitialisms(raw string) ([]string, error) {
 		return []string{}, nil
 	}
 
-	var result []string
+	result := []string{}
 	for _, initialism := range strings.Split(raw, ",") {
 		if initialism != strings.ToUpper(initialism) {
 			return nil, fmt.Errorf("initialism %q must be fully in upper case", initialism)
