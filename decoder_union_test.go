@@ -523,20 +523,37 @@ func TestDecoder_UnionInterfaceRecord(t *testing.T) {
 func TestDecoder_UnionUnmarshalUnionInterface(t *testing.T) {
 	defer ConfigTeardown()
 
-	avro.Register("test", &TestRecord{})
+	avro.Register("test", TestRecord{})
 
 	data := []byte{0x02, 0x36, 0x06, 0x66, 0x6F, 0x6F}
 	schema := `["int", {"type": "record", "name": "test", "fields" : [{"name": "a", "type": "long"}, {"name": "b", "type": "string"}]}]`
 	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
 
-	var got UnionRecord
+	var got *UnionRecord
 	err := dec.Decode(&got)
 
 	require.NoError(t, err)
-	assert.IsType(t, UnionRecord{}, got)
+	assert.IsType(t, &UnionRecord{}, got)
 	rec := got.Test
 	assert.Equal(t, int64(27), rec.A)
 	assert.Equal(t, "foo", rec.B)
+}
+
+func TestDecoder_NullableUnionUnmarshalUnionInterface(t *testing.T) {
+	defer ConfigTeardown()
+
+	avro.Register("test", &TestRecord{})
+
+	data := []byte{0}
+	schema := `["null", "int", {"type": "record", "name": "test", "fields" : [{"name": "a", "type": "long"}, {"name": "b", "type": "string"}]}]`
+	dec, _ := avro.NewDecoder(schema, bytes.NewReader(data))
+
+	var got *UnionRecord
+	err := dec.Decode(&got)
+
+	require.NoError(t, err)
+	assert.IsType(t, &UnionRecord{}, got)
+	assert.Nil(t, got)
 }
 
 func TestDecoder_UnionInterfaceRecordNotReused(t *testing.T) {

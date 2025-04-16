@@ -247,3 +247,54 @@ func TestEncoderDecoder_Concurrency(t *testing.T) {
 
 	assert.Equal(t, uint32(1000), ops.Load())
 }
+
+func TestEncoderDecoder_UnionMarshalUnmarshalInterface(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := avro.MustParse(`{
+	    "type": "record",
+	    "name": "Payload",
+	    "fields" : [
+			{
+				"name": "union", 
+				"type": [
+					"int", 
+					{"type": "record", "name": "test", "fields" : [{"name": "a", "type": "long"}, {"name": "b", "type": "string"}]}
+				]
+			}
+		]
+	}`)
+
+	avro.Register("test", TestRecord{})
+
+	type Payload struct {
+		Union *UnionRecord `avro:"union"`
+	}
+
+	intValue := 1
+	payload1 := Payload{Union: &UnionRecord{Int: &intValue}}
+	testValue := TestRecord{A: 5, B: "foo"}
+	payload2 := Payload{Union: &UnionRecord{Test: &testValue}}
+
+	// encode
+	b1, err := avro.Marshal(schema, &payload1)
+	require.NoError(t, err)
+	b2, err := avro.Marshal(schema, &payload2)
+	require.NoError(t, err)
+
+	// decode
+	var res1 Payload
+	err = avro.Unmarshal(schema, b1, &res1)
+	require.NoError(t, err)
+	var res2 Payload
+	err = avro.Unmarshal(schema, b2, &res2)
+	require.NoError(t, err)
+
+	// assert
+	require.NotNil(t, res1.Union)
+	require.NotNil(t, res1.Union.Int)
+	assert.Equal(t, intValue, *res1.Union.Int)
+	require.NotNil(t, res2.Union)
+	require.NotNil(t, res2.Union.Test)
+	assert.Equal(t, testValue, *res2.Union.Test)
+}

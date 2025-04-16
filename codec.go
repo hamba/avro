@@ -35,12 +35,6 @@ type ValEncoder interface {
 
 // ReadVal parses Avro value and stores the result in the value pointed to by obj.
 func (r *Reader) ReadVal(schema Schema, obj any) {
-	u, ok := obj.(UnionUnmarshaller)
-	var obj2 any
-	if ok {
-		obj = &obj2
-	}
-
 	decoder := r.cfg.getDecoderFromCache(schema.CacheFingerprint(), reflect2.RTypeOf(obj))
 	if decoder == nil {
 		typ := reflect2.TypeOf(obj)
@@ -58,11 +52,6 @@ func (r *Reader) ReadVal(schema Schema, obj any) {
 	}
 
 	decoder.Decode(ptr, r)
-	if ok {
-		if err := u.UnmarshalUnion(obj2); err != nil {
-			r.ReportError("ReadVal", err.Error())
-		}
-	}
 }
 
 // WriteVal writes the Avro encoding of obj.
@@ -70,16 +59,6 @@ func (w *Writer) WriteVal(schema Schema, val any) {
 	encoder := w.cfg.getEncoderFromCache(schema.Fingerprint(), reflect2.RTypeOf(val))
 	if encoder == nil {
 		typ := reflect2.TypeOf(val)
-		if m, ok := val.(UnionMarshaller); ok {
-			t, err := m.MarshalUnion()
-			if err != nil {
-				w.Error = err
-				return
-			}
-			val = t
-			typ = reflect2.TypeOf(t)
-		}
-
 		encoder = w.cfg.EncoderOf(schema, typ)
 	}
 	encoder.Encode(reflect2.PtrOf(val), w)
@@ -218,8 +197,6 @@ func encoderOfType(e *encoderContext, schema Schema, typ reflect2.Type) ValEncod
 	}
 
 	if typ.Kind() == reflect.Interface {
-		return &interfaceEncoder{schema: schema, typ: typ}
-	} else if typ.Implements(reflect2.Type2(reflect.TypeFor[UnionMarshaller]())) {
 		return &interfaceEncoder{schema: schema, typ: typ}
 	}
 

@@ -140,31 +140,21 @@ type UnionRecord struct {
 }
 
 func (u *UnionRecord) MarshalUnion() (any, error) {
-    // enable if type is nillable
-    // if u == nil {
-    //    return nil, nil
-    // }
-	
     if u.Int != nil {
-        return *u.Int, nil
+        return u.Int, nil
     } else if u.Test != nil {
-        return *u.Test, nil
+        return u.Test, nil
     }
 
     return nil, errors.New("no value to encode")
 }
 
 func (u *UnionRecord) UnmarshalUnion(payload any) error {
-    // enable if type is nillable
-	// if payload == nil {
-    //    return nil
-    // }
-	
     switch t := payload.(type) {
     case int:
         u.Int = &t
-    case *TestRecord:
-        u.Test = t
+    case TestRecord:
+        u.Test = &t
     default:
         return errors.New("unknown type during decode of union")
     }
