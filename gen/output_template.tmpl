@@ -13,6 +13,16 @@ package {{ .PackageName }}
 	)
 {{ end }}
 
+{{- range .Typeenums }}
+{{- $t := . }}
+type {{ $t.Name }} string
+const (
+	{{- range .Symbols }}
+	{{ . }} {{ $t.Name }} = "{{ . }}"
+	{{- end }} 
+)
+{{- end }} 
+
 {{- range .Typedefs }}
 	{{- if len .Doc }}
 	// {{ replace .Doc "\n" "\n// " -1 }}
