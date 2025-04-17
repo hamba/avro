@@ -1272,7 +1272,13 @@ func (s *UnionSchema) Types() Schemas {
 	return s.types
 }
 
-// Nullable returns the Schema if the union is nullable, otherwise nil.
+// Contains returns true if the union contains the given type.
+func (s *UnionSchema) Contains(typ Type) bool {
+	_, pos := s.types.Get(string(typ))
+	return pos != -1
+}
+
+// Nullable returns true if the union is nullable, otherwise false.
 func (s *UnionSchema) Nullable() bool {
 	if len(s.types) != 2 || s.types[0].Type() != Null && s.types[1].Type() != Null {
 		return false
