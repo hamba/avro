@@ -335,7 +335,7 @@ func TestEncoder_UnionInterfaceRecordNonPtr(t *testing.T) {
 	assert.Equal(t, []byte{0x02, 0x36, 0x06, 0x66, 0x6F, 0x6F}, buf.Bytes())
 }
 
-func TestEncoder_UnionMarshalUnionInterface(t *testing.T) {
+func TestEncoder_UnionConverterToAnyInterface(t *testing.T) {
 	defer ConfigTeardown()
 
 	avro.Register("test", TestRecord{})
@@ -352,7 +352,7 @@ func TestEncoder_UnionMarshalUnionInterface(t *testing.T) {
 	assert.Equal(t, []byte{0x02, 0x36, 0x06, 0x66, 0x6F, 0x6F}, buf.Bytes())
 }
 
-func TestEncoder_NullableUnionMarshalUnionInterface(t *testing.T) {
+func TestEncoder_NullableUnionConverterToAnyInterface(t *testing.T) {
 	defer ConfigTeardown()
 
 	avro.Register("test", &TestRecord{})

@@ -11,10 +11,12 @@ import (
 	"github.com/modern-go/reflect2"
 )
 
-// UnionUnmarshaller for a payload decoded using the 'any' type which can be any of the mentioned types in the
-// Union.
-type UnionUnmarshaller interface {
-	UnmarshalUnion(payload any) error
+// UnionConverter to handle Avro Union's in a type-safe way.
+type UnionConverter interface {
+	// FromAny payload decode into any of the mentioned types in the Union.
+	FromAny(payload any) error
+	// ToAny from the Union struct
+	ToAny() (any, error)
 }
 
 func createDecoderOfUnion(d *decoderContext, schema *UnionSchema, typ reflect2.Type) ValDecoder {
@@ -31,8 +33,8 @@ func createDecoderOfUnion(d *decoderContext, schema *UnionSchema, typ reflect2.T
 		}
 		return decoderOfNullableUnion(d, schema, typ)
 	case reflect.Ptr:
-		if typ.Implements(reflect2.Type2(reflect.TypeFor[UnionUnmarshaller]())) {
-			return decoderOfUnionUnmarshallerCodec(d, schema, typ)
+		if typ.Implements(reflect2.Type2(reflect.TypeFor[UnionConverter]())) {
+			return decoderOfUnionConverterCodec(d, schema, typ)
 		}
 
 		if !schema.Nullable() {
@@ -54,14 +56,9 @@ func createDecoderOfUnion(d *decoderContext, schema *UnionSchema, typ reflect2.T
 	return &errorDecoder{err: fmt.Errorf("avro: %s is unsupported for Avro %s", typ.String(), schema.Type())}
 }
 
-// UnionMarshaller returning the value to encode. Must be any of the types defined in the union schema.
-type UnionMarshaller interface {
-	MarshalUnion() (any, error)
-}
-
 func createEncoderOfUnion(e *encoderContext, schema *UnionSchema, typ reflect2.Type) ValEncoder {
-	if typ.Implements(reflect2.Type2(reflect.TypeFor[UnionMarshaller]())) {
-		return encoderOfUnionMarshallerCodec(e, schema, typ)
+	if typ.Implements(reflect2.Type2(reflect.TypeFor[UnionConverter]())) {
+		return encoderOfUnionConverterCodec(e, schema, typ)
 	}
 
 	switch typ.Kind() {
@@ -265,7 +262,7 @@ func (d *unionNullableDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 	d.decoder.Decode(*((*unsafe.Pointer)(ptr)), r)
 }
 
-func encoderOfUnionMarshallerCodec(_ *encoderContext, schema Schema, typ reflect2.Type) ValEncoder {
+func encoderOfUnionConverterCodec(_ *encoderContext, schema Schema, typ reflect2.Type) ValEncoder {
 	union := schema.(*UnionSchema)
 	var nullIdx int32
 	var nullable bool
@@ -277,7 +274,7 @@ func encoderOfUnionMarshallerCodec(_ *encoderContext, schema Schema, typ reflect
 		}
 	}
 
-	return &unionMarshallCodec{
+	return &unionConverterToAnyCodec{
 		schema:   union,
 		typ:      typ,
 		nullable: nullable,
@@ -285,22 +282,26 @@ func encoderOfUnionMarshallerCodec(_ *encoderContext, schema Schema, typ reflect
 	}
 }
 
-type unionMarshallCodec struct {
+type unionConverterToAnyCodec struct {
 	schema   *UnionSchema
 	typ      reflect2.Type
 	nullable bool
 	nullIdx  int32
 }
 
-func (e *unionMarshallCodec) Encode(ptr unsafe.Pointer, w *Writer) {
+func (e *unionConverterToAnyCodec) Encode(ptr unsafe.Pointer, w *Writer) {
 	if *((*unsafe.Pointer)(ptr)) == nil {
+		if !e.nullable {
+			w.Error = errors.New("avro: unionConverterToAnyCodec: encoding nil value for non nillable union")
+			return
+		}
 		w.WriteInt(e.nullIdx)
 		return
 	}
 
 	target := e.typ.UnsafeIndirect(ptr)
-	marshaller := target.(UnionMarshaller)
-	val, err := marshaller.MarshalUnion()
+	marshaller := target.(UnionConverter)
+	val, err := marshaller.ToAny()
 	if err != nil {
 		w.Error = err
 		return
@@ -464,13 +465,13 @@ func (d *unionResolvedDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 	*pObj = res
 }
 
-func decoderOfUnionUnmarshallerCodec(d *decoderContext, schema *UnionSchema, typ reflect2.Type) ValDecoder {
+func decoderOfUnionConverterCodec(d *decoderContext, schema *UnionSchema, typ reflect2.Type) ValDecoder {
 	anyDecoder := createDecoderOfUnion(d, schema, reflect2.Type2(reflect.TypeFor[any]()))
 	nullable := slices.ContainsFunc(schema.Types(), func(schema Schema) bool {
 		return schema.Type() == Null
 	})
 
-	return &unionUnmarshallerCodec{
+	return &unionConverterFromAnyCodec{
 		decoder:  anyDecoder,
 		schema:   schema,
 		nullable: nullable,
@@ -478,39 +479,34 @@ func decoderOfUnionUnmarshallerCodec(d *decoderContext, schema *UnionSchema, typ
 	}
 }
 
-type unionUnmarshallerCodec struct {
+type unionConverterFromAnyCodec struct {
 	decoder  ValDecoder
 	schema   *UnionSchema
 	nullable bool
 	typ      reflect2.Type
 }
 
-func (d *unionUnmarshallerCodec) Decode(ptr unsafe.Pointer, r *Reader) {
+func (d *unionConverterFromAnyCodec) Decode(ptr unsafe.Pointer, r *Reader) {
 	obj := new(any)
 	newptr := reflect2.PtrOf(obj)
 	d.decoder.Decode(newptr, r)
-
-	typeOf := reflect2.TypeOf(obj)
-	elemType := typeOf.(*reflect2.UnsafePtrType).Elem()
-	elemType.Set(obj, obj)
-
-	target := d.typ.Indirect(d.typ.New())
-	if d.typ.Kind() == reflect.Ptr {
-		elem := reflect2.TypeOfPtr(target).Elem().New()
-		target = elem
-	}
 
 	if d.nullable && *obj == nil {
 		return
 	}
 
-	unionUnmarshaller := target.(UnionUnmarshaller)
-	if err := unionUnmarshaller.UnmarshalUnion(*obj); err != nil {
+	if d.typ.Kind() == reflect.Ptr {
+		ptrType := d.typ.(*reflect2.UnsafePtrType).Elem()
+		elemPtr := ptrType.UnsafeNew()
+		*((*unsafe.Pointer)(ptr)) = elemPtr
+	}
+	target := d.typ.UnsafeIndirect(ptr)
+
+	unionConverter := target.(UnionConverter)
+	if err := unionConverter.FromAny(*obj); err != nil {
 		r.ReportError("Union", err.Error())
 		return
 	}
-
-	*((*unsafe.Pointer)(ptr)) = reflect2.PtrOf(target)
 }
 
 func unionResolutionName(schema Schema) string {

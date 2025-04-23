@@ -117,14 +117,14 @@ type name, or schema full name in the case of a named schema (enum, fixed or rec
 with one of the types being `null` (ie. `["null", "string"]` or `["string", "null"]`), in this case
 a `*T` is allowed, with `T` matching the conversion table above. In the case of a slice, the slice can be used
 directly.
-* ***struct{}:** implementing the `UnionMarshaller` and `UnionUnmarshaller` interfaces:
+* ***struct{}:** implementing the `UnionConverter` interface:
 ```go
-type UnionUnmarshaller interface {
-    UnmarshalUnion(payload any) error
-}
-
-type UnionMarshaller interface {
-    MarshalUnion() (any, error)
+// UnionConverter to handle Avro Union's in a type-safe way
+type UnionConverter interface {
+    // FromAny payload decode into any of the mentioned types in the Union.
+    FromAny(payload any) error
+    // ToAny from the Union struct
+    ToAny() (any, error)
 }
 
 // for example:
@@ -139,7 +139,7 @@ type UnionRecord struct {
     Test *TestRecord
 }
 
-func (u *UnionRecord) MarshalUnion() (any, error) {
+func (u *UnionRecord) ToAny() (any, error) {
     if u.Int != nil {
         return u.Int, nil
     } else if u.Test != nil {
@@ -149,7 +149,7 @@ func (u *UnionRecord) MarshalUnion() (any, error) {
     return nil, errors.New("no value to encode")
 }
 
-func (u *UnionRecord) UnmarshalUnion(payload any) error {
+func (u *UnionRecord) FromAny(payload any) error {
     switch t := payload.(type) {
     case int:
         u.Int = &t

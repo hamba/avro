@@ -248,7 +248,7 @@ func TestEncoderDecoder_Concurrency(t *testing.T) {
 	assert.Equal(t, uint32(1000), ops.Load())
 }
 
-func TestEncoderDecoder_UnionMarshalUnmarshalInterface(t *testing.T) {
+func TestEncoderDecoder_UnionConverterInterface(t *testing.T) {
 	defer ConfigTeardown()
 
 	schema := avro.MustParse(`{

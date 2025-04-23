@@ -24,7 +24,7 @@ type UnionRecord struct {
 	Test *TestRecord
 }
 
-func (u *UnionRecord) MarshalUnion() (any, error) {
+func (u *UnionRecord) ToAny() (any, error) {
 	if u.Int != nil {
 		return u.Int, nil
 	} else if u.Test != nil {
@@ -34,7 +34,7 @@ func (u *UnionRecord) MarshalUnion() (any, error) {
 	return nil, errors.New("no value to encode")
 }
 
-func (u *UnionRecord) UnmarshalUnion(payload any) error {
+func (u *UnionRecord) FromAny(payload any) error {
 	switch t := payload.(type) {
 	case int:
 		u.Int = &t

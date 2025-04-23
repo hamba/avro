@@ -520,7 +520,7 @@ func TestDecoder_UnionInterfaceRecord(t *testing.T) {
 	assert.Equal(t, "foo", rec.B)
 }
 
-func TestDecoder_UnionUnmarshalUnionInterface(t *testing.T) {
+func TestDecoder_UnionConverterFromAnyInterface(t *testing.T) {
 	defer ConfigTeardown()
 
 	avro.Register("test", TestRecord{})
@@ -539,7 +539,7 @@ func TestDecoder_UnionUnmarshalUnionInterface(t *testing.T) {
 	assert.Equal(t, "foo", rec.B)
 }
 
-func TestDecoder_NullableUnionUnmarshalUnionInterface(t *testing.T) {
+func TestDecoder_NullableUnionConverterFromAnyInterface(t *testing.T) {
 	defer ConfigTeardown()
 
 	avro.Register("test", &TestRecord{})
