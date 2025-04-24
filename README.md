@@ -118,6 +118,7 @@ with one of the types being `null` (ie. `["null", "string"]` or `["string", "nul
 a `*T` is allowed, with `T` matching the conversion table above. In the case of a slice, the slice can be used
 directly.
 * ***struct{}:** implementing the `UnionConverter` interface:
+
 ```go
 // UnionConverter to handle Avro Union's in a type-safe way
 type UnionConverter interface {
