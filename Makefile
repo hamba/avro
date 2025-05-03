@@ -2,7 +2,7 @@
 
 goimports:
 	@echo "==> Formatting imports"
-	@goimports -e -l -w -local github.com/hamba/avro $(shell find . -type f -name '*.go' -not -path "./vendor/*")
+	@goimports -e -l -w -local github.com/hamba/avro $(shell find . -type f -name '*.go' -not -path "./vendor/*" -and -not -path "*/testdata/*")
 	@echo "==> Done"
 
 .PHONY: goimports
