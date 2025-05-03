@@ -5,9 +5,10 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/hamba/avro/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/hamba/avro/v2"
 )
 
 func TestSchema_JSON(t *testing.T) {

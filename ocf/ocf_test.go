@@ -11,11 +11,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hamba/avro/v2"
-	"github.com/hamba/avro/v2/ocf"
 	"github.com/klauspost/compress/zstd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/hamba/avro/v2"
+	"github.com/hamba/avro/v2/ocf"
 )
 
 var update = flag.Bool("update", false, "update the golden files")

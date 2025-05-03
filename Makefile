@@ -1,5 +1,13 @@
 # Format all files
-fmt:
+
+goimports:
+	@echo "==> Formatting imports"
+	@goimports -e -l -w -local github.com/hamba/avro $(shell find . -type f -name '*.go' -not -path "./vendor/*")
+	@echo "==> Done"
+
+.PHONY: goimports
+
+fmt: goimports
 	@echo "==> Formatting source"
 	@gofumpt -l -extra -w $(shell find . -type f -name '*.go' -not -path "./vendor/*")
 	@echo "==> Done"

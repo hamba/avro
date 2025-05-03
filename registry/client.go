@@ -18,8 +18,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hamba/avro/v2"
 	jsoniter "github.com/json-iterator/go"
+
+	"github.com/hamba/avro/v2"
 )
 
 const contentType = "application/vnd.schemaregistry.v1+json"

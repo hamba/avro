@@ -6,9 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hamba/avro/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/hamba/avro/v2"
 )
 
 func TestReader_ReadNext(t *testing.T) {

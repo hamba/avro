@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/hamba/avro/v2"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/hamba/avro/v2"
 )
 
 func TestNewDecoder_SchemaError(t *testing.T) {

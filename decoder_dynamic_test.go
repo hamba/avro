@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/hamba/avro/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/hamba/avro/v2"
 )
 
 func TestDecoder_Interface(t *testing.T) {

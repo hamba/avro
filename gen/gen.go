@@ -13,8 +13,9 @@ import (
 	"unicode/utf8"
 
 	"github.com/ettle/strcase"
-	"github.com/hamba/avro/v2"
 	"golang.org/x/tools/imports"
+
+	"github.com/hamba/avro/v2"
 )
 
 // Config configures the code generation.

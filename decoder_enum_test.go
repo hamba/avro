@@ -5,9 +5,10 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/hamba/avro/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/hamba/avro/v2"
 )
 
 func TestDecoder_EnumInvalidType(t *testing.T) {

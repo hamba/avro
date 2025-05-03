@@ -6,9 +6,10 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/hamba/avro/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/hamba/avro/v2"
 )
 
 func TestParse_InvalidType(t *testing.T) {

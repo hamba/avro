@@ -12,10 +12,11 @@ import (
 	"strconv"
 	"strings"
 
+	"golang.org/x/tools/imports"
+
 	"github.com/hamba/avro/v2"
 	"github.com/hamba/avro/v2/gen"
 	"github.com/hamba/avro/v2/registry"
-	"golang.org/x/tools/imports"
 )
 
 type config struct {
