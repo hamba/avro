@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"os"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/mitchellh/mapstructure"
+
+	jsoniter "github.com/json-iterator/go"
 )
 
 var (

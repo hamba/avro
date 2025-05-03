@@ -11,6 +11,18 @@ formatters:
   settings:
     gofumpt:
       extra-rules: true
+    goimports:
+      local-prefixes:
+        - github.com/hamba/avro
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/hamba/avro)
+        - blank
+        - dot
+        - alias
+        - localmodule
   exclusions:
     generated: lax
 

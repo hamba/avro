@@ -3,7 +3,6 @@ package gen
 
 import (
 	"bytes"
-	_ "embed"
 	"errors"
 	"fmt"
 	"io"
@@ -14,6 +13,8 @@ import (
 
 	"github.com/ettle/strcase"
 	"golang.org/x/tools/imports"
+
+	_ "embed"
 
 	"github.com/hamba/avro/v2"
 )
