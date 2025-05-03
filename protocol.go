@@ -8,7 +8,7 @@ import (
 	"os"
 
 	jsoniter "github.com/json-iterator/go"
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 )
 
 var (
