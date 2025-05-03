@@ -1,7 +1,7 @@
 # Format all files
 fmt:
 	@echo "==> Formatting source"
-	@gofumpt -l -w $(shell find . -type f -name '*.go' -not -path "./vendor/*")
+	@gofumpt -l -extra -w $(shell find . -type f -name '*.go' -not -path "./vendor/*")
 	@echo "==> Done"
 .PHONY: fmt
 
