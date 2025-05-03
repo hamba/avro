@@ -56,7 +56,6 @@ BenchmarkZstdEncodeDecodeHighEntropyLong-8   	   47652	     25064 ns/op	   31553
 */
 
 func BenchmarkZstdEncodeDecodeLowEntropyLong(b *testing.B) {
-
 	input := makeTestData(8762, func() byte { return 'a' })
 
 	codec, err := resolveCodec(ZStandard, codecOptions{})
