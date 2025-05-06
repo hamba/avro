@@ -244,7 +244,7 @@ func TestStruct_GenFromRecordSchema(t *testing.T) {
 	file, _ := generate(t, string(schema), gc)
 
 	if *update {
-		err = os.WriteFile(fileName, file, 0600)
+		err = os.WriteFile(fileName, file, 0o600)
 		require.NoError(t, err)
 	}
 
@@ -267,7 +267,7 @@ func TestStruct_GenFromRecordSchemaWithCustomLogicalTypes(t *testing.T) {
 	file, _ := generate(t, string(schema), gc)
 
 	if *update {
-		err = os.WriteFile(fileName, file, 0600)
+		err = os.WriteFile(fileName, file, 0o600)
 		require.NoError(t, err)
 	}
 
@@ -284,7 +284,7 @@ func TestStruct_GenFromRecordSchemaWithFullName(t *testing.T) {
 	file, _ := generate(t, string(schema), gc)
 
 	if *update {
-		err = os.WriteFile("testdata/golden_fullname.go", file, 0600)
+		err = os.WriteFile("testdata/golden_fullname.go", file, 0o600)
 		require.NoError(t, err)
 	}
 
@@ -301,7 +301,7 @@ func TestStruct_GenFromRecordSchemaWithEncoders(t *testing.T) {
 	file, _ := generate(t, string(schema), gc)
 
 	if *update {
-		err = os.WriteFile("testdata/golden_encoders.go", file, 0600)
+		err = os.WriteFile("testdata/golden_encoders.go", file, 0o600)
 		require.NoError(t, err)
 	}
 
@@ -318,7 +318,7 @@ func TestStruct_GenFromRecordSchemaWithFullSchema(t *testing.T) {
 	file, _ := generate(t, string(schema), gc)
 
 	if *update {
-		err = os.WriteFile("testdata/golden_encoders_fullschema.go", file, 0600)
+		err = os.WriteFile("testdata/golden_encoders_fullschema.go", file, 0o600)
 		require.NoError(t, err)
 	}
 
@@ -346,7 +346,7 @@ func TestGenerator(t *testing.T) {
 	require.NoError(t, err)
 
 	if *update {
-		err = os.WriteFile("testdata/golden_multiple.go", formatted, 0600)
+		err = os.WriteFile("testdata/golden_multiple.go", formatted, 0o600)
 		require.NoError(t, err)
 	}
 

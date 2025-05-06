@@ -182,6 +182,12 @@ func (e *mapUnionEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 		val = []struct{}{}
 	}
 
+	val, err := w.cfg.typeConverters.EncodeTypeConvert(val, e.schema)
+	if err != nil && !errors.Is(err, errNoTypeConverter) {
+		w.Error = err
+		return
+	}
+
 	elemType := reflect2.TypeOf(val)
 	elemPtr := reflect2.PtrOf(val)
 
@@ -234,6 +240,34 @@ func (d *unionNullableDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		*((*unsafe.Pointer)(ptr)) = nil
 		return
 	}
+
+	defer func() {
+		if !d.isPtr {
+			obj := d.typ.UnsafeIndirect(ptr)
+			obj, err := r.cfg.typeConverters.DecodeTypeConvert(obj, d.schema)
+			if errors.Is(err, errNoTypeConverter) {
+				return
+			}
+			if err != nil {
+				r.Error = err
+			}
+			if obj == nil {
+				*(*unsafe.Pointer)(ptr) = nil
+				return
+			}
+			d.typ.UnsafeSet(ptr, reflect2.PtrOf(obj))
+			return
+		}
+		obj := d.typ.UnsafeIndirect(*((*unsafe.Pointer)(ptr)))
+		obj, err := r.cfg.typeConverters.DecodeTypeConvert(obj, d.schema)
+		if errors.Is(err, errNoTypeConverter) {
+			return
+		}
+		if err != nil {
+			r.Error = err
+		}
+		*((*unsafe.Pointer)(ptr)) = reflect2.PtrOf(obj)
+	}()
 
 	// Handle the non-ptr case separately.
 	if !d.isPtr {
@@ -419,6 +453,14 @@ func (d *unionResolvedDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 		*pObj = nil
 		return
 	}
+
+	defer func() {
+		obj, err := r.cfg.typeConverters.DecodeTypeConvert(*pObj, d.schema)
+		if err != nil && !errors.Is(err, errNoTypeConverter) {
+			r.Error = err
+		}
+		*pObj = obj
+	}()
 
 	if i >= len(d.decoders) || d.decoders[i] == nil {
 		if d.cfg.config.UnionResolutionError {

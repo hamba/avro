@@ -8,10 +8,9 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/hamba/avro/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/hamba/avro/v2"
 )
 
 func ExampleParse() {
