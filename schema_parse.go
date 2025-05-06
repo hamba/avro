@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/go-viper/mapstructure/v2"
+	jsoniter "github.com/json-iterator/go"
 )
 
 // DefaultSchemaCache is the default cache for schemas.
