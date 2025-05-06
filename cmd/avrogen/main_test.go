@@ -88,7 +88,7 @@ func TestAvroGen_GeneratesSchema(t *testing.T) {
 	require.NoError(t, err)
 
 	if *update {
-		err = os.WriteFile("testdata/golden.go", got, 0600)
+		err = os.WriteFile("testdata/golden.go", got, 0o600)
 		require.NoError(t, err)
 	}
 
@@ -111,7 +111,7 @@ func TestAvroGen_GeneratesSchemaWithFullname(t *testing.T) {
 	require.NoError(t, err)
 
 	if *update {
-		err = os.WriteFile("testdata/golden_fullname.go", got, 0600)
+		err = os.WriteFile("testdata/golden_fullname.go", got, 0o600)
 		require.NoError(t, err)
 	}
 
@@ -134,7 +134,7 @@ func TestAvroGen_GeneratesSchemaWithEncoders(t *testing.T) {
 	require.NoError(t, err)
 
 	if *update {
-		err = os.WriteFile("testdata/golden_encoders.go", got, 0600)
+		err = os.WriteFile("testdata/golden_encoders.go", got, 0o600)
 		require.NoError(t, err)
 	}
 
@@ -157,7 +157,7 @@ func TestAvroGen_GeneratesSchemaWithFullSchema(t *testing.T) {
 	require.NoError(t, err)
 
 	if *update {
-		err = os.WriteFile("testdata/golden_encoders_fullschema.go", got, 0600)
+		err = os.WriteFile("testdata/golden_encoders_fullschema.go", got, 0o600)
 		require.NoError(t, err)
 	}
 
@@ -180,7 +180,7 @@ func TestAvroGen_GeneratesSchemaWithStrictTypes(t *testing.T) {
 	require.NoError(t, err)
 
 	if *update {
-		err = os.WriteFile("testdata/golden_stricttypes.go", got, 0600)
+		err = os.WriteFile("testdata/golden_stricttypes.go", got, 0o600)
 		require.NoError(t, err)
 	}
 
