@@ -1,7 +1,7 @@
 # Format all files
 fmt:
 	@echo "==> Formatting source"
-	@gofmt -s -w $(shell find . -type f -name '*.go' -not -path "./vendor/*")
+	@golangci-lint fmt ./...
 	@echo "==> Done"
 .PHONY: fmt
 
