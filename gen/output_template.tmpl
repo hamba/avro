@@ -18,7 +18,7 @@ package {{ .PackageName }}
 	// {{ replace .Doc "\n" "\n// " -1 }}
 	{{- else }}
 	// {{ .Name }} is a generated struct.
-	{{- end }}	
+	{{- end }}
 	type {{ .Name }} struct {
 	{{- range .Fields }}
 		{{- $f := . }}
