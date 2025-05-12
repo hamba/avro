@@ -82,9 +82,14 @@ type credentials struct {
 }
 
 type schemaInfoPayload struct {
-	Schema  string `json:"schema"`
-	ID      int    `json:"id"`
-	Version int    `json:"version"`
+	Schema   string         `json:"schema"`
+	ID       int            `json:"id"`
+	Version  int            `json:"version"`
+	Metadata schemaMetadata `json:"metadata"`
+}
+
+type schemaMetadata struct {
+	Properties map[string]string `json:"properties"`
 }
 
 // Parse converts the string schema registry response into a
@@ -93,6 +98,9 @@ func (s *schemaInfoPayload) Parse() (info SchemaInfo, err error) {
 	info = SchemaInfo{
 		ID:      s.ID,
 		Version: s.Version,
+		Metadata: SchemaMetadata{
+			Properties: s.Metadata.Properties,
+		},
 	}
 	info.Schema, err = avro.Parse(s.Schema)
 	return info, err
@@ -100,9 +108,15 @@ func (s *schemaInfoPayload) Parse() (info SchemaInfo, err error) {
 
 // SchemaInfo represents a schema and metadata information.
 type SchemaInfo struct {
-	Schema  avro.Schema
-	ID      int
-	Version int
+	Schema   avro.Schema
+	ID       int
+	Version  int
+	Metadata SchemaMetadata
+}
+
+// SchemaMetadata represents the schema metadata.
+type SchemaMetadata struct {
+	Properties map[string]string
 }
 
 var defaultClient = &http.Client{
