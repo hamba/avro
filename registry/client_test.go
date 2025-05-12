@@ -364,6 +364,26 @@ func TestClient_GetSchemaInfo(t *testing.T) {
 	assert.Equal(t, 1, schemaInfo.Version)
 }
 
+func TestClient_GetSchemaInfoWithMetadata(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "/subjects/foobar/versions/1", r.URL.Path)
+
+		_, _ = w.Write([]byte(`{"subject": "foobar", "version": 1, "id": 2, "metadata": {"properties": {"foo": "bar", "baz": "quux"}}, "schema":"[\"null\",\"string\",\"int\"]"}`))
+	}))
+	t.Cleanup(s.Close)
+	client, _ := registry.NewClient(s.URL)
+
+	schemaInfo, err := client.GetSchemaInfo(context.Background(), "foobar", 1)
+
+	require.NoError(t, err)
+	assert.Equal(t, `["null","string","int"]`, schemaInfo.Schema.String())
+	assert.Equal(t, 2, schemaInfo.ID)
+	assert.Equal(t, 1, schemaInfo.Version)
+	assert.Equal(t, "bar", schemaInfo.Metadata.Properties["foo"])
+	assert.Equal(t, "quux", schemaInfo.Metadata.Properties["baz"])
+}
+
 func TestClient_GetSchemaInfoRequestError(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(500)
