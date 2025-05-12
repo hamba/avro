@@ -177,6 +177,13 @@ func WithMetadata(m any) OptsFunc {
 	}
 }
 
+// WithEnums configures the generator to output the enum symbols.
+func WithEnums() OptsFunc {
+	return func(g *Generator) {
+		g.genEnums = true
+	}
+}
+
 // LogicalType used when the name of the "LogicalType" field in the Avro schema matches the Name attribute.
 type LogicalType struct {
 	// Name of the LogicalType
@@ -220,6 +227,7 @@ type Generator struct {
 	encoders     bool
 	fullSchema   bool
 	strictTypes  bool
+	genEnums     bool
 	initialisms  []string
 	logicalTypes map[avro.LogicalType]LogicalType
 	metadata     any
@@ -298,7 +306,10 @@ func (g *Generator) generate(schema avro.Schema, metadata any) string {
 	case *avro.ArraySchema:
 		return "[]" + g.generate(s.Items(), metadata)
 	case *avro.EnumSchema:
-		return g.resolveEnum(s)
+		if g.genEnums {
+			return g.resolveEnum(s)
+		}
+		return "string"
 	case *avro.FixedSchema:
 		typ := fmt.Sprintf("[%d]byte", s.Size())
 		if ls := s.Logical(); ls != nil {

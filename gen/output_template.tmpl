@@ -18,7 +18,7 @@ package {{ .PackageName }}
 type {{ $t.Name }} string
 const (
 	{{- range .Symbols }}
-	{{ . }} {{ $t.Name }} = "{{ . }}"
+	{{ printf "%s%s" $t.Name . | upperCamel }} {{ $t.Name }} = "{{ . }}"
 	{{- end }} 
 )
 {{- end }} 

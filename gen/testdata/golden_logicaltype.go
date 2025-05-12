@@ -9,15 +9,6 @@ import (
 	"github.com/hamba/avro/v2"
 )
 
-type Cards string
-
-const (
-	SPADES   Cards = "SPADES"
-	HEARTS   Cards = "HEARTS"
-	DIAMONDS Cards = "DIAMONDS"
-	CLUBS    Cards = "CLUBS"
-)
-
 // InnerRecord is a generated struct.
 type InnerRecord struct {
 	InnerJustBytes                   []byte    `avro:"innerJustBytes"`
@@ -72,7 +63,7 @@ type Test struct {
 	JustBytes                       []byte                 `avro:"justBytes"`
 	PrimitiveNullableArrayUnion     *[]string              `avro:"primitiveNullableArrayUnion"`
 	InnerRecord                     InnerRecord            `avro:"innerRecord"`
-	AnEnum                          Cards                  `avro:"anEnum"`
+	AnEnum                          string                 `avro:"anEnum"`
 	AFixed                          [7]byte                `avro:"aFixed"`
 	ALogicalFixed                   avro.LogicalDuration   `avro:"aLogicalFixed"`
 	AnotherLogicalFixed             avro.LogicalDuration   `avro:"anotherLogicalFixed"`
