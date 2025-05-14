@@ -117,6 +117,59 @@ type name, or schema full name in the case of a named schema (enum, fixed or rec
 with one of the types being `null` (ie. `["null", "string"]` or `["string", "null"]`), in this case
 a `*T` is allowed, with `T` matching the conversion table above. In the case of a slice, the slice can be used
 directly.
+* ***struct{}:** implementing the `UnionConverter` interface:
+
+```go
+// UnionConverter to handle Avro Union's in a type-safe way
+type UnionConverter interface {
+    // FromAny payload decode into any of the mentioned types in the Union.
+    FromAny(payload any) error
+    // ToAny from the Union struct
+    ToAny() (any, error)
+}
+
+// for example:
+const Schema = `{"name": "Payload", "type": "record", "fields": [{"name": "union", "type": ["int", {"type": "record", "name": "test", "fields" : [{"name": "a", "type": "long"}, {"name": "b", "type": "string"}]}]}]}`
+
+type Payload struct {
+    Union *UnionRecord `avro:"union"`
+}
+
+type UnionRecord struct {
+    Int  *int
+    Test *TestRecord
+}
+
+func (u *UnionRecord) ToAny() (any, error) {
+    if u.Int != nil {
+        return u.Int, nil
+    } else if u.Test != nil {
+        return u.Test, nil
+    }
+
+    return nil, errors.New("no value to encode")
+}
+
+func (u *UnionRecord) FromAny(payload any) error {
+    switch t := payload.(type) {
+    case int:
+        u.Int = &t
+    case TestRecord:
+        u.Test = &t
+    default:
+        return errors.New("unknown type during decode of union")
+    }
+
+    return nil
+}
+
+type TestRecord struct {
+    A int64  `avro:"a"`
+    B string `avro:"b"`
+}
+```
+Note due to way Go checks if some type implements these interface, the type used _must_ be a pointer as the interface methods _must_
+be implemented with pointer receivers.
 * **any:** An `interface` can be provided and the type or name resolved. Primitive types
 are pre-registered, but named types, maps and slices will need to be registered with the `Register` function.
 In the case of arrays and maps the enclosed schema type or name is postfix to the type with a `:` separator,
