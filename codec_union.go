@@ -57,10 +57,6 @@ func createDecoderOfUnion(d *decoderContext, schema *UnionSchema, typ reflect2.T
 }
 
 func createEncoderOfUnion(e *encoderContext, schema *UnionSchema, typ reflect2.Type) ValEncoder {
-	if typ.Implements(reflect2.Type2(reflect.TypeFor[UnionConverter]())) {
-		return encoderOfUnionConverterCodec(e, schema, typ)
-	}
-
 	switch typ.Kind() {
 	case reflect.Map:
 		if typ.(reflect2.MapType).Key().Kind() != reflect.String ||
@@ -74,6 +70,10 @@ func createEncoderOfUnion(e *encoderContext, schema *UnionSchema, typ reflect2.T
 		}
 		return encoderOfNullableUnion(e, schema, typ)
 	case reflect.Ptr:
+		if typ.Implements(reflect2.Type2(reflect.TypeFor[UnionConverter]())) {
+			return encoderOfUnionConverterCodec(e, schema, typ)
+		}
+
 		if !schema.Nullable() {
 			break
 		}
@@ -303,12 +303,18 @@ func (e *unionConverterToAnyCodec) Encode(ptr unsafe.Pointer, w *Writer) {
 	marshaller := target.(UnionConverter)
 	val, err := marshaller.ToAny()
 	if err != nil {
-		w.Error = err
+		w.Error = fmt.Errorf("avro: unable to convert union: %w", err)
 		return
 	}
 
 	typeOf := reflect2.TypeOf(val)
-	elemType := typeOf.(*reflect2.UnsafePtrType).Elem()
+	typeOfUnsafePtr, ok := typeOf.(*reflect2.UnsafePtrType)
+	if !ok {
+		w.Error = fmt.Errorf("avro: expected ptr but received %q", typeOf.String())
+		return
+	}
+
+	elemType := typeOfUnsafePtr.Elem()
 	w.WriteVal(e.schema, elemType.Indirect(val))
 }
 
@@ -360,7 +366,7 @@ func (e *unionNullableEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 	e.encoder.Encode(newPtr, w)
 }
 
-func decoderOfResolvedUnion(d *decoderContext, schema Schema, typ reflect2.Type) (ValDecoder, error) {
+func decoderOfResolvedUnion(d *decoderContext, schema Schema, _ reflect2.Type) (ValDecoder, error) {
 	union := schema.(*UnionSchema)
 
 	types := make([]reflect2.Type, len(union.Types()))
@@ -395,7 +401,6 @@ func decoderOfResolvedUnion(d *decoderContext, schema Schema, typ reflect2.Type)
 		schema:   union,
 		types:    types,
 		decoders: decoders,
-		typ:      typ,
 	}, nil
 }
 
@@ -404,7 +409,6 @@ type unionResolvedDecoder struct {
 	schema   *UnionSchema
 	types    []reflect2.Type
 	decoders []ValDecoder
-	typ      reflect2.Type
 }
 
 func (d *unionResolvedDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
@@ -461,8 +465,7 @@ func (d *unionResolvedDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 
 	d.decoders[i].Decode(newPtr, r)
 
-	res := typ.UnsafeIndirect(newPtr)
-	*pObj = res
+	*pObj = typ.UnsafeIndirect(newPtr)
 }
 
 func decoderOfUnionConverterCodec(d *decoderContext, schema *UnionSchema, typ reflect2.Type) ValDecoder {
@@ -488,8 +491,16 @@ type unionConverterFromAnyCodec struct {
 
 func (d *unionConverterFromAnyCodec) Decode(ptr unsafe.Pointer, r *Reader) {
 	obj := new(any)
-	newptr := reflect2.PtrOf(obj)
-	d.decoder.Decode(newptr, r)
+	newPtr := reflect2.PtrOf(obj)
+	d.decoder.Decode(newPtr, r)
+
+	if *obj == nil {
+		if !d.nullable {
+			r.Error = errors.New("avro: cannot decode nil value in non-nullable union type")
+		}
+
+		return
+	}
 
 	if d.nullable && *obj == nil {
 		return
