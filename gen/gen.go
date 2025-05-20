@@ -269,15 +269,21 @@ func (g *Generator) Reset() {
 
 // Parse parses an avro schema into Go types.
 func (g *Generator) Parse(schema avro.Schema) {
-	_ = g.generate(schema)
+	_ = g.generate(schema, nil)
 }
 
-func (g *Generator) generate(schema avro.Schema) string {
+// ParseWithMetadata parses an avro schema into Go types with arbitrary metadata attached.
+// The metadata is then passed to the template as `Typedefs[].Metadata`.
+func (g *Generator) ParseWithMetadata(schema avro.Schema, metadata any) {
+	_ = g.generate(schema, metadata)
+}
+
+func (g *Generator) generate(schema avro.Schema, metadata any) string {
 	switch s := schema.(type) {
 	case *avro.RefSchema:
-		return g.resolveRefSchema(s)
+		return g.resolveRefSchema(s, metadata)
 	case *avro.RecordSchema:
-		return g.resolveRecordSchema(s)
+		return g.resolveRecordSchema(s, metadata)
 	case *avro.PrimitiveSchema:
 		typ := primitiveMappings[s.Type()]
 		if ls := s.Logical(); ls != nil {
@@ -290,7 +296,7 @@ func (g *Generator) generate(schema avro.Schema) string {
 		}
 		return typ
 	case *avro.ArraySchema:
-		return "[]" + g.generate(s.Items())
+		return "[]" + g.generate(s.Items(), metadata)
 	case *avro.EnumSchema:
 		return "string"
 	case *avro.FixedSchema:
@@ -300,9 +306,9 @@ func (g *Generator) generate(schema avro.Schema) string {
 		}
 		return typ
 	case *avro.MapSchema:
-		return "map[string]" + g.generate(s.Values())
+		return "map[string]" + g.generate(s.Values(), metadata)
 	case *avro.UnionSchema:
-		return g.resolveUnionTypes(s)
+		return g.resolveUnionTypes(s, metadata)
 	default:
 		return ""
 	}
@@ -315,16 +321,19 @@ func (g *Generator) resolveTypeName(s avro.NamedSchema) string {
 	return g.nameCaser.ToPascal(s.Name())
 }
 
-func (g *Generator) resolveRecordSchema(schema *avro.RecordSchema) string {
+func (g *Generator) resolveRecordSchema(schema *avro.RecordSchema, metadata any) string {
 	fields := make([]field, len(schema.Fields()))
 	for i, f := range schema.Fields() {
-		typ := g.generate(f.Type())
+		typ := g.generate(f.Type(), metadata)
 		fields[i] = g.newField(g.nameCaser.ToPascal(f.Name()), typ, f.Doc(), f.Name(), f.Props())
 	}
 
 	typeName := g.resolveTypeName(schema)
 	if !g.hasTypeDef(typeName) {
-		g.typedefs = append(g.typedefs, newType(typeName, schema.Doc(), fields, g.rawSchema(schema), schema.Props()))
+		g.typedefs = append(
+			g.typedefs,
+			newType(typeName, schema.Doc(), fields, g.rawSchema(schema), schema.Props(), metadata),
+		)
 	}
 	return typeName
 }
@@ -350,20 +359,20 @@ func (g *Generator) hasTypeDef(name string) bool {
 	return false
 }
 
-func (g *Generator) resolveRefSchema(s *avro.RefSchema) string {
+func (g *Generator) resolveRefSchema(s *avro.RefSchema, metadata any) string {
 	if sx, ok := s.Schema().(*avro.RecordSchema); ok {
 		return g.resolveTypeName(sx)
 	}
-	return g.generate(s.Schema())
+	return g.generate(s.Schema(), metadata)
 }
 
-func (g *Generator) resolveUnionTypes(s *avro.UnionSchema) string {
+func (g *Generator) resolveUnionTypes(s *avro.UnionSchema, metadata any) string {
 	types := make([]string, 0, len(s.Types()))
 	for _, elem := range s.Types() {
 		if _, ok := elem.(*avro.NullSchema); ok {
 			continue
 		}
-		types = append(types, g.generate(elem))
+		types = append(types, g.generate(elem, metadata))
 	}
 	if s.Nullable() {
 		return "*" + types[0]
@@ -474,20 +483,22 @@ func (g *Generator) Write(w io.Writer) error {
 }
 
 type typedef struct {
-	Name   string
-	Doc    string
-	Fields []field
-	Schema string
-	Props  map[string]any
+	Name     string
+	Doc      string
+	Fields   []field
+	Schema   string
+	Props    map[string]any
+	Metadata any
 }
 
-func newType(name, doc string, fields []field, schema string, props map[string]any) typedef {
+func newType(name, doc string, fields []field, schema string, props map[string]any, metadata any) typedef {
 	return typedef{
-		Name:   name,
-		Doc:    ensureTrailingPeriod(doc),
-		Fields: fields,
-		Schema: schema,
-		Props:  props,
+		Name:     name,
+		Doc:      ensureTrailingPeriod(doc),
+		Fields:   fields,
+		Schema:   schema,
+		Props:    props,
+		Metadata: metadata,
 	}
 }
 
