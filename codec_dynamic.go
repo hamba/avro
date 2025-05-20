@@ -1,6 +1,7 @@
 package avro
 
 import (
+	"errors"
 	"reflect"
 	"unsafe"
 
@@ -29,7 +30,7 @@ func (d *efaceDecoder) Decode(ptr unsafe.Pointer, r *Reader) {
 
 	defer func() {
 		obj, err := r.cfg.typeConverters.DecodeTypeConvert(*pObj, d.schema)
-		if err != nil {
+		if err != nil && !errors.Is(err, errNoTypeConverter) {
 			r.Error = err
 		}
 		*pObj = obj
@@ -66,7 +67,7 @@ func (e *interfaceEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 	obj := e.typ.UnsafeIndirect(ptr)
 
 	obj, err := w.cfg.typeConverters.EncodeTypeConvert(obj, e.schema)
-	if err != nil {
+	if err != nil && !errors.Is(err, errNoTypeConverter) {
 		w.Error = err
 		return
 	}

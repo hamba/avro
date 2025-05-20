@@ -12,42 +12,61 @@ jobs:
       matrix:
         go-version: [ "1.23", "1.24" ]
     env:
-      GOLANGCI_LINT_VERSION: v2.0.1
+      GOLANGCI_LINT_VERSION: v2.1.6
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Install Go
-        if: success()
+        id: install-go
         uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go-version }}
 
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Cache Go modules
-        uses: actions/cache@v4
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+      - name: Download dependencies
+        run: go mod download
+        if: steps.install-go.outputs.cache-hit != 'true'
 
       - name: Run linter
-        uses: golangci/golangci-lint-action@v7
+        uses: golangci/golangci-lint-action@v8
         with:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
 
-      - name: Run tests
-        run: go test -covermode=count -coverprofile=coverage.out ./...
+      - name: Setup gotestsum
+        uses: gertd/action-gotestsum@v3.0.0
+        with:
+          gotestsum_version: v1.12.0
 
-      - name: Convert coverage.out to coverage.lcov
-        uses: jandelgado/gcov2lcov-action@v1
+      - name: Run Tests
+        run: gotestsum --junitfile tests.xml --format pkgname -- -covermode=atomic -coverprofile=coverage.out -race ./...
+
+      - name: Test Summary
+        uses: test-summary/action@v2
+        with:
+          paths: "tests.xml"
+        if: always()
 
       - name: Coveralls
-        uses: coverallsapp/github-action@v2.3.6
+        uses: coverallsapp/github-action@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          path-to-lcov: coverage.lcov
+          files: coverage.out
+          format: golang
+          parallel: true
+          flag-name: go-${{ matrix.go-version }}
+
+  finish:
+    needs: test
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Coveralls Finished
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          parallel-finished: true
 
   build:
     runs-on: ubuntu-latest
@@ -89,22 +108,18 @@ jobs:
       GO_VERSION: "1.24"
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Install Go
-        if: success()
+        id: install-go
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Cache Go modules
-        uses: actions/cache@v4
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+      - name: Download dependencies
+        run: go mod download
+        if: steps.install-go.outputs.cache-hit != 'true'
 
       - name: Build avrogen
         run: GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} GOARM=${{ matrix.arm }} go build ./cmd/avrogen

@@ -23,7 +23,7 @@ func TestDecoder_TextUnmarshalerPtr(t *testing.T) {
 	err = dec.Decode(&ts)
 
 	require.NoError(t, err)
-	want := TestTimestampPtr(time.Date(2020, 01, 02, 03, 04, 05, 00, time.UTC))
+	want := TestTimestampPtr(time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC))
 	assert.Equal(t, want, ts)
 }
 
@@ -40,7 +40,7 @@ func TestDecoder_TextUnmarshalerPtrPtr(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.NotNil(t, ts)
-	want := TestTimestampPtr(time.Date(2020, 01, 02, 03, 04, 05, 00, time.UTC))
+	want := TestTimestampPtr(time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC))
 	assert.Equal(t, want, *ts)
 }
 
@@ -65,7 +65,7 @@ func TestEncoder_TextMarshaler(t *testing.T) {
 	buf := bytes.NewBuffer([]byte{})
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
-	ts := TestTimestamp(time.Date(2020, 01, 02, 03, 04, 05, 00, time.UTC))
+	ts := TestTimestamp(time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC))
 
 	err = enc.Encode(ts)
 
@@ -80,7 +80,7 @@ func TestEncoder_TextMarshalerPtr(t *testing.T) {
 	buf := bytes.NewBuffer([]byte{})
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
-	ts := TestTimestampPtr(time.Date(2020, 01, 02, 03, 04, 05, 00, time.UTC))
+	ts := TestTimestampPtr(time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC))
 
 	err = enc.Encode(&ts)
 

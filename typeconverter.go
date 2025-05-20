@@ -1,8 +1,11 @@
 package avro
 
 import (
+	"errors"
 	"sync"
 )
+
+var errNoTypeConverter = errors.New("no type converter")
 
 // TypeConverter represents a data type converter.
 type TypeConverter interface {
@@ -13,10 +16,10 @@ type TypeConverter interface {
 	LogicalType() LogicalType
 
 	// EncodeTypeConvert is the type conversion function called before encoding to Avro.
-	EncodeTypeConvert(in any) (any, error)
+	EncodeTypeConvert(in any, schema Schema) (any, error)
 
 	// DecodeTypeConvert is the type conversion function called after decoding from Avro.
-	DecodeTypeConvert(in any) (any, error)
+	DecodeTypeConvert(in any, schema Schema) (any, error)
 }
 
 type specificType struct {
@@ -48,20 +51,20 @@ func (c *TypeConverters) RegisterTypeConverters(convs ...TypeConverter) {
 func (c *TypeConverters) EncodeTypeConvert(in any, schema Schema) (any, error) {
 	conv, ok := c.getTypeConverter(schema)
 	if !ok {
-		return in, nil
+		return in, errNoTypeConverter
 	}
 
-	return conv.EncodeTypeConvert(in)
+	return conv.EncodeTypeConvert(in, schema)
 }
 
 // DecodeTypeConvert runs the decode type conversion function for the given value and schema.
 func (c *TypeConverters) DecodeTypeConvert(in any, schema Schema) (any, error) {
 	conv, ok := c.getTypeConverter(schema)
 	if !ok {
-		return in, nil
+		return in, errNoTypeConverter
 	}
 
-	return conv.DecodeTypeConvert(in)
+	return conv.DecodeTypeConvert(in, schema)
 }
 
 func (c *TypeConverters) getTypeConverter(schema Schema) (TypeConverter, bool) {
@@ -85,8 +88,8 @@ func RegisterTypeConverters(convs ...TypeConverter) {
 type TypeConversionFuncs struct {
 	AvroType              Type
 	AvroLogicalType       LogicalType
-	EncoderTypeConversion func(in any) (any, error)
-	DecoderTypeConversion func(in any) (any, error)
+	EncoderTypeConversion func(in any, schema Schema) (any, error)
+	DecoderTypeConversion func(in any, schema Schema) (any, error)
 }
 
 // Type returns the Avro data type of the type converter.
@@ -100,17 +103,17 @@ func (c TypeConversionFuncs) LogicalType() LogicalType {
 }
 
 // EncodeTypeConvert runs the converter's encoder type conversion function if it's set.
-func (c TypeConversionFuncs) EncodeTypeConvert(in any) (any, error) {
+func (c TypeConversionFuncs) EncodeTypeConvert(in any, schema Schema) (any, error) {
 	if c.EncoderTypeConversion == nil {
-		return in, nil
+		return in, errNoTypeConverter
 	}
-	return c.EncoderTypeConversion(in)
+	return c.EncoderTypeConversion(in, schema)
 }
 
 // DecodeTypeConvert runs the converter's decoder type conversion function if it's set.
-func (c TypeConversionFuncs) DecodeTypeConvert(in any) (any, error) {
+func (c TypeConversionFuncs) DecodeTypeConvert(in any, schema Schema) (any, error) {
 	if c.DecoderTypeConversion == nil {
-		return in, nil
+		return in, errNoTypeConverter
 	}
-	return c.DecoderTypeConversion(in)
+	return c.DecoderTypeConversion(in, schema)
 }
