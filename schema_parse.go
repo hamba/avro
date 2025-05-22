@@ -53,7 +53,7 @@ func ParseFiles(paths ...string) (Schema, error) {
 			return nil, err
 		}
 
-		schema, err = Parse(string(s))
+		schema, err = ParseBytes(s)
 		if err != nil {
 			return nil, err
 		}
