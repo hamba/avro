@@ -217,6 +217,7 @@ func (d *Decoder) readBlock() int64 {
 
 type encoderConfig struct {
 	BlockLength     int
+	BlockSize       int
 	CodecName       CodecName
 	CodecOptions    codecOptions
 	Metadata        map[string][]byte
@@ -233,6 +234,14 @@ type EncoderFunc func(cfg *encoderConfig)
 func WithBlockLength(length int) EncoderFunc {
 	return func(cfg *encoderConfig) {
 		cfg.BlockLength = length
+	}
+}
+
+// WithBlockSize sets the maximum uncompressed size of a buffered block before
+// it is written and flushed to the underlying io.Writer (after compression).
+func WithBlockSize(size int) EncoderFunc {
+	return func(cfg *encoderConfig) {
+		cfg.BlockSize = size
 	}
 }
 
@@ -315,6 +324,7 @@ type Encoder struct {
 
 	blockLength int
 	count       int
+	blockSize   int
 }
 
 // NewEncoder returns a new encoder that writes to w using schema s.
@@ -367,6 +377,7 @@ func newEncoder(schema avro.Schema, w io.Writer, cfg encoderConfig) (*Encoder, e
 				sync:        h.Sync,
 				codec:       h.Codec,
 				blockLength: cfg.BlockLength,
+				blockSize:   cfg.BlockSize,
 			}
 			return e, nil
 		}
@@ -407,6 +418,7 @@ func newEncoder(schema avro.Schema, w io.Writer, cfg encoderConfig) (*Encoder, e
 		sync:        header.Sync,
 		codec:       codec,
 		blockLength: cfg.BlockLength,
+		blockSize:   cfg.BlockSize,
 	}
 	return e, nil
 }
@@ -440,7 +452,7 @@ func (e *Encoder) Write(p []byte) (n int, err error) {
 	}
 
 	e.count++
-	if e.count >= e.blockLength {
+	if e.count >= e.blockLength || (e.blockSize != 0 && e.buf.Len() >= e.blockSize) {
 		if err = e.writerBlock(); err != nil {
 			return n, err
 		}
