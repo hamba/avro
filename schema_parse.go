@@ -280,11 +280,18 @@ func parseRecord(typ Type, namespace string, m map[string]any, seen seenCache, c
 		cache.Add(alias, ref)
 	}
 
+	fieldNames := make(map[string]struct{})
 	for i, f := range r.Fields {
 		field, err := parseField(rec.namespace, f, seen, cache)
 		if err != nil {
 			return nil, err
 		}
+
+		if _, exists := fieldNames[field.name]; exists {
+			return nil, fmt.Errorf("avro: duplicate field name %q", field.name)
+		}
+		fieldNames[field.name] = struct{}{}
+
 		fields[i] = field
 	}
 
