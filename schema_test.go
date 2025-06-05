@@ -258,6 +258,11 @@ func TestRecordSchema(t *testing.T) {
 			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "fields":[{"name": "field", "type": "blah"}]}`,
 			wantErr: require.Error,
 		},
+		{
+			name:    "Duplicate Field Names",
+			schema:  `{"type":"record", "name":"test", "namespace": "org.hamba.avro", "doc": "docs", "fields":[{"name": "field", "type": "int"}, {"name": "field", "type": "string"}]}`,
+			wantErr: require.Error,
+		},
 	}
 
 	for _, test := range tests {
@@ -683,6 +688,11 @@ func TestEnumSchema(t *testing.T) {
 			wantErr: require.Error,
 		},
 		{
+			name:    "Duplicate Symbols",
+			schema:  `{"type":"enum", "name":"test", "namespace": "org.hamba.avro", "symbols":["TEST", "TEST"]}`,
+			wantErr: require.Error,
+		},
+		{
 			name:    "Invalid Symbol Type",
 			schema:  `{"type":"enum", "name":"test", "namespace": "org.hamba.avro", "symbols":[1]}`,
 			wantErr: require.Error,
@@ -966,6 +976,11 @@ func TestFixedSchema(t *testing.T) {
 		{
 			name:    "Invalid Size Type",
 			schema:  `{"type":"fixed", "name":"test", "namespace": "org.hamba.avro", "size": "test"}`,
+			wantErr: require.Error,
+		},
+		{
+			name:    "Invalid Size Value",
+			schema:  `{"type":"fixed", "name":"test", "namespace": "org.hamba.avro", "size": -1}`,
 			wantErr: require.Error,
 		},
 	}

@@ -935,10 +935,17 @@ func NewEnumSchema(name, namespace string, symbols []string, opts ...SchemaOptio
 	if len(symbols) == 0 {
 		return nil, errors.New("avro: enum must have a non-empty array of symbols")
 	}
+
+	symbolNames := make(map[string]struct{})
 	for _, sym := range symbols {
 		if err = validateName(sym); err != nil {
 			return nil, fmt.Errorf("avro: invalid symbol %q", sym)
 		}
+
+		if _, exists := symbolNames[sym]; exists {
+			return nil, fmt.Errorf("avro: duplicate symbol %q", sym)
+		}
+		symbolNames[sym] = struct{}{}
 	}
 
 	var def string
@@ -1359,6 +1366,10 @@ func NewFixedSchema(
 	n, err := newName(name, namespace, cfg.aliases)
 	if err != nil {
 		return nil, err
+	}
+
+	if size < 0 {
+		return nil, errors.New("avro: fixed size cannot be negative")
 	}
 
 	reservedProps := fixedReserved
