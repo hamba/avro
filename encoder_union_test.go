@@ -335,6 +335,40 @@ func TestEncoder_UnionInterfaceRecordNonPtr(t *testing.T) {
 	assert.Equal(t, []byte{0x02, 0x36, 0x06, 0x66, 0x6F, 0x6F}, buf.Bytes())
 }
 
+func TestEncoder_UnionConverterToAnyInterface(t *testing.T) {
+	defer ConfigTeardown()
+
+	avro.Register("test", TestRecord{})
+
+	schema := `["int", {"type": "record", "name": "test", "fields" : [{"name": "a", "type": "long"}, {"name": "b", "type": "string"}]}]`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	var val = &UnionRecord{Test: &TestRecord{A: 27, B: "foo"}}
+	err = enc.Encode(val)
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x02, 0x36, 0x06, 0x66, 0x6F, 0x6F}, buf.Bytes())
+}
+
+func TestEncoder_NullableUnionConverterToAnyInterface(t *testing.T) {
+	defer ConfigTeardown()
+
+	avro.Register("test", &TestRecord{})
+
+	schema := `{"name": "parent", "type": "record", "fields": [{"name": "union", "type": ["null", "int", {"type": "record", "name": "test", "fields" : [{"name": "a", "type": "long"}, {"name": "b", "type": "string"}]}]}]}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	var val any = &UnionRecordParent{UnionRecord: nil}
+	err = enc.Encode(val)
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0}, buf.Bytes())
+}
+
 func TestEncoder_UnionInterfaceMap(t *testing.T) {
 	defer ConfigTeardown()
 
