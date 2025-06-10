@@ -987,6 +987,29 @@ func TestEncoder_EncodeWritesBlocks(t *testing.T) {
 	assert.Equal(t, 77, buf.Len())
 }
 
+func TestEncoder_EncodeWritesBlocksSize(t *testing.T) {
+	buf := &bytes.Buffer{}
+	enc, _ := ocf.NewEncoder(`"long"`, buf, ocf.WithBlockSize(2))
+	t.Cleanup(func() { _ = enc.Close() })
+
+	// Initial header should be exactly 58 bytes
+	assert.Equal(t, 58, buf.Len())
+
+	// Encode a single int64 value (1), which zig-zag encodes to 1 byte
+	err := enc.Encode(int64(1))
+	require.NoError(t, err)
+
+	// Block size threshold not reached yet; no data block should be written
+	assert.Equal(t, 58, buf.Len())
+
+	// Encode another int64 value (1), bringing buffer size to 2 bytes
+	err = enc.Encode(int64(1))
+	require.NoError(t, err)
+
+	// Block size threshold reached; data block should now be flushed
+	assert.Equal(t, 78, buf.Len())
+}
+
 func TestEncoder_EncodeHandlesWriteBlockError(t *testing.T) {
 	w := &errorBlockWriter{}
 	enc, _ := ocf.NewEncoder(`"long"`, w, ocf.WithBlockLength(1))

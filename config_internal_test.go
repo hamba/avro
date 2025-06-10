@@ -54,7 +54,7 @@ func TestConfig_ReusesDecoders_WithWriterFingerprint(t *testing.T) {
 		"name": "test",
 		"fields" : [
 			{"name": "a", "type": "long"},
-			{"name": "a", "type": "string", "default": "foo"}
+			{"name": "b", "type": "string", "default": "foo"}
 		]
 	}`
 	typ := reflect2.TypeOfPtr(&testObj{})
