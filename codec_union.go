@@ -77,7 +77,6 @@ func createEncoderOfUnion(e *encoderContext, schema *UnionSchema, typ reflect2.T
 		if !schema.Nullable() {
 			break
 		}
-
 		return encoderOfNullableUnion(e, schema, typ)
 	}
 
@@ -537,14 +536,11 @@ func (d *unionConverterFromAnyCodec) Decode(ptr unsafe.Pointer, r *Reader) {
 	d.decoder.Decode(newPtr, r)
 
 	if *obj == nil {
-		if !d.nullable {
-			r.Error = errors.New("avro: cannot decode nil value in non-nullable union type")
+		if d.nullable {
+			return
 		}
 
-		return
-	}
-
-	if d.nullable && *obj == nil {
+		r.Error = errors.New("avro: cannot decode nil value in non-nullable union type")
 		return
 	}
 
