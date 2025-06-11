@@ -324,12 +324,12 @@ type isCompatibleResponse struct {
 	IsCompatible bool `json:"is_compatible"`
 }
 
-// IsCompatible gets the compatibility level of a subject.
+// IsCompatible determines if the schema is compatible with all schemas in the subject
 func (c *Client) IsCompatible(ctx context.Context, subject, schema string) (bool, error) {
 	return c.IsCompatibleWithRefs(ctx, subject, schema)
 }
 
-// IsCompatibleWithRefs gets the compatibility level of a subject, with optional refs.
+// IsCompatibleWithRefs determines if the schema is compatible with all schemas in the subject, with optional referenced schemas.
 func (c *Client) IsCompatibleWithRefs(ctx context.Context, subject, schema string, references ...SchemaReference) (bool, error) {
 	req := schemaPayload{Schema: schema, References: references}
 	var resp isCompatibleResponse
