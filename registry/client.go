@@ -58,6 +58,12 @@ type Registry interface {
 
 	// IsRegisteredWithRefs determines if the schema is registered, with optional referenced schemas.
 	IsRegisteredWithRefs(ctx context.Context, subject, schema string, refs ...SchemaReference) (int, avro.Schema, error)
+
+	// IsCompatible determines if the schema is compatible with all schemas in the subject.
+	IsCompatible(ctx context.Context, subject, schema string) (bool, error)
+
+	// IsCompatibleWithRefs determines if the schema is compatible with all schemas in the subject, with optional referenced schemas.
+	IsCompatibleWithRefs(ctx context.Context, subject, schema string, refs ...SchemaReference) (bool, error)
 }
 
 type schemaPayload struct {
@@ -312,6 +318,25 @@ func (c *Client) IsRegisteredWithRefs(
 
 	sch, err := avro.Parse(schema)
 	return resp.ID, sch, err
+}
+
+type isCompatibleResponse struct {
+	IsCompatible bool `json:"is_compatible"`
+}
+
+// IsCompatible gets the compatibility level of a subject.
+func (c *Client) IsCompatible(ctx context.Context, subject, schema string) (bool, error) {
+	return c.IsCompatibleWithRefs(ctx, subject, schema)
+}
+
+// IsCompatibleWithRefs gets the compatibility level of a subject, with optional refs.
+func (c *Client) IsCompatibleWithRefs(ctx context.Context, subject, schema string, references ...SchemaReference) (bool, error) {
+	req := schemaPayload{Schema: schema, References: references}
+	var resp isCompatibleResponse
+	if err := c.request(ctx, http.MethodPost, path.Join("compatibility", "subjects", subject, "versions"), req, &resp); err != nil {
+		return false, err
+	}
+	return resp.IsCompatible, nil
 }
 
 // Compatibility levels.
