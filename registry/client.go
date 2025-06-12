@@ -63,7 +63,7 @@ type Registry interface {
 	IsCompatible(ctx context.Context, subject, schema string) (bool, error)
 
 	// IsCompatibleWithRefs determines if the schema is compatible with all schemas in the subject,
-	//with optional referenced schemas.
+	// with optional referenced schemas.
 	IsCompatibleWithRefs(ctx context.Context, subject, schema string, refs ...SchemaReference) (bool, error)
 }
 
