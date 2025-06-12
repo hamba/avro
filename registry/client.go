@@ -62,7 +62,8 @@ type Registry interface {
 	// IsCompatible determines if the schema is compatible with all schemas in the subject.
 	IsCompatible(ctx context.Context, subject, schema string) (bool, error)
 
-	// IsCompatibleWithRefs determines if the schema is compatible with all schemas in the subject, with optional referenced schemas.
+	// IsCompatibleWithRefs determines if the schema is compatible with all schemas in the subject,
+	//with optional referenced schemas.
 	IsCompatibleWithRefs(ctx context.Context, subject, schema string, refs ...SchemaReference) (bool, error)
 }
 
@@ -324,16 +325,23 @@ type isCompatibleResponse struct {
 	IsCompatible bool `json:"is_compatible"`
 }
 
-// IsCompatible determines if the schema is compatible with all schemas in the subject
+// IsCompatible determines if the schema is compatible with all schemas in the subject.
 func (c *Client) IsCompatible(ctx context.Context, subject, schema string) (bool, error) {
 	return c.IsCompatibleWithRefs(ctx, subject, schema)
 }
 
-// IsCompatibleWithRefs determines if the schema is compatible with all schemas in the subject, with optional referenced schemas.
-func (c *Client) IsCompatibleWithRefs(ctx context.Context, subject, schema string, references ...SchemaReference) (bool, error) {
+// IsCompatibleWithRefs determines if the schema is compatible with all schemas in the subject,
+// with optional referenced schemas.
+func (c *Client) IsCompatibleWithRefs(
+	ctx context.Context,
+	subject,
+	schema string,
+	references ...SchemaReference,
+) (bool, error) {
 	req := schemaPayload{Schema: schema, References: references}
+	reqPath := path.Join("compatibility", "subjects", subject, "versions")
 	var resp isCompatibleResponse
-	if err := c.request(ctx, http.MethodPost, path.Join("compatibility", "subjects", subject, "versions"), req, &resp); err != nil {
+	if err := c.request(ctx, http.MethodPost, reqPath, req, &resp); err != nil {
 		return false, err
 	}
 	return resp.IsCompatible, nil
