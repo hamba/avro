@@ -761,6 +761,86 @@ func TestClient_SetCompatibilityLevelHandlesInvalidLevel(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestClient_IsCompatible(t *testing.T) {
+	subject := "test_subject"
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, "/compatibility/subjects/"+subject+"/versions", r.URL.Path)
+
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		var decoded map[string]any
+		err = json.Unmarshal(body, &decoded)
+		require.NoError(t, err)
+
+		assert.Contains(t, decoded, "schema")
+		schema, ok := decoded["schema"].(string)
+		require.True(t, ok)
+		require.Equal(t, schema, "[\"null\",\"string\",\"int\"]")
+
+		_, _ = w.Write([]byte(`{"is_compatible":true}`))
+	}))
+	t.Cleanup(s.Close)
+	client, _ := registry.NewClient(s.URL)
+
+	isCompatible, err := client.IsCompatible(
+		context.Background(),
+		"test_subject",
+		"[\"null\",\"string\",\"int\"]",
+	)
+
+	require.NoError(t, err)
+	assert.Equal(t, true, isCompatible)
+}
+
+func TestClient_IsCompatibleWithRefs(t *testing.T) {
+	subject := "test_subject"
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, "/compatibility/subjects/"+subject+"/versions", r.URL.Path)
+
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		var decoded map[string]any
+		err = json.Unmarshal(body, &decoded)
+		require.NoError(t, err)
+
+		assert.Contains(t, decoded, "schema")
+		schema, ok := decoded["schema"].(string)
+		require.True(t, ok)
+		require.Equal(t, schema, "[\"null\",\"string\",\"int\"]")
+
+		assert.Contains(t, decoded, "references")
+		refs, ok := decoded["references"].([]any)
+		require.True(t, ok)
+		require.Len(t, refs, 1)
+		ref, ok := refs[0].(map[string]any)
+		require.True(t, ok)
+
+		assert.Equal(t, "some_schema", ref["name"].(string))
+		assert.Equal(t, "some_subject", ref["subject"].(string))
+		assert.Equal(t, float64(3), ref["version"].(float64))
+
+		_, _ = w.Write([]byte(`{"is_compatible":true}`))
+	}))
+	t.Cleanup(s.Close)
+	client, _ := registry.NewClient(s.URL)
+
+	isCompatible, err := client.IsCompatibleWithRefs(
+		context.Background(),
+		"test_subject",
+		"[\"null\",\"string\",\"int\"]",
+		registry.SchemaReference{
+			Name:    "some_schema",
+			Subject: "some_subject",
+			Version: 3,
+		},
+	)
+
+	require.NoError(t, err)
+	assert.Equal(t, true, isCompatible)
+}
+
 func TestClient_HandlesServerError(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	s.Close()
