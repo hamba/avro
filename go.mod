@@ -6,7 +6,7 @@ toolchain go1.23.1
 
 require (
 	github.com/ettle/strcase v0.2.0
-	github.com/go-viper/mapstructure/v2 v2.2.1
+	github.com/go-viper/mapstructure/v2 v2.3.0
 	github.com/golang/snappy v1.0.0
 	github.com/json-iterator/go v1.1.12
 	github.com/klauspost/compress v1.18.0
