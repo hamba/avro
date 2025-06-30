@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strings"
 	"unsafe"
 
 	"github.com/modern-go/reflect2"
@@ -493,7 +494,7 @@ func describeStruct(tagKey string, typ reflect2.Type) *structDescriptor {
 
 				fieldName := field.Name()
 				if tag, ok := field.Tag().Lookup(tagKey); ok {
-					fieldName = tag
+					fieldName, _, _ = strings.Cut(tag, ",")
 				}
 
 				fields = append(fields, &structField{
