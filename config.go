@@ -117,6 +117,10 @@ type API interface {
 
 	// RegisterTypeConverters registers type conversion functions.
 	RegisterTypeConverters(conv ...TypeConverter)
+
+	TypeOf(name string) (reflect2.Type, error)
+
+	NamesOf(typ reflect2.Type) ([]string, error)
 }
 
 type frozenConfig struct {
@@ -212,6 +216,14 @@ func (c *frozenConfig) Register(name string, obj any) {
 
 func (c *frozenConfig) RegisterTypeConverters(convs ...TypeConverter) {
 	c.typeConverters.RegisterTypeConverters(convs...)
+}
+
+func (c *frozenConfig) TypeOf(name string) (reflect2.Type, error) {
+	return c.resolver.Type(name)
+}
+
+func (c *frozenConfig) NamesOf(typ reflect2.Type) ([]string, error) {
+	return c.resolver.Name(typ)
 }
 
 type cacheKey struct {
