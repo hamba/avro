@@ -26,6 +26,16 @@ func TestNewClient_UrlError(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestSchemaInfo_IDBytes(t *testing.T) {
+	schemaInfo := registry.SchemaInfo{
+		ID: 123456789,
+	}
+
+	idBytes := schemaInfo.IDBytes()
+
+	assert.Equal(t, []byte{7, 91, 205, 21}, idBytes)
+}
+
 func TestClient_PopulatesError(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "application/vnd.schemaregistry.v1+json")
