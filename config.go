@@ -118,8 +118,10 @@ type API interface {
 	// RegisterTypeConverters registers type conversion functions.
 	RegisterTypeConverters(conv ...TypeConverter)
 
+	// TypeOf returns the schema type for a given name.
 	TypeOf(name string) (reflect2.Type, error)
 
+	// NamesOf returns the names associated with a given type.
 	NamesOf(typ reflect2.Type) ([]string, error)
 }
 
