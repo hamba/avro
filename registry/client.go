@@ -7,6 +7,7 @@ package registry
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"net"
@@ -119,6 +120,13 @@ type SchemaInfo struct {
 	ID       int
 	Version  int
 	Metadata SchemaMetadata
+}
+
+// IDBytes returns 4 bytes that represent the schema ID.
+func (s SchemaInfo) IDBytes() []byte {
+	result := make([]byte, 4)
+	binary.BigEndian.PutUint32(result, uint32(s.ID))
+	return result
 }
 
 // SchemaMetadata represents the schema metadata.
