@@ -207,6 +207,18 @@ func (c *SchemaCompatibility) checkEnumSymbols(reader, writer *EnumSchema) error
 	return nil
 }
 
+func (c *SchemaCompatibility) identicalEnumSymbols(reader, writer *EnumSchema) bool {
+	if len(reader.symbols) != len(writer.symbols) {
+		return false
+	}
+	for i := range len(reader.symbols) {
+		if reader.symbols[i] != writer.symbols[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func (c *SchemaCompatibility) checkRecordFields(reader, writer *RecordSchema) error {
 	for _, field := range reader.Fields() {
 		f, ok := c.getField(writer.Fields(), field, func(gfo *getFieldOptions) {
@@ -348,8 +360,16 @@ func (c *SchemaCompatibility) resolve(reader, writer Schema) (schema Schema, res
 				enum.encodedSymbols = w.Symbols()
 				return enum, true, nil
 			}
-
 			return nil, false, err
+		}
+		if !c.identicalEnumSymbols(r, w) {
+			enum, _ := NewEnumSchema(r.Name(), r.Namespace(), r.Symbols(),
+				WithAliases(r.Aliases()),
+				WithDefault(r.Default()),
+				withWriterFingerprint(w.Fingerprint()),
+			)
+			enum.encodedSymbols = w.Symbols()
+			return enum, true, nil
 		}
 		return reader, false, nil
 	}
