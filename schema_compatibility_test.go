@@ -1017,3 +1017,21 @@ func TestSchemaCompatibility_ResolveWithFieldMissingInWriterAndReaderStruct(t *t
 
 	assert.Equal(t, want, result)
 }
+
+func TestSchemaCompatibility_ResolveWithEnums(t *testing.T) {
+	reader := avro.MustParse(`{"type": "enum", "name": "Enum", "symbols": ["A", "B", "C", "D"]}`)
+	writer := avro.MustParse(`{"type": "enum", "name": "Enum", "symbols": ["B", "C", "D"]}`)
+
+	data, err := avro.Marshal(writer, "D")
+	assert.NoError(t, err)
+
+	sc := avro.NewSchemaCompatibility()
+	rs, err := sc.Resolve(reader, writer)
+	assert.NoError(t, err)
+
+	var got string
+	err = avro.Unmarshal(rs, data, &got)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "D", got)
+}
