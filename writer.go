@@ -16,21 +16,30 @@ func WithWriterConfig(cfg API) WriterFunc {
 	}
 }
 
+// WithDirectWrite enables direct writing to the underlying io.Writer without buffering.
+func WithDirectWrite(direct bool) WriterFunc {
+	return func(w *Writer) {
+		w.directWrite = direct
+	}
+}
+
 // Writer is an Avro specific io.Writer.
 type Writer struct {
-	cfg   *frozenConfig
-	out   io.Writer
-	buf   []byte
-	Error error
+	cfg         *frozenConfig
+	out         io.Writer
+	buf         []byte
+	directWrite bool
+	Error       error
 }
 
 // NewWriter creates a new Writer.
 func NewWriter(out io.Writer, bufSize int, opts ...WriterFunc) *Writer {
 	writer := &Writer{
-		cfg:   DefaultConfig.(*frozenConfig),
-		out:   out,
-		buf:   make([]byte, 0, bufSize),
-		Error: nil,
+		cfg:         DefaultConfig.(*frozenConfig),
+		out:         out,
+		buf:         make([]byte, 0, bufSize),
+		directWrite: false,
+		Error:       nil,
 	}
 
 	for _, opt := range opts {
@@ -56,8 +65,18 @@ func (w *Writer) Buffer() []byte {
 	return w.buf
 }
 
+// IsDirectWrite returns true if the writer is in direct write mode.
+func (w *Writer) IsDirectWrite() bool {
+	return w.directWrite
+}
+
 // Flush writes any buffered data to the underlying io.Writer.
 func (w *Writer) Flush() error {
+	// If direct write is enabled, buffer is always empty, so nothing to flush
+	if w.directWrite {
+		return nil
+	}
+
 	if w.out == nil {
 		return nil
 	}
@@ -82,11 +101,31 @@ func (w *Writer) Flush() error {
 }
 
 func (w *Writer) writeByte(b byte) {
+	if w.directWrite {
+		if w.Error != nil {
+			return
+		}
+		_, err := w.out.Write([]byte{b})
+		if err != nil {
+			w.Error = err
+		}
+		return
+	}
 	w.buf = append(w.buf, b)
 }
 
 // Write writes raw bytes to the Writer.
 func (w *Writer) Write(b []byte) (int, error) {
+	if w.directWrite {
+		if w.Error != nil {
+			return 0, w.Error
+		}
+		n, err := w.out.Write(b)
+		if err != nil {
+			w.Error = err
+		}
+		return n, err
+	}
 	w.buf = append(w.buf, b...)
 	return len(b), nil
 }
@@ -134,6 +173,16 @@ func (w *Writer) WriteFloat(f float32) {
 	b := make([]byte, 4)
 	binary.LittleEndian.PutUint32(b, math.Float32bits(f))
 
+	if w.directWrite {
+		if w.Error != nil {
+			return
+		}
+		_, err := w.out.Write(b)
+		if err != nil {
+			w.Error = err
+		}
+		return
+	}
 	w.buf = append(w.buf, b...)
 }
 
@@ -142,18 +191,48 @@ func (w *Writer) WriteDouble(f float64) {
 	b := make([]byte, 8)
 	binary.LittleEndian.PutUint64(b, math.Float64bits(f))
 
+	if w.directWrite {
+		if w.Error != nil {
+			return
+		}
+		_, err := w.out.Write(b)
+		if err != nil {
+			w.Error = err
+		}
+		return
+	}
 	w.buf = append(w.buf, b...)
 }
 
 // WriteBytes writes Bytes to the Writer.
 func (w *Writer) WriteBytes(b []byte) {
 	w.WriteLong(int64(len(b)))
+	if w.directWrite {
+		if w.Error != nil {
+			return
+		}
+		_, err := w.out.Write(b)
+		if err != nil {
+			w.Error = err
+		}
+		return
+	}
 	w.buf = append(w.buf, b...)
 }
 
 // WriteString reads a String to the Writer.
 func (w *Writer) WriteString(s string) {
 	w.WriteLong(int64(len(s)))
+	if w.directWrite {
+		if w.Error != nil {
+			return
+		}
+		_, err := w.out.Write([]byte(s))
+		if err != nil {
+			w.Error = err
+		}
+		return
+	}
 	w.buf = append(w.buf, s...)
 }
 
@@ -169,6 +248,11 @@ func (w *Writer) WriteBlockHeader(l, s int64) {
 
 // WriteBlockCB writes a block using the callback.
 func (w *Writer) WriteBlockCB(callback func(w *Writer) int64) int64 {
+	// Note: WriteBlockCB requires buffering to work correctly, so we temporarily
+	// disable direct write for this operation
+	originalDirectWrite := w.directWrite
+	w.directWrite = false
+
 	var dummyHeader [18]byte
 	headerStart := len(w.buf)
 
@@ -189,6 +273,22 @@ func (w *Writer) WriteBlockCB(callback func(w *Writer) int64) int64 {
 
 	// Copy the block data back to its position
 	w.buf = append(w.buf, captured...)
+
+	// 关键修复：如果原来是直接写入模式，需要把缓冲区的数据写入到 out
+	if originalDirectWrite {
+		// 强制写入缓冲区数据到 out
+		if w.out != nil && len(w.buf) > 0 {
+			_, err := w.out.Write(w.buf)
+			if err != nil {
+				w.Error = err
+			}
+			// 清空缓冲区
+			w.buf = w.buf[:0]
+		}
+	}
+
+	// Restore original direct write setting
+	w.directWrite = originalDirectWrite
 
 	return length
 }
