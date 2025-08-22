@@ -550,7 +550,7 @@ func newDecimalLogicalType(size, prec, scale int) LogicalSchema {
 	}
 
 	if size > 0 {
-		maxPrecision := int(math.Round(math.Floor(math.Log10(2) * (8*float64(size) - 1))))
+		maxPrecision := int(math.Floor(math.Log10(math.Pow(2, 8*float64(size)) - 1)))
 		if prec > maxPrecision {
 			return nil
 		}

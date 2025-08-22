@@ -610,6 +610,16 @@ func (c *bytesDecimalCodec) Encode(ptr unsafe.Pointer, w *Writer) {
 	i := (&big.Int{}).Mul(r.Num(), scale)
 	i = i.Div(i, r.Denom())
 
+	if numDigits, ok := checkDecimalPrecision(i, c.prec); !ok {
+		w.Error = fmt.Errorf(
+			"avro: cannot encode %v as Avro bytes.decimal with precision=%d, has %d significant digits",
+			r.FloatString(c.scale),
+			c.prec,
+			numDigits,
+		)
+		return
+	}
+
 	var b []byte
 	switch i.Sign() {
 	case 0:
@@ -646,6 +656,16 @@ func (c *bytesDecimalPtrCodec) Encode(ptr unsafe.Pointer, w *Writer) {
 	scale := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(c.scale)), nil)
 	i := (&big.Int{}).Mul(r.Num(), scale)
 	i = i.Div(i, r.Denom())
+
+	if numDigits, ok := checkDecimalPrecision(i, c.prec); !ok {
+		w.Error = fmt.Errorf(
+			"avro: cannot encode %v as Avro bytes.decimal with precision=%d, has %d significant digits",
+			r.FloatString(c.scale),
+			c.prec,
+			numDigits,
+		)
+		return
+	}
 
 	var b []byte
 	switch i.Sign() {

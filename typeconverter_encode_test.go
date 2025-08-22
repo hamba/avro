@@ -129,7 +129,7 @@ func TestEncoderTypeConverter_MapRecordMapUnion(t *testing.T) {
 func TestEncoderTypeConverter_MapRecordUnionFixedDecimal(t *testing.T) {
 	defer ConfigTeardown()
 
-	schema := `{"type":"record", "name":"test", "fields":[{"name":"a", "type": {"type":"fixed", "name":"fixed_decimal", "size":6, "logicalType":"decimal", "precision":4, "scale":2}}]}`
+	schema := `{"type":"record", "name":"test", "fields":[{"name":"a", "type": {"type":"fixed", "name":"fixed_decimal", "size":6, "logicalType":"decimal", "precision":5, "scale":2}}]}`
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
@@ -217,7 +217,7 @@ func TestEncoderTypeConverter_StructRecordUnionResolved(t *testing.T) {
 func TestEncoderTypeConverter_StructRecordFixedDecimal(t *testing.T) {
 	defer ConfigTeardown()
 
-	schema := `{"type":"record", "name":"test", "fields":[{"name":"a", "type": {"type":"fixed", "name":"fixed_decimal", "size":6, "logicalType":"decimal", "precision":4, "scale":2}}]}`
+	schema := `{"type":"record", "name":"test", "fields":[{"name":"a", "type": {"type":"fixed", "name":"fixed_decimal", "size":6, "logicalType":"decimal", "precision":5, "scale":2}}]}`
 	buf := &bytes.Buffer{}
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)

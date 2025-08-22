@@ -42,7 +42,7 @@ func TestEncoder_Fixed(t *testing.T) {
 func TestEncoder_FixedRat_Positive(t *testing.T) {
 	defer ConfigTeardown()
 
-	schema := `{"type":"fixed", "name": "test", "size": 6,"logicalType":"decimal","precision":4,"scale":2}`
+	schema := `{"type":"fixed", "name": "test", "size": 6,"logicalType":"decimal","precision":5,"scale":2}`
 	buf := bytes.NewBuffer([]byte{})
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
@@ -56,7 +56,7 @@ func TestEncoder_FixedRat_Positive(t *testing.T) {
 func TestEncoder_FixedRat_Negative(t *testing.T) {
 	defer ConfigTeardown()
 
-	schema := `{"type":"fixed", "name": "test", "size": 6, "logicalType":"decimal","precision":4,"scale":2}`
+	schema := `{"type":"fixed", "name": "test", "size": 6, "logicalType":"decimal","precision":5,"scale":2}`
 	buf := bytes.NewBuffer([]byte{})
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
@@ -70,7 +70,7 @@ func TestEncoder_FixedRat_Negative(t *testing.T) {
 func TestEncoder_FixedRat_Zero(t *testing.T) {
 	defer ConfigTeardown()
 
-	schema := `{"type":"fixed", "name": "test", "size": 6,"logicalType":"decimal","precision":4,"scale":2}`
+	schema := `{"type":"fixed", "name": "test", "size": 6,"logicalType":"decimal","precision":5,"scale":2}`
 	buf := bytes.NewBuffer([]byte{})
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
@@ -79,6 +79,20 @@ func TestEncoder_FixedRat_Zero(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, buf.Bytes())
+}
+
+func TestEncoder_FixedRat_TooManyDigits(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"fixed", "name": "test", "size": 6,"logicalType":"decimal","precision":3,"scale":2}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode(big.NewRat(1734, 5))
+
+	assert.ErrorContains(t, err, "avro: cannot encode 346.80 as Avro fixed.decimal with precision=3, has 5 significant digits")
+	assert.Empty(t, buf.Bytes())
 }
 
 func TestEncoder_FixedRatInvalidLogicalSchema(t *testing.T) {
