@@ -126,7 +126,7 @@ func TestEncoder_UnionMapWithDecimal(t *testing.T) {
 	defer ConfigTeardown()
 
 	t.Run("low scale", func(t *testing.T) {
-		schema := `["null", {"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}]`
+		schema := `["null", {"type": "bytes", "logicalType": "decimal", "precision": 5, "scale": 2}]`
 		buf := bytes.NewBuffer([]byte{})
 		enc, err := avro.NewEncoder(schema, buf)
 		require.NoError(t, err)
@@ -582,7 +582,7 @@ func TestEncoder_UnionInterfaceWithDecimal(t *testing.T) {
 	defer ConfigTeardown()
 
 	t.Run("low scale", func(t *testing.T) {
-		schema := `["null", {"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}]`
+		schema := `["null", {"type": "bytes", "logicalType": "decimal", "precision": 5, "scale": 2}]`
 		buf := bytes.NewBuffer([]byte{})
 		enc, err := avro.NewEncoder(schema, buf)
 		require.NoError(t, err)
@@ -758,7 +758,7 @@ func TestEncoder_UnionResolver(t *testing.T) {
 		},
 		{
 			name:   "Go big.Rat as Avro bytes.decimal",
-			schema: `["null",{"type":"bytes","logicalType":"decimal","precision":4,"scale":2}]`,
+			schema: `["null",{"type":"bytes","logicalType":"decimal","precision":5,"scale":2}]`,
 			value:  big.NewRat(1734, 5),
 			want:   []byte{0x2, 0x6, 0x00, 0x87, 0x78},
 		},
