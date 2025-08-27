@@ -1,0 +1,17 @@
+{
+  "type": "record",
+  "name": "test",
+  "namespace": "a.b",
+  "doc": "Test is a test struct",
+  "fields": [
+    { "name": "someString",
+      "type": { "type": "string", "logicalType": "uuid" },
+      "doc": "SomeString is a uuid" },
+    { "name": "someBytes",
+      "type": { "type": "bytes", "logicalType": "decimal", "precision": 10, "scale": 2 },
+      "doc": "SomeBytes is actually a json raw message" },
+    { "name": "someInt",
+      "type": { "type": "int", "logicalType": "date" },
+      "doc": "SomeInt is actually just an int32" }
+  ]
+}
