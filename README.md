@@ -190,7 +190,7 @@ Enums may also implement `TextMarshaler` and `TextUnmarshaler`, and must resolve
 ##### Identical Underlying Types
 
 One type can be [ConvertibleTo](https://go.dev/ref/spec#Conversions) another type if they have identical underlying types.
-A non-native type is allowed to be used if it can be convertible to *time.Time*, *big.Rat* or *avro.LogicalDuration* for the particular of *LogicalTypes*.
+A non-native type is allowed to be used if it can be convertible to *time.Time*, *big.Rat* or *avro.LogicalDuration* for the particular of *logicalTypes*.
 
 Ex.: `type Timestamp time.Time`
 
@@ -227,6 +227,7 @@ Always benchmark with your own workload. The result depends heavily on the data 
 ## Go structs generation
 
 Go structs can be generated for you from the schema. The types generated follow the same logic in [types conversions](#types-conversions)
+You can use the avrogen command line tool to generate the structs, or use it as a lib in internal commands, it's the `gen` package.
 
 Install the struct generator with:
 
@@ -248,7 +249,20 @@ Check the options and usage with `-h`:
 avrogen -h
 ```
 
-Or use it as a lib in internal commands, it's the `gen` package
+### Custom logical type mapping with avrogen
+
+You can register custom logical type mappings to be used during code generation. 
+
+The format of a custom logical type mapper is `avroLogicalType,goType[,importPath]`. For example,
+to map the logical type `uuid` to the Go type `github.com/google/uuid.UUID`, you would use:
+
+```shell
+avrogen -pkg avro -o bla.go -logical-type uuid,uuid.UUID,github.com/google/uuid in.avsc
+```
+
+If the type you are mapping to is a built-in Go type (e.g., `string`, `int`, etc.), you can omit the import path element in the mapping definition.
+
+If you intend to use multiple custom logical type mappings, you can specify the `-logicaltype` flag multiple times.
 
 ## Avro schema validation
 

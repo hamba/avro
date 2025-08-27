@@ -386,7 +386,7 @@ package {{ .PackageName }}
 	require.NoError(t, err)
 
 	if *update {
-		err = os.WriteFile("testdata/golden_metadata.go", formatted, 0600)
+		err = os.WriteFile("testdata/golden_metadata.go", formatted, 0o600)
 		require.NoError(t, err)
 	}
 
