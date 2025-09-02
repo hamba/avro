@@ -345,7 +345,7 @@ func TestEncoder_UnionConverterToAnyInterface(t *testing.T) {
 	enc, err := avro.NewEncoder(schema, buf)
 	require.NoError(t, err)
 
-	var val = &UnionRecord{Test: &TestRecord{A: 27, B: "foo"}}
+	val := &UnionRecord{Test: &TestRecord{A: 27, B: "foo"}}
 	err = enc.Encode(val)
 
 	require.NoError(t, err)

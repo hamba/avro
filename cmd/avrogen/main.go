@@ -31,6 +31,18 @@ type config struct {
 	StrictTypes    bool
 	Initialisms    string
 	SchemaRegistry string
+	LogicalTypes   logicalTypes
+}
+
+type logicalTypes []string
+
+func (l *logicalTypes) String() string {
+	return strings.Join(*l, ",")
+}
+
+func (l *logicalTypes) Set(value string) error {
+	*l = append(*l, value)
+	return nil
 }
 
 func main() {
@@ -52,6 +64,10 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 	flgs.StringVar(&cfg.Initialisms, "initialisms", "", "Custom initialisms <VAL>[,...] for struct and field names.")
 	flgs.StringVar(&cfg.TemplateFileName, "template-filename", "", "Override output template with one loaded from file.")
 	flgs.StringVar(&cfg.SchemaRegistry, "schemaregistry", "", "The URL to schema registry, e.g.: http://localhost:8081.")
+	var lt logicalTypes
+	flgs.Var(&lt, "logicaltype",
+		"A logical type mapping of the form logicalType,goType[,import]. Can be specified multiple times.")
+
 	flgs.Usage = func() {
 		_, _ = fmt.Fprintln(stderr, "Usage: avrogen [options] schemas")
 		_, _ = fmt.Fprintln(stderr, "Options:")
@@ -92,6 +108,14 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 		gen.WithTemplate(string(template)),
 		gen.WithStrictTypes(cfg.StrictTypes),
 		gen.WithFullSchema(cfg.FullSchema),
+	}
+	for _, entry := range lt {
+		logicalType, err := parseLogicalType(entry)
+		if err != nil {
+			_, _ = fmt.Fprintln(stderr, "Error: "+err.Error())
+			return 1
+		}
+		opts = append(opts, gen.WithLogicalType(logicalType))
 	}
 
 	g := gen.NewGenerator(cfg.Pkg, tags, opts...)
@@ -134,6 +158,42 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 		return 4
 	}
 	return 0
+}
+
+func parseLogicalType(raw string) (gen.LogicalType, error) {
+	out := gen.LogicalType{}
+	parts := strings.Split(raw, ",")
+
+	if len(parts) < 2 || len(parts) > 3 {
+		return out, errors.New("logical type must be of format logicalType,goType[,import]")
+	}
+	out.Name = parts[0]
+	out.Typ = parts[1]
+	if out.Name == "" {
+		return out, errors.New("logical type name is required")
+	}
+	if out.Typ == "" {
+		return out, errors.New("logical type underlying type is required")
+	}
+	if len(parts) == 3 {
+		importPath := parts[2]
+		if importPath == "" {
+			return out, errors.New(
+				"logicaltype import path cannot be empty if used " +
+					"(if unused because you are mapping to a core Go type, omit the trailing comma)")
+		}
+		importPath = strings.Trim(importPath, `"`)
+
+		// If it contains a dot in the first segment, it’s not stdlib
+		first := strings.SplitN(importPath, "/", 2)[0]
+		if strings.Contains(first, ".") {
+			out.ThirdPartyImport = importPath
+		} else {
+			out.Import = importPath
+		}
+	}
+
+	return out, nil
 }
 
 func writeOut(filename string, stdout io.Writer, bytes []byte) error {
