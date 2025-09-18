@@ -592,6 +592,7 @@ type RecordSchema struct {
 	properties
 	fingerprinter
 	cacheFingerprinter
+
 	isError bool
 	fields  []*Field
 	doc     string

@@ -10,9 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: [ "1.23", "1.24" ]
+        go-version: [ "1.24", "1.25" ]
     env:
-      GOLANGCI_LINT_VERSION: v2.1.6
+      GOLANGCI_LINT_VERSION: v2.4.0
 
     steps:
       - name: Checkout code
@@ -36,7 +36,7 @@ jobs:
       - name: Setup gotestsum
         uses: gertd/action-gotestsum@v3.0.0
         with:
-          gotestsum_version: v1.12.0
+          gotestsum_version: v1.13.0
 
       - name: Run Tests
         run: gotestsum --junitfile tests.xml --format pkgname -- -covermode=atomic -coverprofile=coverage.out -race ./...
@@ -105,7 +105,7 @@ jobs:
           - os: windows
             arch: s390x
     env:
-      GO_VERSION: "1.24"
+      GO_VERSION: "1.25"
 
     steps:
       - name: Checkout code
