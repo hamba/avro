@@ -37,11 +37,13 @@ linters:
     - mnd
     - nestif
     - nlreturn
+    - noinlineerr
     - nonamedreturns
     - tagliatelle
     - varnamelen
     - wrapcheck
     - wsl
+    - wsl_v5
   settings:
     gosec:
       excludes:
