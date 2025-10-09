@@ -22,6 +22,19 @@ func TestEncoder_ArrayInvalidType(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestEncoder_ArrayInvalidArrayElementType(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"array", "items": "int"}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode([]string{"foo", "bar"})
+
+	assert.Error(t, err)
+}
+
 func TestEncoder_Array(t *testing.T) {
 	defer ConfigTeardown()
 
@@ -36,6 +49,21 @@ func TestEncoder_Array(t *testing.T) {
 	assert.Equal(t, []byte{0x03, 0x04, 0x36, 0x38, 0x0}, buf.Bytes())
 }
 
+func TestEncoder_ArrayNil(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"array", "items": "int"}`
+	buf := &bytes.Buffer{}
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	var arr []int = nil
+	err = enc.Encode(arr)
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x0}, buf.Bytes())
+}
+
 func TestEncoder_ArrayEmpty(t *testing.T) {
 	defer ConfigTeardown()
 
@@ -48,6 +76,26 @@ func TestEncoder_ArrayEmpty(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, []byte{0x0}, buf.Bytes())
+}
+
+func TestEncoder_ArrayNestedEmpty(t *testing.T) {
+	defer ConfigTeardown()
+
+	type record struct {
+		A []int `avro:"a"`
+	}
+	schema := `{"type":"array", "items": {"type":"record", "name":"test", "fields":[{"name":"a","type":{"type":"array","items":"int"}}]}}`
+
+	buf := &bytes.Buffer{}
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	val := []record{{A: []int{}}}
+
+	err = enc.Encode(val)
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x01, 0x02, 0x00, 0x00}, buf.Bytes())
 }
 
 func TestEncoder_ArrayOfStruct(t *testing.T) {

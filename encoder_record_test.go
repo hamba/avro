@@ -2,6 +2,7 @@ package avro_test
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/hamba/avro/v2"
@@ -93,6 +94,27 @@ func TestEncoder_RecordStructMissingRequiredField(t *testing.T) {
 	err = enc.Encode(obj)
 
 	assert.Error(t, err)
+}
+
+func TestEncoder_RecordStructExtraFields(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{
+		"type": "record",
+		"name": "test",
+		"fields" : [
+			{"name": "a", "type": "long"}
+		]
+	}`
+	obj := TestRecord{A: 27, B: "foo"} // extra field B not in schema
+	buf := &bytes.Buffer{}
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode(obj)
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x36}, buf.Bytes())
 }
 
 func TestEncoder_RecordStructWithDefault(t *testing.T) {
@@ -425,6 +447,27 @@ func TestEncoder_RecordMapMissingRequiredField(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestEncoder_RecordMapExtraField(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{
+		"type": "record",
+		"name": "test",
+		"fields" : [
+			{"name": "a", "type": "long"}
+		]
+	}`
+	obj := map[string]any{"a": int64(27), "b": "foo"} // extra field B not in schema
+	buf := &bytes.Buffer{}
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode(obj)
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x36}, buf.Bytes())
+}
+
 func TestEncoder_RecordMapWithDefault(t *testing.T) {
 	defer ConfigTeardown()
 
@@ -622,4 +665,128 @@ func TestEncoder_RefStruct(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, []byte{0x36, 0x06, 0x66, 0x6f, 0x6f, 0x36, 0x06, 0x66, 0x6f, 0x6f}, buf.Bytes())
+}
+
+func TestEncoder_RecordInvalidUTF8FieldName(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{
+		"type": "record",
+		"name": "test",
+		"fields" : [
+			{"name": "\xff", "type": "string"}
+		]
+	}`
+
+	_, err := avro.Parse(schema)
+
+	assert.Error(t, err)
+}
+
+func TestEncoder_RecordDuplicateFieldNames(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{
+		"type": "record",
+		"name": "test",
+		"fields" : [
+			{"name": "a", "type": "long"},
+			{"name": "a", "type": "string"}
+		]
+	}`
+
+	_, err := avro.Parse(schema)
+
+	assert.Error(t, err)
+}
+
+func TestEncoder_RecordUnionInvalidBranch(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{
+		"type": "record",
+		"name": "test",
+		"fields": [
+			{"name": "a", "type": ["null", "string"]}
+		]
+	}`
+	obj := map[string]any{"a": 123}
+	buf := &bytes.Buffer{}
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode(obj)
+
+	assert.Error(t, err)
+}
+
+func TestEncoder_RecordNestedMissingField(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{
+		"type": "record",
+		"name": "parent",
+		"fields": [
+			{"name": "child", "type": {
+				"type": "record",
+				"name": "child",
+				"fields": [
+					{"name": "a", "type": "long"},
+					{"name": "b", "type": "string"}
+				]
+			}}
+		]
+	}`
+	obj := map[string]any{"child": map[string]any{"a": int64(27)}}
+	buf := &bytes.Buffer{}
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode(obj)
+
+	assert.Error(t, err)
+}
+
+func TestEncoder_RecordLargeStringField(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{
+		"type": "record",
+		"name": "test",
+		"fields": [
+			{"name": "a", "type": "string"}
+		]
+	}`
+	bigStr := strings.Repeat("a", 1<<16) // 64k
+	obj := map[string]any{"a": bigStr}
+	buf := &bytes.Buffer{}
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode(obj)
+
+	require.NoError(t, err)
+	expected := append([]byte{0x80, 0x80, 0x08}, bigStr...)
+	assert.Equal(t, expected, buf.Bytes())
+}
+
+func TestEncoder_RecordNilOverridesDefault(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{
+		"type": "record",
+		"name": "test",
+		"fields" : [
+			{"name": "a", "type": ["string","null"], "default": "def"}
+		]
+	}`
+	obj := map[string]any{"a": nil}
+	buf := &bytes.Buffer{}
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	err = enc.Encode(obj)
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x02}, buf.Bytes())
 }

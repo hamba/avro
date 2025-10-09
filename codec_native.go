@@ -371,7 +371,15 @@ func (*intCodec[T]) Decode(ptr unsafe.Pointer, r *Reader) {
 }
 
 func (*intCodec[T]) Encode(ptr unsafe.Pointer, w *Writer) {
-	w.WriteInt(int32(*((*T)(ptr))))
+	val := *(*T)(ptr)
+	i32 := int32(val)
+
+	if T(i32) != val {
+		w.Error = fmt.Errorf("avro: value %v overflows Avro int", val)
+		return
+	}
+
+	w.WriteInt(i32)
 }
 
 type largeInt interface {
