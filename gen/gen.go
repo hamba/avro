@@ -178,9 +178,9 @@ func WithMetadata(m any) OptsFunc {
 }
 
 // WithEnums configures the generator to output the enum symbols.
-func WithEnums() OptsFunc {
+func WithEnums(b bool) OptsFunc {
 	return func(g *Generator) {
-		g.genEnums = true
+		g.genEnums = b
 	}
 }
 

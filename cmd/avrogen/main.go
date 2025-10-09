@@ -110,10 +110,7 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 		gen.WithTemplate(string(template)),
 		gen.WithStrictTypes(cfg.StrictTypes),
 		gen.WithFullSchema(cfg.FullSchema),
-	}
-
-	if cfg.EnumsGen {
-		opts = append(opts, gen.WithEnums())
+		gen.WithEnums(cfg.EnumsGen),
 	}
 
 	for _, entry := range lt {

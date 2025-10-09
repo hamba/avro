@@ -331,7 +331,7 @@ func TestGenerator_GenEnum(t *testing.T) {
 	goldenSchema, err := avro.ParseFiles("testdata/golden.avsc")
 	require.NoError(t, err)
 
-	g := gen.NewGenerator("something", map[string]gen.TagStyle{}, gen.WithEnums())
+	g := gen.NewGenerator("something", map[string]gen.TagStyle{}, gen.WithEnums(true))
 	g.Parse(goldenSchema)
 
 	var buf bytes.Buffer
