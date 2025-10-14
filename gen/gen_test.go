@@ -327,6 +327,30 @@ func TestStruct_GenFromRecordSchemaWithFullSchema(t *testing.T) {
 	assert.Equal(t, string(want), string(file))
 }
 
+func TestGenerator_GenEnum(t *testing.T) {
+	goldenSchema, err := avro.ParseFiles("testdata/golden.avsc")
+	require.NoError(t, err)
+
+	g := gen.NewGenerator("something", map[string]gen.TagStyle{}, gen.WithEnums(true))
+	g.Parse(goldenSchema)
+
+	var buf bytes.Buffer
+	err = g.Write(&buf)
+	require.NoError(t, err)
+
+	formatted, err := format.Source(buf.Bytes())
+	require.NoError(t, err)
+
+	if *update {
+		err = os.WriteFile("testdata/golden_enum.go", formatted, 0600)
+		require.NoError(t, err)
+	}
+
+	want, err := os.ReadFile("testdata/golden_enum.go")
+	require.NoError(t, err)
+	assert.Equal(t, string(want), string(formatted))
+}
+
 func TestGenerator(t *testing.T) {
 	unionSchema, err := avro.ParseFiles("testdata/uniontype.avsc")
 	require.NoError(t, err)

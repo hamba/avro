@@ -177,6 +177,13 @@ func WithMetadata(m any) OptsFunc {
 	}
 }
 
+// WithEnums configures the generator to output the enum symbols.
+func WithEnums(b bool) OptsFunc {
+	return func(g *Generator) {
+		g.genEnums = b
+	}
+}
+
 // LogicalType used when the name of the "LogicalType" field in the Avro schema matches the Name attribute.
 type LogicalType struct {
 	// Name of the LogicalType
@@ -220,6 +227,7 @@ type Generator struct {
 	encoders     bool
 	fullSchema   bool
 	strictTypes  bool
+	genEnums     bool
 	initialisms  []string
 	logicalTypes map[avro.LogicalType]LogicalType
 	metadata     any
@@ -227,8 +235,8 @@ type Generator struct {
 	imports           []string
 	thirdPartyImports []string
 	typedefs          []typedef
-
-	nameCaser *strcase.Caser
+	typeenums         []typeenum
+	nameCaser         *strcase.Caser
 }
 
 // NewGenerator returns a generator.
@@ -298,6 +306,9 @@ func (g *Generator) generate(schema avro.Schema, metadata any) string {
 	case *avro.ArraySchema:
 		return "[]" + g.generate(s.Items(), metadata)
 	case *avro.EnumSchema:
+		if g.genEnums {
+			return g.resolveEnum(s)
+		}
 		return "string"
 	case *avro.FixedSchema:
 		typ := fmt.Sprintf("[%d]byte", s.Size())
@@ -312,6 +323,11 @@ func (g *Generator) generate(schema avro.Schema, metadata any) string {
 	default:
 		return ""
 	}
+}
+
+func (g *Generator) resolveEnum(s *avro.EnumSchema) string {
+	g.typeenums = append(g.typeenums, newTypeEnum(s.Name(), s.Symbols()))
+	return s.Name()
 }
 
 func (g *Generator) resolveTypeName(s avro.NamedSchema) string {
@@ -471,6 +487,7 @@ func (g *Generator) Write(w io.Writer) error {
 		ThirdPartyImports []string
 		Typedefs          []typedef
 		Metadata          any
+		Typeenums         []typeenum
 	}{
 		WithEncoders: g.encoders,
 		PackageName:  g.pkg,
@@ -478,6 +495,7 @@ func (g *Generator) Write(w io.Writer) error {
 		Imports:      append(g.imports, g.thirdPartyImports...),
 		Typedefs:     g.typedefs,
 		Metadata:     g.metadata,
+		Typeenums:    g.typeenums,
 	}
 	return parsed.Execute(w, data)
 }
@@ -509,4 +527,16 @@ type field struct {
 	AvroFieldName string
 	Tags          map[string]TagStyle
 	Props         map[string]any
+}
+
+type typeenum struct {
+	Name    string
+	Symbols []string
+}
+
+func newTypeEnum(name string, symbols []string) typeenum {
+	return typeenum{
+		Name:    name,
+		Symbols: symbols,
+	}
 }

@@ -32,6 +32,7 @@ type config struct {
 	Initialisms    string
 	SchemaRegistry string
 	LogicalTypes   logicalTypes
+	EnumsGen       bool
 }
 
 type logicalTypes []string
@@ -64,6 +65,7 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 	flgs.StringVar(&cfg.Initialisms, "initialisms", "", "Custom initialisms <VAL>[,...] for struct and field names.")
 	flgs.StringVar(&cfg.TemplateFileName, "template-filename", "", "Override output template with one loaded from file.")
 	flgs.StringVar(&cfg.SchemaRegistry, "schemaregistry", "", "The URL to schema registry, e.g.: http://localhost:8081.")
+	flgs.BoolVar(&cfg.EnumsGen, "enums", false, "Generate Go enums for Avro enums.")
 	var lt logicalTypes
 	flgs.Var(&lt, "logicaltype",
 		"A logical type mapping of the form logicalType,goType[,import]. Can be specified multiple times.")
@@ -108,7 +110,9 @@ func realMain(args []string, stdout, stderr io.Writer) int {
 		gen.WithTemplate(string(template)),
 		gen.WithStrictTypes(cfg.StrictTypes),
 		gen.WithFullSchema(cfg.FullSchema),
+		gen.WithEnums(cfg.EnumsGen),
 	}
+
 	for _, entry := range lt {
 		logicalType, err := parseLogicalType(entry)
 		if err != nil {
