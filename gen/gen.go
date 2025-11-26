@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"slices"
 	"strings"
 	"text/template"
 	"unicode/utf8"
@@ -447,19 +448,15 @@ func (g *Generator) newField(name, typ, doc, avroFieldName string, props map[str
 }
 
 func (g *Generator) addImport(pkg string) {
-	for _, p := range g.imports {
-		if p == pkg {
-			return
-		}
+	if slices.Contains(g.imports, pkg) {
+		return
 	}
 	g.imports = append(g.imports, pkg)
 }
 
 func (g *Generator) addThirdPartyImport(pkg string) {
-	for _, p := range g.thirdPartyImports {
-		if p == pkg {
-			return
-		}
+	if slices.Contains(g.thirdPartyImports, pkg) {
+		return
 	}
 	g.thirdPartyImports = append(g.thirdPartyImports, pkg)
 }

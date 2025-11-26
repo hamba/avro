@@ -3,6 +3,7 @@ package avro
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 )
 
@@ -180,7 +181,7 @@ func (c *SchemaCompatibility) match(reader, writer Schema) error {
 
 func (c *SchemaCompatibility) checkSchemaName(reader, writer NamedSchema) error {
 	if reader.Name() != writer.Name() {
-		if c.contains(reader.Aliases(), writer.FullName()) {
+		if slices.Contains(reader.Aliases(), writer.FullName()) {
 			return nil
 		}
 		return fmt.Errorf("reader schema %s and writer schema %s  names do not match", reader.FullName(), writer.FullName())
@@ -199,7 +200,7 @@ func (c *SchemaCompatibility) checkFixedSize(reader, writer *FixedSchema) error 
 
 func (c *SchemaCompatibility) checkEnumSymbols(reader, writer *EnumSchema) error {
 	for _, symbol := range writer.Symbols() {
-		if !c.contains(reader.Symbols(), symbol) {
+		if !slices.Contains(reader.Symbols(), symbol) {
 			return fmt.Errorf("reader %s is missing symbol %s", reader.FullName(), symbol)
 		}
 	}
@@ -240,16 +241,6 @@ func (c *SchemaCompatibility) checkRecordFields(reader, writer *RecordSchema) er
 	return nil
 }
 
-func (c *SchemaCompatibility) contains(a []string, s string) bool {
-	for _, str := range a {
-		if str == s {
-			return true
-		}
-	}
-
-	return false
-}
-
 type getFieldOptions struct {
 	fieldAlias bool
 	elemAlias  bool
@@ -265,12 +256,12 @@ func (c *SchemaCompatibility) getField(a []*Field, f *Field, optFns ...func(*get
 			return field, true
 		}
 		if opt.fieldAlias {
-			if c.contains(f.Aliases(), field.Name()) {
+			if slices.Contains(f.Aliases(), field.Name()) {
 				return field, true
 			}
 		}
 		if opt.elemAlias {
-			if c.contains(field.Aliases(), f.Name()) {
+			if slices.Contains(field.Aliases(), f.Name()) {
 				return field, true
 			}
 		}

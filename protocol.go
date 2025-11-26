@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 
 	"github.com/go-viper/mapstructure/v2"
 	jsoniter "github.com/json-iterator/go"
@@ -366,7 +367,7 @@ func parseMessage(namespace string, m map[string]any, seen seenCache, cache *Sch
 	}
 
 	oneWay := msg.OneWay
-	if hasKey(meta.Keys, "one-way") && oneWay && (len(errs.Types()) > 1 || response != nil) {
+	if slices.Contains(meta.Keys, "one-way") && oneWay && (len(errs.Types()) > 1 || response != nil) {
 		return nil, errors.New("avro: one-way messages cannot not have a response or errors")
 	}
 	if !oneWay && len(errs.Types()) <= 1 && response == nil {

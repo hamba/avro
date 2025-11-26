@@ -6,6 +6,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/go-viper/mapstructure/v2"
@@ -247,7 +248,7 @@ func parseRecord(typ Type, namespace string, m map[string]any, seen seenCache, c
 		r.Namespace = namespace
 	}
 
-	if !hasKey(meta.Keys, "fields") {
+	if !slices.Contains(meta.Keys, "fields") {
 		return nil, errors.New("avro: record must have an array of fields")
 	}
 	fields := make([]*Field, len(r.Fields))
@@ -321,7 +322,7 @@ func parseField(namespace string, m map[string]any, seen seenCache, cache *Schem
 		return nil, err
 	}
 
-	if !hasKey(meta.Keys, "type") {
+	if !slices.Contains(meta.Keys, "type") {
 		return nil, errors.New("avro: field requires a type")
 	}
 	typ, err := parseType(namespace, f.Type, seen, cache)
@@ -329,7 +330,7 @@ func parseField(namespace string, m map[string]any, seen seenCache, cache *Schem
 		return nil, err
 	}
 
-	if !hasKey(meta.Keys, "default") {
+	if !slices.Contains(meta.Keys, "default") {
 		f.Default = NoDefault
 	}
 
@@ -405,7 +406,7 @@ func parseArray(namespace string, m map[string]any, seen seenCache, cache *Schem
 		return nil, fmt.Errorf("avro: error decoding array: %w", err)
 	}
 
-	if !hasKey(meta.Keys, "items") {
+	if !slices.Contains(meta.Keys, "items") {
 		return nil, errors.New("avro: array must have an items key")
 	}
 	schema, err := parseType(namespace, a.Items, seen, cache)
@@ -431,7 +432,7 @@ func parseMap(namespace string, m map[string]any, seen seenCache, cache *SchemaC
 		return nil, fmt.Errorf("avro: error decoding map: %w", err)
 	}
 
-	if !hasKey(meta.Keys, "values") {
+	if !slices.Contains(meta.Keys, "values") {
 		return nil, errors.New("avro: map must have an values key")
 	}
 	schema, err := parseType(namespace, ms.Values, seen, cache)
@@ -480,7 +481,7 @@ func parseFixed(namespace string, m map[string]any, seen seenCache, cache *Schem
 		f.Namespace = namespace
 	}
 
-	if !hasKey(meta.Keys, "size") {
+	if !slices.Contains(meta.Keys, "size") {
 		return nil, errors.New("avro: fixed must have a size")
 	}
 
@@ -581,15 +582,6 @@ func checkParsedName(name string) error {
 		return errors.New("avro: non-empty name key required")
 	}
 	return nil
-}
-
-func hasKey(keys []string, k string) bool {
-	for _, key := range keys {
-		if key == k {
-			return true
-		}
-	}
-	return false
 }
 
 func decodeMap(in, v any, meta *mapstructure.Metadata) error {
