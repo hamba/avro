@@ -236,7 +236,7 @@ func parseTags(raw string) (map[string]gen.TagStyle, error) {
 	}
 
 	result := map[string]gen.TagStyle{}
-	for _, tag := range strings.Split(raw, ",") {
+	for tag := range strings.SplitSeq(raw, ",") {
 		parts := strings.Split(tag, ":")
 		switch {
 		case len(parts) != 2:
@@ -271,7 +271,7 @@ func parseInitialisms(raw string) ([]string, error) {
 	}
 
 	result := []string{}
-	for _, initialism := range strings.Split(raw, ",") {
+	for initialism := range strings.SplitSeq(raw, ",") {
 		if initialism != strings.ToUpper(initialism) {
 			return nil, fmt.Errorf("initialism %q must be fully in upper case", initialism)
 		}

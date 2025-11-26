@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -141,7 +142,7 @@ func (c *SchemaCache) AddAll(cache *SchemaCache) {
 	if cache == nil {
 		return
 	}
-	cache.cache.Range(func(key, value interface{}) bool {
+	cache.cache.Range(func(key, value any) bool {
 		c.cache.Store(key, value)
 		return true
 	})
@@ -238,7 +239,7 @@ func newName(n, ns string, aliases []string) (name, error) {
 		full = ns + "." + n
 	}
 
-	for _, part := range strings.Split(full, ".") {
+	for part := range strings.SplitSeq(full, ".") {
 		if err := validateName(part); err != nil {
 			return name{}, fmt.Errorf("avro: invalid name part %q in name %q: %w", full, part, err)
 		}
@@ -258,7 +259,7 @@ func newName(n, ns string, aliases []string) (name, error) {
 			continue
 		}
 
-		for _, part := range strings.Split(alias, ".") {
+		for part := range strings.SplitSeq(alias, ".") {
 			if err := validateName(part); err != nil {
 				return name{}, fmt.Errorf("avro: invalid name part %q in name %q: %w", full, part, err)
 			}
@@ -376,21 +377,12 @@ type properties struct {
 func newProperties(props map[string]any, res []string) properties {
 	p := properties{props: map[string]any{}}
 	for k, v := range props {
-		if isReserved(res, k) {
+		if slices.Contains(res, k) {
 			continue
 		}
 		p.props[k] = v
 	}
 	return p
-}
-
-func isReserved(res []string, k string) bool {
-	for _, r := range res {
-		if k == r {
-			return true
-		}
-	}
-	return false
 }
 
 // Prop gets a property from the schema.
@@ -973,12 +965,7 @@ func NewEnumSchema(name, namespace string, symbols []string, opts ...SchemaOptio
 }
 
 func hasSymbol(symbols []string, sym string) bool {
-	for _, s := range symbols {
-		if s == sym {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(symbols, sym)
 }
 
 // Type returns the type of the schema.

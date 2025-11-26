@@ -154,7 +154,7 @@ func (r *Reader) ReadMapCB(fn func(*Reader, string) bool) {
 	}
 }
 
-var byteType = reflect.TypeOf((*byte)(nil)).Elem()
+var byteType = reflect.TypeFor[byte]()
 
 func byteSliceToArray(b []byte, size int) any {
 	vArr := reflect.New(reflect.ArrayOf(size, byteType)).Elem()
