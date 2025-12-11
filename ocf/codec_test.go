@@ -58,14 +58,16 @@ BenchmarkZstdEncodeDecodeHighEntropyLong-8   	   47652	     25064 ns/op	   31553
 func BenchmarkZstdEncodeDecodeLowEntropyLong(b *testing.B) {
 	input := makeTestData(8762, func() byte { return 'a' })
 
-	codec, err := resolveCodec(ZStandard, codecOptions{})
+	encoder, err := resolveCodec(ZStandard, codecOptions{}, codecModeEncode)
+	require.NoError(b, err)
+	decoder, err := resolveCodec(ZStandard, codecOptions{}, codecModeDecode)
 	require.NoError(b, err)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		compressed := codec.Encode(input)
-		_, decodeErr := codec.Decode(compressed)
+		compressed := encoder.Encode(input)
+		_, decodeErr := decoder.Decode(compressed)
 		require.NoError(b, decodeErr)
 	}
 }
@@ -73,24 +75,28 @@ func BenchmarkZstdEncodeDecodeLowEntropyLong(b *testing.B) {
 func BenchmarkZstdEncodeDecodeHighEntropyLong(b *testing.B) {
 	input := makeTestData(8762, func() byte { return byte(rand.Uint32()) })
 
-	codec, err := resolveCodec(ZStandard, codecOptions{})
+	encoder, err := resolveCodec(ZStandard, codecOptions{}, codecModeEncode)
+	require.NoError(b, err)
+	decoder, err := resolveCodec(ZStandard, codecOptions{}, codecModeDecode)
 	require.NoError(b, err)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		compressed := codec.Encode(input)
-		_, decodeErr := codec.Decode(compressed)
+		compressed := encoder.Encode(input)
+		_, decodeErr := decoder.Decode(compressed)
 		require.NoError(b, decodeErr)
 	}
 }
 
 func verifyZstdEncodeDecode(t *testing.T, input []byte) {
-	codec, err := resolveCodec(ZStandard, codecOptions{})
+	encoder, err := resolveCodec(ZStandard, codecOptions{}, codecModeEncode)
+	require.NoError(t, err)
+	decoder, err := resolveCodec(ZStandard, codecOptions{}, codecModeDecode)
 	require.NoError(t, err)
 
-	compressed := codec.Encode(input)
-	actual, decodeErr := codec.Decode(compressed)
+	compressed := encoder.Encode(input)
+	actual, decodeErr := decoder.Decode(compressed)
 
 	require.NoError(t, decodeErr)
 	assert.Equal(t, input, actual)

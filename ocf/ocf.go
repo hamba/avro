@@ -176,6 +176,14 @@ func (d *Decoder) Error() error {
 	return d.reader.Error
 }
 
+// Close releases codec resources.
+func (d *Decoder) Close() error {
+	if c, ok := d.codec.(io.Closer); ok {
+		return c.Close()
+	}
+	return nil
+}
+
 func (d *Decoder) readBlock() int64 {
 	_ = d.reader.Peek()
 	if errors.Is(d.reader.Error, io.EOF) {
@@ -364,7 +372,15 @@ func newEncoder(schema avro.Schema, w io.Writer, cfg encoderConfig) (*Encoder, e
 			if err != nil {
 				return nil, err
 			}
+			if c, ok := h.Codec.(io.Closer); ok {
+				_ = c.Close()
+			}
 			if err = skipToEnd(reader, h.Sync); err != nil {
+				return nil, err
+			}
+
+			codec, err := resolveCodec(CodecName(h.Meta[codecKey]), cfg.CodecOptions, codecModeEncode)
+			if err != nil {
 				return nil, err
 			}
 
@@ -375,7 +391,7 @@ func newEncoder(schema avro.Schema, w io.Writer, cfg encoderConfig) (*Encoder, e
 				buf:         buf,
 				encoder:     cfg.EncodingConfig.NewEncoder(h.Schema, buf),
 				sync:        h.Sync,
-				codec:       h.Codec,
+				codec:       codec,
 				blockLength: cfg.BlockLength,
 				blockSize:   cfg.BlockSize,
 			}
@@ -399,7 +415,7 @@ func newEncoder(schema avro.Schema, w io.Writer, cfg encoderConfig) (*Encoder, e
 		_, _ = rand.Read(header.Sync[:])
 	}
 
-	codec, err := resolveCodec(cfg.CodecName, cfg.CodecOptions)
+	codec, err := resolveCodec(cfg.CodecName, cfg.CodecOptions, codecModeEncode)
 	if err != nil {
 		return nil, err
 	}
@@ -496,9 +512,15 @@ func (e *Encoder) Flush() error {
 	return e.writer.Error
 }
 
-// Close closes the encoder, flushing the writer.
+// Close closes the encoder, flushing the writer and releasing codec resources.
 func (e *Encoder) Close() error {
-	return e.Flush()
+	err := e.Flush()
+	if c, ok := e.codec.(io.Closer); ok {
+		if cerr := c.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}
+	return err
 }
 
 func (e *Encoder) writerBlock() error {
@@ -538,7 +560,7 @@ func readHeader(reader *avro.Reader, schemaCache *avro.SchemaCache, codecOpts co
 		return nil, err
 	}
 
-	codec, err := resolveCodec(CodecName(h.Meta[codecKey]), codecOpts)
+	codec, err := resolveCodec(CodecName(h.Meta[codecKey]), codecOpts, codecModeDecode)
 	if err != nil {
 		return nil, err
 	}

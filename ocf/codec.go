@@ -13,6 +13,13 @@ import (
 	"github.com/klauspost/compress/zstd"
 )
 
+type codecMode int
+
+const (
+	codecModeEncode codecMode = iota
+	codecModeDecode
+)
+
 // CodecName represents a compression codec name.
 type CodecName string
 
@@ -34,7 +41,7 @@ type zstdOptions struct {
 	DOptions []zstd.DOption
 }
 
-func resolveCodec(name CodecName, codecOpts codecOptions) (Codec, error) {
+func resolveCodec(name CodecName, codecOpts codecOptions, mode codecMode) (Codec, error) {
 	switch name {
 	case Null, "":
 		return &NullCodec{}, nil
@@ -46,7 +53,7 @@ func resolveCodec(name CodecName, codecOpts codecOptions) (Codec, error) {
 		return &SnappyCodec{}, nil
 
 	case ZStandard:
-		return newZStandardCodec(codecOpts.ZStandardOptions), nil
+		return newZStandardCodec(codecOpts.ZStandardOptions, mode)
 
 	default:
 		return nil, fmt.Errorf("unknown codec %s", name)
@@ -136,29 +143,64 @@ func (*SnappyCodec) Encode(b []byte) []byte {
 	return dst
 }
 
-// ZStandardCodec is a zstandard compression codec.
-type ZStandardCodec struct {
-	decoder *zstd.Decoder
-	encoder *zstd.Encoder
-}
-
-func newZStandardCodec(opts zstdOptions) *ZStandardCodec {
-	decoder, _ := zstd.NewReader(nil, opts.DOptions...)
-	encoder, _ := zstd.NewWriter(nil, opts.EOptions...)
-	return &ZStandardCodec{
-		decoder: decoder,
-		encoder: encoder,
+func newZStandardCodec(opts zstdOptions, mode codecMode) (Codec, error) {
+	switch mode {
+	case codecModeEncode:
+		encoder, err := zstd.NewWriter(nil, opts.EOptions...)
+		if err != nil {
+			return nil, err
+		}
+		return &zstdEncoder{encoder: encoder}, nil
+	case codecModeDecode:
+		decoder, err := zstd.NewReader(nil, opts.DOptions...)
+		if err != nil {
+			return nil, err
+		}
+		return &zstdDecoder{decoder: decoder}, nil
+	default:
+		return nil, errors.New("invalid codec mode")
 	}
 }
 
-// Decode decodes the given bytes.
-func (zstdCodec *ZStandardCodec) Decode(b []byte) ([]byte, error) {
-	defer func() { _ = zstdCodec.decoder.Reset(nil) }()
-	return zstdCodec.decoder.DecodeAll(b, nil)
+// zstdEncoder is a zstandard encoder codec.
+type zstdEncoder struct {
+	encoder *zstd.Encoder
+}
+
+// Decode is not supported for encoder-only codec.
+func (c *zstdEncoder) Decode([]byte) ([]byte, error) {
+	return nil, errors.New("decode not supported on encoder codec")
 }
 
 // Encode encodes the given bytes.
-func (zstdCodec *ZStandardCodec) Encode(b []byte) []byte {
-	defer zstdCodec.encoder.Reset(nil)
-	return zstdCodec.encoder.EncodeAll(b, nil)
+func (c *zstdEncoder) Encode(b []byte) []byte {
+	defer c.encoder.Reset(nil)
+	return c.encoder.EncodeAll(b, nil)
+}
+
+// Close closes the zstandard encoder.
+func (c *zstdEncoder) Close() error {
+	return c.encoder.Close()
+}
+
+// zstdDecoder is a zstandard decoder codec.
+type zstdDecoder struct {
+	decoder *zstd.Decoder
+}
+
+// Decode decodes the given bytes.
+func (c *zstdDecoder) Decode(b []byte) ([]byte, error) {
+	defer func() { _ = c.decoder.Reset(nil) }()
+	return c.decoder.DecodeAll(b, nil)
+}
+
+// Encode is not supported for decoder-only codec.
+func (c *zstdDecoder) Encode([]byte) []byte {
+	panic("encode not supported on decoder codec")
+}
+
+// Close closes the zstandard decoder.
+func (c *zstdDecoder) Close() error {
+	c.decoder.Close()
+	return nil
 }
