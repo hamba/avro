@@ -8,10 +8,16 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
-	"sync"
 
 	"github.com/golang/snappy"
 	"github.com/klauspost/compress/zstd"
+)
+
+type codecMode int
+
+const (
+	codecModeEncode codecMode = iota
+	codecModeDecode
 )
 
 // CodecName represents a compression codec name.
@@ -35,7 +41,7 @@ type zstdOptions struct {
 	DOptions []zstd.DOption
 }
 
-func resolveCodec(name CodecName, codecOpts codecOptions) (Codec, error) {
+func resolveCodec(name CodecName, codecOpts codecOptions, mode codecMode) (Codec, error) {
 	switch name {
 	case Null, "":
 		return &NullCodec{}, nil
@@ -47,7 +53,7 @@ func resolveCodec(name CodecName, codecOpts codecOptions) (Codec, error) {
 		return &SnappyCodec{}, nil
 
 	case ZStandard:
-		return newZStandardCodec(codecOpts.ZStandardOptions), nil
+		return newZStandardCodec(codecOpts.ZStandardOptions, mode)
 
 	default:
 		return nil, fmt.Errorf("unknown codec %s", name)
@@ -137,49 +143,64 @@ func (*SnappyCodec) Encode(b []byte) []byte {
 	return dst
 }
 
-// ZStandardCodec is a zstandard compression codec.
-// It uses lazy initialization to only allocate encoder/decoder when needed.
-type ZStandardCodec struct {
-	decoder     *zstd.Decoder
-	encoder     *zstd.Encoder
-	decoderOnce sync.Once
-	encoderOnce sync.Once
-	eOpts       []zstd.EOption
-	dOpts       []zstd.DOption
-}
-
-func newZStandardCodec(opts zstdOptions) *ZStandardCodec {
-	return &ZStandardCodec{
-		eOpts: opts.EOptions,
-		dOpts: opts.DOptions,
+func newZStandardCodec(opts zstdOptions, mode codecMode) (Codec, error) {
+	switch mode {
+	case codecModeEncode:
+		encoder, err := zstd.NewWriter(nil, opts.EOptions...)
+		if err != nil {
+			return nil, err
+		}
+		return &zstdEncoder{encoder: encoder}, nil
+	case codecModeDecode:
+		decoder, err := zstd.NewReader(nil, opts.DOptions...)
+		if err != nil {
+			return nil, err
+		}
+		return &zstdDecoder{decoder: decoder}, nil
+	default:
+		return nil, errors.New("invalid codec mode")
 	}
 }
 
-// Decode decodes the given bytes.
-func (c *ZStandardCodec) Decode(b []byte) ([]byte, error) {
-	c.decoderOnce.Do(func() {
-		c.decoder, _ = zstd.NewReader(nil, c.dOpts...)
-	})
-	defer func() { _ = c.decoder.Reset(nil) }()
-	return c.decoder.DecodeAll(b, nil)
+// zstdEncoder is a zstandard encoder codec.
+type zstdEncoder struct {
+	encoder *zstd.Encoder
+}
+
+// Decode is not supported for encoder-only codec.
+func (c *zstdEncoder) Decode([]byte) ([]byte, error) {
+	return nil, errors.New("decode not supported on encoder codec")
 }
 
 // Encode encodes the given bytes.
-func (c *ZStandardCodec) Encode(b []byte) []byte {
-	c.encoderOnce.Do(func() {
-		c.encoder, _ = zstd.NewWriter(nil, c.eOpts...)
-	})
+func (c *zstdEncoder) Encode(b []byte) []byte {
 	defer c.encoder.Reset(nil)
 	return c.encoder.EncodeAll(b, nil)
 }
 
-// Close closes the zstandard encoder and decoder, releasing resources.
-func (c *ZStandardCodec) Close() error {
-	if c.decoder != nil {
-		c.decoder.Close()
-	}
-	if c.encoder != nil {
-		return c.encoder.Close()
-	}
+// Close closes the zstandard encoder.
+func (c *zstdEncoder) Close() error {
+	return c.encoder.Close()
+}
+
+// zstdDecoder is a zstandard decoder codec.
+type zstdDecoder struct {
+	decoder *zstd.Decoder
+}
+
+// Decode decodes the given bytes.
+func (c *zstdDecoder) Decode(b []byte) ([]byte, error) {
+	defer func() { _ = c.decoder.Reset(nil) }()
+	return c.decoder.DecodeAll(b, nil)
+}
+
+// Encode is not supported for decoder-only codec.
+func (c *zstdDecoder) Encode([]byte) []byte {
+	panic("encode not supported on decoder codec")
+}
+
+// Close closes the zstandard decoder.
+func (c *zstdDecoder) Close() error {
+	c.decoder.Close()
 	return nil
 }

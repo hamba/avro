@@ -372,7 +372,15 @@ func newEncoder(schema avro.Schema, w io.Writer, cfg encoderConfig) (*Encoder, e
 			if err != nil {
 				return nil, err
 			}
+			if c, ok := h.Codec.(io.Closer); ok {
+				_ = c.Close()
+			}
 			if err = skipToEnd(reader, h.Sync); err != nil {
+				return nil, err
+			}
+
+			codec, err := resolveCodec(CodecName(h.Meta[codecKey]), cfg.CodecOptions, codecModeEncode)
+			if err != nil {
 				return nil, err
 			}
 
@@ -383,7 +391,7 @@ func newEncoder(schema avro.Schema, w io.Writer, cfg encoderConfig) (*Encoder, e
 				buf:         buf,
 				encoder:     cfg.EncodingConfig.NewEncoder(h.Schema, buf),
 				sync:        h.Sync,
-				codec:       h.Codec,
+				codec:       codec,
 				blockLength: cfg.BlockLength,
 				blockSize:   cfg.BlockSize,
 			}
@@ -407,7 +415,7 @@ func newEncoder(schema avro.Schema, w io.Writer, cfg encoderConfig) (*Encoder, e
 		_, _ = rand.Read(header.Sync[:])
 	}
 
-	codec, err := resolveCodec(cfg.CodecName, cfg.CodecOptions)
+	codec, err := resolveCodec(cfg.CodecName, cfg.CodecOptions, codecModeEncode)
 	if err != nil {
 		return nil, err
 	}
@@ -552,7 +560,7 @@ func readHeader(reader *avro.Reader, schemaCache *avro.SchemaCache, codecOpts co
 		return nil, err
 	}
 
-	codec, err := resolveCodec(CodecName(h.Meta[codecKey]), codecOpts)
+	codec, err := resolveCodec(CodecName(h.Meta[codecKey]), codecOpts, codecModeDecode)
 	if err != nil {
 		return nil, err
 	}
