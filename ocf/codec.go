@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
+	"sync"
 
 	"github.com/golang/snappy"
 	"github.com/klauspost/compress/zstd"
@@ -137,28 +138,48 @@ func (*SnappyCodec) Encode(b []byte) []byte {
 }
 
 // ZStandardCodec is a zstandard compression codec.
+// It uses lazy initialization to only allocate encoder/decoder when needed.
 type ZStandardCodec struct {
-	decoder *zstd.Decoder
-	encoder *zstd.Encoder
+	decoder     *zstd.Decoder
+	encoder     *zstd.Encoder
+	decoderOnce sync.Once
+	encoderOnce sync.Once
+	eOpts       []zstd.EOption
+	dOpts       []zstd.DOption
 }
 
 func newZStandardCodec(opts zstdOptions) *ZStandardCodec {
-	decoder, _ := zstd.NewReader(nil, opts.DOptions...)
-	encoder, _ := zstd.NewWriter(nil, opts.EOptions...)
 	return &ZStandardCodec{
-		decoder: decoder,
-		encoder: encoder,
+		eOpts: opts.EOptions,
+		dOpts: opts.DOptions,
 	}
 }
 
 // Decode decodes the given bytes.
-func (zstdCodec *ZStandardCodec) Decode(b []byte) ([]byte, error) {
-	defer func() { _ = zstdCodec.decoder.Reset(nil) }()
-	return zstdCodec.decoder.DecodeAll(b, nil)
+func (c *ZStandardCodec) Decode(b []byte) ([]byte, error) {
+	c.decoderOnce.Do(func() {
+		c.decoder, _ = zstd.NewReader(nil, c.dOpts...)
+	})
+	defer func() { _ = c.decoder.Reset(nil) }()
+	return c.decoder.DecodeAll(b, nil)
 }
 
 // Encode encodes the given bytes.
-func (zstdCodec *ZStandardCodec) Encode(b []byte) []byte {
-	defer zstdCodec.encoder.Reset(nil)
-	return zstdCodec.encoder.EncodeAll(b, nil)
+func (c *ZStandardCodec) Encode(b []byte) []byte {
+	c.encoderOnce.Do(func() {
+		c.encoder, _ = zstd.NewWriter(nil, c.eOpts...)
+	})
+	defer c.encoder.Reset(nil)
+	return c.encoder.EncodeAll(b, nil)
+}
+
+// Close closes the zstandard encoder and decoder, releasing resources.
+func (c *ZStandardCodec) Close() error {
+	if c.decoder != nil {
+		c.decoder.Close()
+	}
+	if c.encoder != nil {
+		return c.encoder.Close()
+	}
+	return nil
 }
