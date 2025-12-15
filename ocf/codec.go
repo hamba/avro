@@ -171,13 +171,19 @@ func newZStandardCodec(opts zstdOptions, mode codecMode) (*ZStandardCodec, error
 }
 
 // Decode decodes the given bytes.
-func (zstdCodec *ZStandardCodec) Decode(b []byte) ([]byte, error) {
-	defer func() { _ = zstdCodec.decoder.Reset(nil) }()
-	return zstdCodec.decoder.DecodeAll(b, nil)
+func (c *ZStandardCodec) Decode(b []byte) ([]byte, error) {
+	if c.decoder == nil {
+		return nil, errors.New("zstd decoder not initialized")
+	}
+	defer func() { _ = c.decoder.Reset(nil) }()
+	return c.decoder.DecodeAll(b, nil)
 }
 
 // Encode encodes the given bytes.
-func (zstdCodec *ZStandardCodec) Encode(b []byte) []byte {
-	defer zstdCodec.encoder.Reset(nil)
-	return zstdCodec.encoder.EncodeAll(b, nil)
+func (c *ZStandardCodec) Encode(b []byte) []byte {
+	if c.encoder == nil {
+		panic("zstd encoder not initialized")
+	}
+	defer c.encoder.Reset(nil)
+	return c.encoder.EncodeAll(b, nil)
 }
