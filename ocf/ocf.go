@@ -84,6 +84,16 @@ func WithZStandardDecoderOptions(opts ...zstd.DOption) DecoderFunc {
 	}
 }
 
+// WithZStandardDecoder sets a shared ZStandard decoder instance.
+// This allows reusing a single decoder across multiple OCF decoders.
+// The caller is responsible for closing the decoder after all OCF decoders are done.
+// When set, WithZStandardDecoderOptions is ignored.
+func WithZStandardDecoder(dec *zstd.Decoder) DecoderFunc {
+	return func(cfg *decoderConfig) {
+		cfg.CodecOptions.ZStandardOptions.Decoder = dec
+	}
+}
+
 // Decoder reads and decodes Avro values from a container file.
 type Decoder struct {
 	reader      *avro.Reader
@@ -276,6 +286,16 @@ func WithZStandardEncoderOptions(opts ...zstd.EOption) EncoderFunc {
 	}
 }
 
+// WithZStandardEncoder sets a shared ZStandard encoder instance.
+// This allows reusing a single encoder across multiple OCF encoders.
+// The caller is responsible for closing the encoder after all OCF encoders are done.
+// When set, WithZStandardEncoderOptions is ignored.
+func WithZStandardEncoder(enc *zstd.Encoder) EncoderFunc {
+	return func(cfg *encoderConfig) {
+		cfg.CodecOptions.ZStandardOptions.Encoder = enc
+	}
+}
+
 // WithMetadata sets the metadata on the encoder header.
 func WithMetadata(meta map[string][]byte) EncoderFunc {
 	return func(cfg *encoderConfig) {
@@ -333,6 +353,11 @@ type Encoder struct {
 	blockLength int
 	count       int
 	blockSize   int
+
+	// Fields needed for Reset
+	schema         avro.Schema
+	header         Header
+	encodingConfig avro.API
 }
 
 // NewEncoder returns a new encoder that writes to w using schema s.
@@ -386,14 +411,22 @@ func newEncoder(schema avro.Schema, w io.Writer, cfg encoderConfig) (*Encoder, e
 
 			writer := avro.NewWriter(w, 512, avro.WithWriterConfig(cfg.EncodingConfig))
 			buf := &bytes.Buffer{}
+			existingHeader := Header{
+				Magic: magicBytes,
+				Meta:  h.Meta,
+				Sync:  h.Sync,
+			}
 			e := &Encoder{
-				writer:      writer,
-				buf:         buf,
-				encoder:     cfg.EncodingConfig.NewEncoder(h.Schema, buf),
-				sync:        h.Sync,
-				codec:       codec,
-				blockLength: cfg.BlockLength,
-				blockSize:   cfg.BlockSize,
+				writer:         writer,
+				buf:            buf,
+				encoder:        cfg.EncodingConfig.NewEncoder(h.Schema, buf),
+				sync:           h.Sync,
+				codec:          codec,
+				blockLength:    cfg.BlockLength,
+				blockSize:      cfg.BlockSize,
+				schema:         h.Schema,
+				header:         existingHeader,
+				encodingConfig: cfg.EncodingConfig,
 			}
 			return e, nil
 		}
@@ -428,13 +461,16 @@ func newEncoder(schema avro.Schema, w io.Writer, cfg encoderConfig) (*Encoder, e
 
 	buf := &bytes.Buffer{}
 	e := &Encoder{
-		writer:      writer,
-		buf:         buf,
-		encoder:     cfg.EncodingConfig.NewEncoder(schema, buf),
-		sync:        header.Sync,
-		codec:       codec,
-		blockLength: cfg.BlockLength,
-		blockSize:   cfg.BlockSize,
+		writer:         writer,
+		buf:            buf,
+		encoder:        cfg.EncodingConfig.NewEncoder(schema, buf),
+		sync:           header.Sync,
+		codec:          codec,
+		blockLength:    cfg.BlockLength,
+		blockSize:      cfg.BlockSize,
+		schema:         schema,
+		header:         header,
+		encodingConfig: cfg.EncodingConfig,
 	}
 	return e, nil
 }
@@ -521,6 +557,34 @@ func (e *Encoder) Close() error {
 		}
 	}
 	return err
+}
+
+// Reset flushes any pending data, resets the encoder to write to a new io.Writer,
+// and writes a fresh header with a new sync marker. The schema, codec, and other
+// settings are preserved from the original encoder.
+// This allows reusing the encoder for multiple files without reallocating buffers.
+func (e *Encoder) Reset(w io.Writer) error {
+	if err := e.Flush(); err != nil {
+		return err
+	}
+
+	// Generate new sync marker for the new file.
+	_, _ = rand.Read(e.header.Sync[:])
+	e.sync = e.header.Sync
+
+	// Reset writer to new output and write header.
+	e.writer.Reset(w)
+	e.writer.WriteVal(HeaderSchema, e.header)
+	if err := e.writer.Flush(); err != nil {
+		return err
+	}
+
+	// Reset buffer and encoder.
+	e.buf.Reset()
+	e.encoder.Reset(e.buf)
+	e.count = 0
+
+	return nil
 }
 
 func (e *Encoder) writerBlock() error {

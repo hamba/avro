@@ -39,6 +39,10 @@ type codecOptions struct {
 type zstdOptions struct {
 	EOptions []zstd.EOption
 	DOptions []zstd.DOption
+	// Encoder and Decoder allow sharing pre-created instances across multiple codecs.
+	// When set, EOptions/DOptions are ignored for that component.
+	Encoder *zstd.Encoder
+	Decoder *zstd.Decoder
 }
 
 func resolveCodec(name CodecName, codecOpts codecOptions, mode codecMode) (Codec, error) {
@@ -146,17 +150,23 @@ func (*SnappyCodec) Encode(b []byte) []byte {
 func newZStandardCodec(opts zstdOptions, mode codecMode) (Codec, error) {
 	switch mode {
 	case codecModeEncode:
+		if opts.Encoder != nil {
+			return &zstdEncoder{encoder: opts.Encoder, owns: false}, nil
+		}
 		encoder, err := zstd.NewWriter(nil, opts.EOptions...)
 		if err != nil {
 			return nil, err
 		}
-		return &zstdEncoder{encoder: encoder}, nil
+		return &zstdEncoder{encoder: encoder, owns: true}, nil
 	case codecModeDecode:
+		if opts.Decoder != nil {
+			return &zstdDecoder{decoder: opts.Decoder, owns: false}, nil
+		}
 		decoder, err := zstd.NewReader(nil, opts.DOptions...)
 		if err != nil {
 			return nil, err
 		}
-		return &zstdDecoder{decoder: decoder}, nil
+		return &zstdDecoder{decoder: decoder, owns: true}, nil
 	default:
 		return nil, errors.New("invalid codec mode")
 	}
@@ -165,6 +175,7 @@ func newZStandardCodec(opts zstdOptions, mode codecMode) (Codec, error) {
 // zstdEncoder is a zstandard encoder codec.
 type zstdEncoder struct {
 	encoder *zstd.Encoder
+	owns    bool // true if we created the encoder and should close it
 }
 
 // Decode is not supported for encoder-only codec.
@@ -174,23 +185,25 @@ func (c *zstdEncoder) Decode([]byte) ([]byte, error) {
 
 // Encode encodes the given bytes.
 func (c *zstdEncoder) Encode(b []byte) []byte {
-	defer c.encoder.Reset(nil)
 	return c.encoder.EncodeAll(b, nil)
 }
 
-// Close closes the zstandard encoder.
+// Close closes the zstandard encoder if we own it.
 func (c *zstdEncoder) Close() error {
-	return c.encoder.Close()
+	if c.owns {
+		return c.encoder.Close()
+	}
+	return nil
 }
 
 // zstdDecoder is a zstandard decoder codec.
 type zstdDecoder struct {
 	decoder *zstd.Decoder
+	owns    bool // true if we created the decoder and should close it
 }
 
 // Decode decodes the given bytes.
 func (c *zstdDecoder) Decode(b []byte) ([]byte, error) {
-	defer func() { _ = c.decoder.Reset(nil) }()
 	return c.decoder.DecodeAll(b, nil)
 }
 
@@ -199,8 +212,10 @@ func (c *zstdDecoder) Encode([]byte) []byte {
 	panic("encode not supported on decoder codec")
 }
 
-// Close closes the zstandard decoder.
+// Close closes the zstandard decoder if we own it.
 func (c *zstdDecoder) Close() error {
-	c.decoder.Close()
+	if c.owns {
+		c.decoder.Close()
+	}
 	return nil
 }
