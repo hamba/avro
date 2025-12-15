@@ -162,3 +162,14 @@ func (zstdCodec *ZStandardCodec) Encode(b []byte) []byte {
 	defer zstdCodec.encoder.Reset(nil)
 	return zstdCodec.encoder.EncodeAll(b, nil)
 }
+
+// Close closes the zstandard encoder and decoder, releasing resources.
+func (zstdCodec *ZStandardCodec) Close() error {
+	if zstdCodec.decoder != nil {
+		zstdCodec.decoder.Close()
+	}
+	if zstdCodec.encoder != nil {
+		return zstdCodec.encoder.Close()
+	}
+	return nil
+}
