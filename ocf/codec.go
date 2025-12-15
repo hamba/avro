@@ -32,6 +32,10 @@ type codecOptions struct {
 type zstdOptions struct {
 	EOptions []zstd.EOption
 	DOptions []zstd.DOption
+	// Encoder and Decoder allow sharing pre-created instances across multiple codecs.
+	// When set, EOptions/DOptions are ignored for that component.
+	Encoder *zstd.Encoder
+	Decoder *zstd.Decoder
 }
 
 func resolveCodec(name CodecName, codecOpts codecOptions) (Codec, error) {
@@ -143,8 +147,21 @@ type ZStandardCodec struct {
 }
 
 func newZStandardCodec(opts zstdOptions) *ZStandardCodec {
-	decoder, _ := zstd.NewReader(nil, opts.DOptions...)
-	encoder, _ := zstd.NewWriter(nil, opts.EOptions...)
+	var decoder *zstd.Decoder
+	var encoder *zstd.Encoder
+
+	if opts.Decoder != nil {
+		decoder = opts.Decoder
+	} else {
+		decoder, _ = zstd.NewReader(nil, opts.DOptions...)
+	}
+
+	if opts.Encoder != nil {
+		encoder = opts.Encoder
+	} else {
+		encoder, _ = zstd.NewWriter(nil, opts.EOptions...)
+	}
+
 	return &ZStandardCodec{
 		decoder: decoder,
 		encoder: encoder,
