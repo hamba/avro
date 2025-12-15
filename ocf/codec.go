@@ -13,6 +13,13 @@ import (
 	"github.com/klauspost/compress/zstd"
 )
 
+type codecMode int
+
+const (
+	codecModeEncode codecMode = iota
+	codecModeDecode
+)
+
 // CodecName represents a compression codec name.
 type CodecName string
 
@@ -34,7 +41,7 @@ type zstdOptions struct {
 	DOptions []zstd.DOption
 }
 
-func resolveCodec(name CodecName, codecOpts codecOptions) (Codec, error) {
+func resolveCodec(name CodecName, codecOpts codecOptions, mode codecMode) (Codec, error) {
 	switch name {
 	case Null, "":
 		return &NullCodec{}, nil
@@ -46,7 +53,7 @@ func resolveCodec(name CodecName, codecOpts codecOptions) (Codec, error) {
 		return &SnappyCodec{}, nil
 
 	case ZStandard:
-		return newZStandardCodec(codecOpts.ZStandardOptions), nil
+		return newZStandardCodec(codecOpts.ZStandardOptions, mode)
 
 	default:
 		return nil, fmt.Errorf("unknown codec %s", name)
@@ -142,13 +149,25 @@ type ZStandardCodec struct {
 	encoder *zstd.Encoder
 }
 
-func newZStandardCodec(opts zstdOptions) *ZStandardCodec {
-	decoder, _ := zstd.NewReader(nil, opts.DOptions...)
-	encoder, _ := zstd.NewWriter(nil, opts.EOptions...)
-	return &ZStandardCodec{
-		decoder: decoder,
-		encoder: encoder,
+func newZStandardCodec(opts zstdOptions, mode codecMode) (*ZStandardCodec, error) {
+	c := &ZStandardCodec{}
+
+	switch mode {
+	case codecModeEncode:
+		enc, err := zstd.NewWriter(nil, opts.EOptions...)
+		if err != nil {
+			return nil, err
+		}
+		c.encoder = enc
+	case codecModeDecode:
+		dec, err := zstd.NewReader(nil, opts.DOptions...)
+		if err != nil {
+			return nil, err
+		}
+		c.decoder = dec
 	}
+
+	return c, nil
 }
 
 // Decode decodes the given bytes.
