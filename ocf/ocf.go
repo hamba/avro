@@ -123,7 +123,7 @@ func NewDecoder(r io.Reader, opts ...DecoderFunc) (*Decoder, error) {
 
 	reader := avro.NewReader(r, 1024)
 
-	h, err := readHeader(reader, cfg.SchemaCache, cfg.CodecOptions)
+	h, err := readHeader(reader, cfg.SchemaCache, cfg.CodecOptions, codecModeDecode)
 	if err != nil {
 		return nil, fmt.Errorf("decoder: %w", err)
 	}
@@ -354,10 +354,8 @@ type Encoder struct {
 	count       int
 	blockSize   int
 
-	// Fields needed for Reset
-	schema         avro.Schema
-	header         Header
-	encodingConfig avro.API
+	// Stored for Reset.
+	header Header
 }
 
 // NewEncoder returns a new encoder that writes to w using schema s.
@@ -393,40 +391,24 @@ func newEncoder(schema avro.Schema, w io.Writer, cfg encoderConfig) (*Encoder, e
 
 		if info.Size() > 0 {
 			reader := avro.NewReader(file, 1024)
-			h, err := readHeader(reader, cfg.SchemaCache, cfg.CodecOptions)
+			h, err := readHeader(reader, cfg.SchemaCache, cfg.CodecOptions, codecModeEncode)
 			if err != nil {
 				return nil, err
-			}
-			if c, ok := h.Codec.(io.Closer); ok {
-				_ = c.Close()
 			}
 			if err = skipToEnd(reader, h.Sync); err != nil {
 				return nil, err
 			}
 
-			codec, err := resolveCodec(CodecName(h.Meta[codecKey]), cfg.CodecOptions, codecModeEncode)
-			if err != nil {
-				return nil, err
-			}
-
 			writer := avro.NewWriter(w, 512, avro.WithWriterConfig(cfg.EncodingConfig))
 			buf := &bytes.Buffer{}
-			existingHeader := Header{
-				Magic: magicBytes,
-				Meta:  h.Meta,
-				Sync:  h.Sync,
-			}
 			e := &Encoder{
-				writer:         writer,
-				buf:            buf,
-				encoder:        cfg.EncodingConfig.NewEncoder(h.Schema, buf),
-				sync:           h.Sync,
-				codec:          codec,
-				blockLength:    cfg.BlockLength,
-				blockSize:      cfg.BlockSize,
-				schema:         h.Schema,
-				header:         existingHeader,
-				encodingConfig: cfg.EncodingConfig,
+				writer:      writer,
+				buf:         buf,
+				encoder:     cfg.EncodingConfig.NewEncoder(h.Schema, buf),
+				sync:        h.Sync,
+				codec:       h.Codec,
+				blockLength: cfg.BlockLength,
+				blockSize:   cfg.BlockSize,
 			}
 			return e, nil
 		}
@@ -461,16 +443,14 @@ func newEncoder(schema avro.Schema, w io.Writer, cfg encoderConfig) (*Encoder, e
 
 	buf := &bytes.Buffer{}
 	e := &Encoder{
-		writer:         writer,
-		buf:            buf,
-		encoder:        cfg.EncodingConfig.NewEncoder(schema, buf),
-		sync:           header.Sync,
-		codec:          codec,
-		blockLength:    cfg.BlockLength,
-		blockSize:      cfg.BlockSize,
-		schema:         schema,
-		header:         header,
-		encodingConfig: cfg.EncodingConfig,
+		writer:      writer,
+		buf:         buf,
+		encoder:     cfg.EncodingConfig.NewEncoder(schema, buf),
+		sync:        header.Sync,
+		codec:       codec,
+		blockLength: cfg.BlockLength,
+		blockSize:   cfg.BlockSize,
+		header:      header,
 	}
 	return e, nil
 }
@@ -609,7 +589,7 @@ type ocfHeader struct {
 	Sync   [16]byte
 }
 
-func readHeader(reader *avro.Reader, schemaCache *avro.SchemaCache, codecOpts codecOptions) (*ocfHeader, error) {
+func readHeader(reader *avro.Reader, schemaCache *avro.SchemaCache, codecOpts codecOptions, mode codecMode) (*ocfHeader, error) {
 	var h Header
 	reader.ReadVal(HeaderSchema, &h)
 	if reader.Error != nil {
@@ -624,7 +604,7 @@ func readHeader(reader *avro.Reader, schemaCache *avro.SchemaCache, codecOpts co
 		return nil, err
 	}
 
-	codec, err := resolveCodec(CodecName(h.Meta[codecKey]), codecOpts, codecModeDecode)
+	codec, err := resolveCodec(CodecName(h.Meta[codecKey]), codecOpts, mode)
 	if err != nil {
 		return nil, err
 	}
