@@ -185,6 +185,14 @@ func (d *Decoder) Error() error {
 	return d.reader.Error
 }
 
+// Close releases codec resources.
+func (d *Decoder) Close() error {
+	if c, ok := d.codec.(io.Closer); ok {
+		return c.Close()
+	}
+	return nil
+}
+
 func (d *Decoder) readBlock() int64 {
 	_ = d.reader.Peek()
 	if errors.Is(d.reader.Error, io.EOF) {
@@ -343,6 +351,9 @@ type Encoder struct {
 	blockLength int
 	count       int
 	blockSize   int
+
+	// Stored for Reset.
+	header Header
 }
 
 // NewEncoder returns a new encoder that writes to w using schema s.
@@ -396,6 +407,11 @@ func newEncoder(schema avro.Schema, w io.Writer, cfg encoderConfig) (*Encoder, e
 				codec:       h.Codec,
 				blockLength: cfg.BlockLength,
 				blockSize:   cfg.BlockSize,
+				header: Header{
+					Magic: magicBytes,
+					Meta:  h.Meta,
+					Sync:  h.Sync,
+				},
 			}
 			return e, nil
 		}
@@ -437,6 +453,7 @@ func newEncoder(schema avro.Schema, w io.Writer, cfg encoderConfig) (*Encoder, e
 		codec:       codec,
 		blockLength: cfg.BlockLength,
 		blockSize:   cfg.BlockSize,
+		header:      header,
 	}
 	return e, nil
 }
@@ -514,9 +531,43 @@ func (e *Encoder) Flush() error {
 	return e.writer.Error
 }
 
-// Close closes the encoder, flushing the writer.
+// Close closes the encoder, flushing the writer and releasing codec resources.
 func (e *Encoder) Close() error {
-	return e.Flush()
+	err := e.Flush()
+	if c, ok := e.codec.(io.Closer); ok {
+		if cerr := c.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}
+	return err
+}
+
+// Reset flushes any pending data, resets the encoder to write to a new io.Writer,
+// and writes a fresh header with a new sync marker. The schema, codec, and other
+// settings are preserved from the original encoder.
+// This allows reusing the encoder for multiple files without reallocating buffers.
+func (e *Encoder) Reset(w io.Writer) error {
+	if err := e.Flush(); err != nil {
+		return err
+	}
+
+	// Generate new sync marker for the new file.
+	_, _ = rand.Read(e.header.Sync[:])
+	e.sync = e.header.Sync
+
+	// Reset writer to new output and write header.
+	e.writer.Reset(w)
+	e.writer.WriteVal(HeaderSchema, e.header)
+	if err := e.writer.Flush(); err != nil {
+		return err
+	}
+
+	// Reset buffer and encoder.
+	e.buf.Reset()
+	e.encoder.Reset(e.buf)
+	e.count = 0
+
+	return nil
 }
 
 func (e *Encoder) writerBlock() error {
