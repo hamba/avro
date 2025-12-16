@@ -1277,6 +1277,7 @@ func TestWithSchemaMarshaler(t *testing.T) {
 
 	want, err := os.ReadFile("testdata/full-schema.json")
 	require.NoError(t, err)
+	want = bytes.ReplaceAll(want, []byte("\r\n"), []byte("\n"))
 	assert.Equal(t, want, got)
 }
 
@@ -1443,6 +1444,7 @@ func TestConcurrentDecode(t *testing.T) {
 		})
 	}
 }
+
 // TestEncoder_Reset tests that Reset allows reusing encoder for multiple files.
 func TestEncoder_Reset(t *testing.T) {
 	record1 := FullRecord{
