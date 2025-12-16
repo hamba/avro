@@ -31,6 +31,7 @@ type Reader struct {
 	buf    []byte
 	head   int
 	tail   int
+	offset int64
 	Error  error
 }
 
@@ -42,6 +43,7 @@ func NewReader(r io.Reader, bufSize int, opts ...ReaderFunc) *Reader {
 		buf:    make([]byte, bufSize),
 		head:   0,
 		tail:   0,
+		offset: 0,
 	}
 
 	for _, opt := range opts {
@@ -57,6 +59,8 @@ func (r *Reader) Reset(b []byte) *Reader {
 	r.buf = b
 	r.head = 0
 	r.tail = len(b)
+	r.offset = 0
+	r.Error = nil
 	return r
 }
 
@@ -90,6 +94,7 @@ func (r *Reader) loadMore() bool {
 			continue
 		}
 
+		r.offset += int64(r.tail)
 		r.head = 0
 		r.tail = n
 		return true
@@ -321,4 +326,9 @@ func (r *Reader) ReadBlockHeader() (int64, int64) {
 	}
 
 	return length, 0
+}
+
+// InputOffset returns the current input offset of the Reader.
+func (r *Reader) InputOffset() int64 {
+	return r.offset + int64(r.head)
 }

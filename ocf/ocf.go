@@ -59,6 +59,20 @@ type decoderConfig struct {
 	CodecOptions  codecOptions
 }
 
+func newDecoderConfig(opts ...DecoderFunc) *decoderConfig {
+	cfg := decoderConfig{
+		DecoderConfig: avro.DefaultConfig,
+		SchemaCache:   avro.DefaultSchemaCache,
+		CodecOptions: codecOptions{
+			DeflateCompressionLevel: flate.DefaultCompression,
+		},
+	}
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+	return &cfg
+}
+
 // DecoderFunc represents a configuration function for Decoder.
 type DecoderFunc func(cfg *decoderConfig)
 
@@ -96,22 +110,15 @@ type Decoder struct {
 	codec Codec
 
 	count int64
+	size  int64
+	n     int64
 }
 
 // NewDecoder returns a new decoder that reads from reader r.
 func NewDecoder(r io.Reader, opts ...DecoderFunc) (*Decoder, error) {
-	cfg := decoderConfig{
-		DecoderConfig: avro.DefaultConfig,
-		SchemaCache:   avro.DefaultSchemaCache,
-		CodecOptions: codecOptions{
-			DeflateCompressionLevel: flate.DefaultCompression,
-		},
-	}
-	for _, opt := range opts {
-		opt(&cfg)
-	}
-
 	reader := avro.NewReader(r, 1024)
+
+	cfg := newDecoderConfig(opts...)
 
 	h, err := readHeader(reader, cfg.SchemaCache, cfg.CodecOptions)
 	if err != nil {
@@ -131,6 +138,31 @@ func NewDecoder(r io.Reader, opts ...DecoderFunc) (*Decoder, error) {
 	}, nil
 }
 
+// NewDecoder returns a new decoder that reads from reader r.
+func NewDecoderWithHeader(r *avro.Reader, h *OCFHeader, opts ...DecoderFunc) (*Decoder, error) {
+	cfg := newDecoderConfig(opts...)
+	decReader := bytesx.NewResetReader([]byte{})
+	return &Decoder{
+		reader:      r,
+		resetReader: decReader,
+		decoder:     cfg.DecoderConfig.NewDecoder(h.Schema, decReader),
+		meta:        h.Meta,
+		sync:        h.Sync,
+		codec:       h.Codec,
+		schema:      h.Schema,
+	}, nil
+}
+
+// DecodeHeader reads and decodes the Avro container file header from r.
+func DecodeHeader(r *avro.Reader, opts ...DecoderFunc) (*OCFHeader, error) {
+	cfg := newDecoderConfig(opts...)
+	h, err := readHeader(r, cfg.SchemaCache, cfg.CodecOptions)
+	if err != nil {
+		return nil, fmt.Errorf("decoder: %w", err)
+	}
+	return h, nil
+}
+
 // Metadata returns the header metadata.
 func (d *Decoder) Metadata() map[string][]byte {
 	return d.meta
@@ -145,8 +177,8 @@ func (d *Decoder) Schema() avro.Schema {
 // HasNext determines if there is another value to read.
 func (d *Decoder) HasNext() bool {
 	if d.count <= 0 {
-		count := d.readBlock()
-		d.count = count
+		d.count, d.size = d.readBlock()
+		d.n = d.count
 	}
 
 	if d.reader.Error != nil {
@@ -184,11 +216,27 @@ func (d *Decoder) Close() error {
 	return nil
 }
 
-func (d *Decoder) readBlock() int64 {
+type BlockStatus struct {
+	Current int64
+	Count   int64
+	Size    int64
+	Offset  int64
+}
+
+func (d *Decoder) BlockStatus() *BlockStatus {
+	return &BlockStatus{
+		Current: d.n - d.count + 1,
+		Count:   d.n,
+		Size:    d.size,
+		Offset:  d.reader.InputOffset(),
+	}
+}
+
+func (d *Decoder) readBlock() (int64, int64) {
 	_ = d.reader.Peek()
 	if errors.Is(d.reader.Error, io.EOF) {
 		// There is no next block
-		return 0
+		return 0, 0
 	}
 
 	count := d.reader.ReadLong()
@@ -220,7 +268,7 @@ func (d *Decoder) readBlock() int64 {
 		d.reader.Error = errors.New("decoder: invalid block")
 	}
 
-	return count
+	return count, size
 }
 
 type encoderConfig struct {
@@ -530,14 +578,14 @@ func (e *Encoder) writerBlock() error {
 	return e.writer.Flush()
 }
 
-type ocfHeader struct {
+type OCFHeader struct {
 	Schema avro.Schema
 	Codec  Codec
 	Meta   map[string][]byte
 	Sync   [16]byte
 }
 
-func readHeader(reader *avro.Reader, schemaCache *avro.SchemaCache, codecOpts codecOptions) (*ocfHeader, error) {
+func readHeader(reader *avro.Reader, schemaCache *avro.SchemaCache, codecOpts codecOptions) (*OCFHeader, error) {
 	var h Header
 	reader.ReadVal(HeaderSchema, &h)
 	if reader.Error != nil {
@@ -557,7 +605,7 @@ func readHeader(reader *avro.Reader, schemaCache *avro.SchemaCache, codecOpts co
 		return nil, err
 	}
 
-	return &ocfHeader{
+	return &OCFHeader{
 		Schema: schema,
 		Codec:  codec,
 		Meta:   h.Meta,

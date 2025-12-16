@@ -1,5 +1,10 @@
 package avro
 
+import (
+	"bytes"
+	"fmt"
+)
+
 // SkipNBytes skips the given number of bytes in the reader.
 func (r *Reader) SkipNBytes(n int) {
 	read := 0
@@ -76,4 +81,77 @@ func (r *Reader) SkipBytes() {
 		return
 	}
 	r.SkipNBytes(int(size))
+}
+
+// SkipTo skips to the given token in the reader.
+func (r *Reader) SkipTo(token []byte) (int, error) {
+	tokenLen := len(token)
+	if tokenLen == 0 {
+		return 0, nil
+	}
+	if tokenLen > len(r.buf) {
+		return 0, fmt.Errorf("token length %d exceeds buffer size %d", tokenLen, len(r.buf))
+	}
+
+	var skipped int
+	var stash []byte
+
+	for {
+		// Check boundary if we have stash from previous read
+		if len(stash) > 0 {
+			need := tokenLen - 1
+			if r.tail-r.head < need {
+				need = r.tail - r.head
+			}
+
+			// Construct boundary window: stash + beginning of new buffer
+			boundary := make([]byte, len(stash)+need)
+			copy(boundary, stash)
+			copy(boundary[len(stash):], r.buf[r.head:r.head+need])
+
+			if idx := bytes.Index(boundary, token); idx >= 0 {
+				// Found in boundary
+				bytesToEndOfToken := idx + tokenLen
+				skipped += bytesToEndOfToken
+
+				// Advance r.head by the number of bytes used from r.buf
+				bufferBytesConsumed := bytesToEndOfToken - len(stash)
+				r.head += bufferBytesConsumed
+				return skipped, nil
+			}
+
+			// Not found in boundary, stash is definitely skipped
+			skipped += len(stash)
+			stash = nil
+		}
+
+		// Search in current buffer
+		idx := bytes.Index(r.buf[r.head:r.tail], token)
+		if idx >= 0 {
+			advance := idx + tokenLen
+			r.head += advance
+			skipped += advance
+			return skipped, nil
+		}
+
+		// Prepare stash for next iteration
+		available := r.tail - r.head
+		keep := tokenLen - 1
+		if keep > available {
+			keep = available
+		}
+
+		// Bytes that are definitely skipped (not kept in stash)
+		consumed := available - keep
+		skipped += consumed
+
+		if keep > 0 {
+			stash = make([]byte, keep)
+			copy(stash, r.buf[r.tail-keep:r.tail])
+		}
+
+		if !r.loadMore() {
+			return skipped, r.Error
+		}
+	}
 }

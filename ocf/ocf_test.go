@@ -6,9 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/hamba/avro/v2"
@@ -1311,4 +1314,132 @@ type errorHeaderWriter struct{}
 
 func (*errorHeaderWriter) Write(p []byte) (int, error) {
 	return 0, errors.New("test")
+}
+
+func TestConcurrentDecode(t *testing.T) {
+	// build an in-memory OCF with many records
+	unionStr := "union value"
+	base := FullRecord{
+		Strings:  []string{"s1", "s2"},
+		Longs:    []int64{1, 2},
+		Enum:     "A",
+		Map:      map[string]int{"k": 1},
+		Nullable: &unionStr,
+		Fixed:    [16]byte{0x01, 0x02, 0x03},
+		Record:   &TestRecord{Long: 1, String: "r", Int: 0, Float: 1.1, Double: 2.2, Bool: true},
+	}
+
+	const total = 200
+	buf := &bytes.Buffer{}
+	enc, err := ocf.NewEncoder(schema, buf, ocf.WithBlockLength(10))
+	require.NoError(t, err)
+	for i := 0; i < total; i++ {
+		base.Record.Int = int32(i)
+		require.NoError(t, enc.Encode(base))
+	}
+	require.NoError(t, enc.Close())
+
+	// decode header once
+	data := buf.Bytes()
+	r0 := avro.NewReader(bytes.NewReader(data), 1024)
+	hdr, err := ocf.DecodeHeader(r0)
+	require.NoError(t, err)
+
+	// concurrency values to test; caller requirement: configurable concurrency
+	concs := []int64{1}
+
+	// split file into parts by size and let workers align to sync using SkipTo
+	headerEnd := r0.InputOffset()
+	for _, conc := range concs {
+		t.Run(fmt.Sprintf("concurrency=%d", conc), func(t *testing.T) {
+			totalData := int64(len(data)) - headerEnd
+			partSize := totalData / int64(conc)
+
+			recCh := make(chan FullRecord, total)
+			var wg sync.WaitGroup
+
+			errCh := make(chan error, 1)
+			sendErr := func(err error) {
+				select {
+				case errCh <- err:
+				default:
+				}
+			}
+
+			for i := int64(0); i < conc; i++ {
+				start := headerEnd + i*partSize
+				end := headerEnd + (i+1)*partSize
+				if i == conc-1 {
+					end = int64(len(data))
+				}
+
+				wg.Add(1)
+				go func(start, end int64) {
+					defer wg.Done()
+					r := avro.NewReader(bytes.NewReader(data[start:]), 1024)
+					skipped := int64(0)
+					// align to next sync marker unless starting at header end
+					if start != headerEnd {
+						n, err := r.SkipTo(hdr.Sync[:])
+						if err != nil && !errors.Is(err, io.EOF) {
+							sendErr(err)
+							return
+						}
+						// if SkipTo advanced past our partition end, nothing to do
+						skipped = int64(n)
+						if start+skipped >= end {
+							return
+						}
+					}
+
+					dec, err := ocf.NewDecoderWithHeader(r, hdr)
+					if err != nil {
+						sendErr(err)
+						return
+					}
+					defer dec.Close()
+
+					for dec.HasNext() {
+						var rec FullRecord
+						if err := dec.Decode(&rec); err != nil {
+							sendErr(err)
+							return
+						}
+						recCh <- rec
+						bs := dec.BlockStatus()
+						if bs.Current > bs.Count {
+							if start+bs.Offset > end {
+								return
+							}
+						}
+					}
+					if err := dec.Error(); err != nil {
+						sendErr(err)
+						return
+					}
+				}(start, end)
+			}
+
+			go func() { wg.Wait(); close(recCh) }()
+
+			var got []int32
+			for r := range recCh {
+				got = append(got, r.Record.Int)
+			}
+
+			select {
+			case e := <-errCh:
+				if e != nil {
+					t.Fatalf("worker error: %v", e)
+				}
+			default:
+			}
+
+			require.Equal(t, total, len(got), "unexpected number of records read")
+			sort.Slice(got, func(i, j int) bool { return got[i] < got[j] })
+			for i := 0; i < total; i++ {
+				require.Equal(t, int32(i), got[i])
+			}
+		})
+	}
 }
