@@ -99,10 +99,7 @@ func (r *Reader) SkipTo(token []byte) (int, error) {
 	for {
 		// Check boundary if we have stash from previous read
 		if len(stash) > 0 {
-			need := tokenLen - 1
-			if r.tail-r.head < need {
-				need = r.tail - r.head
-			}
+			need := min(r.tail-r.head, tokenLen-1)
 
 			// Construct boundary window: stash + beginning of new buffer
 			boundary := make([]byte, len(stash)+need)
@@ -136,10 +133,7 @@ func (r *Reader) SkipTo(token []byte) (int, error) {
 
 		// Prepare stash for next iteration
 		available := r.tail - r.head
-		keep := tokenLen - 1
-		if keep > available {
-			keep = available
-		}
+		keep := min(tokenLen-1, available)
 
 		// Bytes that are definitely skipped (not kept in stash)
 		consumed := available - keep

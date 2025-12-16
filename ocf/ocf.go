@@ -138,7 +138,7 @@ func NewDecoder(r io.Reader, opts ...DecoderFunc) (*Decoder, error) {
 	}, nil
 }
 
-// NewDecoder returns a new decoder that reads from reader r.
+// NewDecoderWithHeader returns a new decoder that reads from reader r using the provided header.
 func NewDecoderWithHeader(r *avro.Reader, h *OCFHeader, opts ...DecoderFunc) (*Decoder, error) {
 	cfg := newDecoderConfig(opts...)
 	decReader := bytesx.NewResetReader([]byte{})
@@ -216,6 +216,7 @@ func (d *Decoder) Close() error {
 	return nil
 }
 
+// BlockStatus represents the status of the current block.
 type BlockStatus struct {
 	Current int64
 	Count   int64
@@ -223,6 +224,7 @@ type BlockStatus struct {
 	Offset  int64
 }
 
+// BlockStatus returns the current block status.
 func (d *Decoder) BlockStatus() *BlockStatus {
 	return &BlockStatus{
 		Current: d.n - d.count + 1,
@@ -615,7 +617,8 @@ func (e *Encoder) writerBlock() error {
 	return e.writer.Flush()
 }
 
-type OCFHeader struct {
+// OCFHeader represents the parsed header of an OCF file.
+type OCFHeader struct { //nolint:revive
 	Schema avro.Schema
 	Codec  Codec
 	Meta   map[string][]byte
