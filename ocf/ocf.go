@@ -84,6 +84,15 @@ func WithZStandardDecoderOptions(opts ...zstd.DOption) DecoderFunc {
 	}
 }
 
+// WithZStandardDecoder sets a pre-created ZStandard decoder to be reused.
+// This allows sharing a single decoder across multiple OCF decoders for efficiency.
+// The caller is responsible for closing the decoder after all OCF decoders are done.
+func WithZStandardDecoder(dec *zstd.Decoder) DecoderFunc {
+	return func(cfg *decoderConfig) {
+		cfg.CodecOptions.ZStandardOptions.Decoder = dec
+	}
+}
+
 // Decoder reads and decodes Avro values from a container file.
 type Decoder struct {
 	reader      *avro.Reader
@@ -273,6 +282,15 @@ func WithCompressionLevel(compLvl int) EncoderFunc {
 func WithZStandardEncoderOptions(opts ...zstd.EOption) EncoderFunc {
 	return func(cfg *encoderConfig) {
 		cfg.CodecOptions.ZStandardOptions.EOptions = append(cfg.CodecOptions.ZStandardOptions.EOptions, opts...)
+	}
+}
+
+// WithZStandardEncoder sets a pre-created ZStandard encoder to be reused.
+// This allows sharing a single encoder across multiple OCF encoders for efficiency.
+// The caller is responsible for closing the encoder after all OCF encoders are done.
+func WithZStandardEncoder(enc *zstd.Encoder) EncoderFunc {
+	return func(cfg *encoderConfig) {
+		cfg.CodecOptions.ZStandardOptions.Encoder = enc
 	}
 }
 

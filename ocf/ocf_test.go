@@ -1313,6 +1313,80 @@ func (*errorHeaderWriter) Write(p []byte) (int, error) {
 	return 0, errors.New("test")
 }
 
+func TestSharedZstdEncoder(t *testing.T) {
+	schema := `{"type": "string"}`
+
+	// Create a shared zstd encoder
+	sharedEncoder, err := zstd.NewWriter(nil)
+	require.NoError(t, err)
+	defer sharedEncoder.Close()
+
+	// Use the shared encoder with multiple OCF encoders
+	var buf1, buf2 bytes.Buffer
+
+	enc1, err := ocf.NewEncoder(schema, &buf1, ocf.WithCodec(ocf.ZStandard), ocf.WithZStandardEncoder(sharedEncoder))
+	require.NoError(t, err)
+	require.NoError(t, enc1.Encode("hello from encoder 1"))
+	require.NoError(t, enc1.Close())
+
+	enc2, err := ocf.NewEncoder(schema, &buf2, ocf.WithCodec(ocf.ZStandard), ocf.WithZStandardEncoder(sharedEncoder))
+	require.NoError(t, err)
+	require.NoError(t, enc2.Encode("hello from encoder 2"))
+	require.NoError(t, enc2.Close())
+
+	// Verify both files can be read
+	dec1, err := ocf.NewDecoder(&buf1)
+	require.NoError(t, err)
+	require.True(t, dec1.HasNext())
+	var result1 string
+	require.NoError(t, dec1.Decode(&result1))
+	assert.Equal(t, "hello from encoder 1", result1)
+
+	dec2, err := ocf.NewDecoder(&buf2)
+	require.NoError(t, err)
+	require.True(t, dec2.HasNext())
+	var result2 string
+	require.NoError(t, dec2.Decode(&result2))
+	assert.Equal(t, "hello from encoder 2", result2)
+}
+
+func TestSharedZstdDecoder(t *testing.T) {
+	schema := `{"type": "string"}`
+
+	// Create two OCF files
+	var buf1, buf2 bytes.Buffer
+
+	enc1, err := ocf.NewEncoder(schema, &buf1, ocf.WithCodec(ocf.ZStandard))
+	require.NoError(t, err)
+	require.NoError(t, enc1.Encode("data in file 1"))
+	require.NoError(t, enc1.Close())
+
+	enc2, err := ocf.NewEncoder(schema, &buf2, ocf.WithCodec(ocf.ZStandard))
+	require.NoError(t, err)
+	require.NoError(t, enc2.Encode("data in file 2"))
+	require.NoError(t, enc2.Close())
+
+	// Create a shared zstd decoder
+	sharedDecoder, err := zstd.NewReader(nil)
+	require.NoError(t, err)
+	defer sharedDecoder.Close()
+
+	// Use the shared decoder with multiple OCF decoders
+	dec1, err := ocf.NewDecoder(&buf1, ocf.WithZStandardDecoder(sharedDecoder))
+	require.NoError(t, err)
+	require.True(t, dec1.HasNext())
+	var result1 string
+	require.NoError(t, dec1.Decode(&result1))
+	assert.Equal(t, "data in file 1", result1)
+
+	dec2, err := ocf.NewDecoder(&buf2, ocf.WithZStandardDecoder(sharedDecoder))
+	require.NoError(t, err)
+	require.True(t, dec2.HasNext())
+	var result2 string
+	require.NoError(t, dec2.Decode(&result2))
+	assert.Equal(t, "data in file 2", result2)
+}
+
 // TestEncoder_Reset tests that Reset allows reusing encoder for multiple files.
 func TestEncoder_Reset(t *testing.T) {
 	record1 := FullRecord{
