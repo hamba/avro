@@ -381,6 +381,11 @@ func newEncoder(schema avro.Schema, w io.Writer, cfg encoderConfig) (*Encoder, e
 				codec:       h.Codec,
 				blockLength: cfg.BlockLength,
 				blockSize:   cfg.BlockSize,
+				header: Header{
+					Magic: magicBytes,
+					Meta:  h.Meta,
+					Sync:  h.Sync,
+				},
 			}
 			return e, nil
 		}

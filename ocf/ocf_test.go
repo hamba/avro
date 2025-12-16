@@ -1485,6 +1485,67 @@ func TestEncoder_ResetMultipleTimes(t *testing.T) {
 	}
 }
 
+// TestEncoder_AppendToExistingFile tests appending records to an existing OCF file.
+func TestEncoder_AppendToExistingFile(t *testing.T) {
+	type SimpleRecord struct {
+		Name string `avro:"name"`
+		ID   int64  `avro:"id"`
+	}
+	simpleSchema := `{"type":"record","name":"SimpleRecord","fields":[{"name":"name","type":"string"},{"name":"id","type":"long"}]}`
+
+	record1 := SimpleRecord{Name: "first", ID: 1}
+	record2 := SimpleRecord{Name: "second", ID: 2}
+
+	tmpFile, err := os.CreateTemp("", "append-test-*.avro")
+	require.NoError(t, err)
+	tmpName := tmpFile.Name()
+	t.Cleanup(func() { _ = os.Remove(tmpName) })
+
+	// Write first record
+	enc, err := ocf.NewEncoder(simpleSchema, tmpFile)
+	require.NoError(t, err)
+	err = enc.Encode(record1)
+	require.NoError(t, err)
+	err = enc.Close()
+	require.NoError(t, err)
+	err = tmpFile.Close()
+	require.NoError(t, err)
+
+	// Reopen file and append second record
+	file, err := os.OpenFile(tmpName, os.O_RDWR, 0o644)
+	require.NoError(t, err)
+
+	enc2, err := ocf.NewEncoder(simpleSchema, file)
+	require.NoError(t, err)
+	err = enc2.Encode(record2)
+	require.NoError(t, err)
+	err = enc2.Close()
+	require.NoError(t, err)
+	err = file.Close()
+	require.NoError(t, err)
+
+	// Read back and verify both records
+	file, err = os.Open(tmpName)
+	require.NoError(t, err)
+	defer file.Close()
+
+	dec, err := ocf.NewDecoder(file)
+	require.NoError(t, err)
+
+	var records []SimpleRecord
+	for dec.HasNext() {
+		var r SimpleRecord
+		err = dec.Decode(&r)
+		require.NoError(t, err)
+		records = append(records, r)
+	}
+	require.NoError(t, dec.Error())
+
+	require.Len(t, records, 2)
+	assert.Equal(t, record1, records[0])
+	assert.Equal(t, record2, records[1])
+}
+
 // TestEncoder_ResetPreservesCodec tests that codec is preserved across reset.
 func TestEncoder_ResetPreservesCodec(t *testing.T) {
 	buf1 := &bytes.Buffer{}
