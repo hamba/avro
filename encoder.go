@@ -31,6 +31,11 @@ func (e *Encoder) Encode(v any) error {
 	return e.w.Error
 }
 
+// Reset resets the encoder to write to a new io.Writer.
+func (e *Encoder) Reset(w io.Writer) {
+	e.w.Reset(w)
+}
+
 // Marshal returns the Avro encoding of v.
 func Marshal(schema Schema, v any) ([]byte, error) {
 	return DefaultConfig.Marshal(schema, v)
