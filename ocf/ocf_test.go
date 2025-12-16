@@ -1347,7 +1347,7 @@ func TestConcurrentDecode(t *testing.T) {
 	require.NoError(t, err)
 
 	// concurrency values to test; caller requirement: configurable concurrency
-	concs := []int64{1}
+	concs := []int64{1, 2, 3, 5}
 
 	// split file into parts by size and let workers align to sync using SkipTo
 	headerEnd := r0.InputOffset()
