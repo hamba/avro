@@ -176,6 +176,14 @@ func (d *Decoder) Error() error {
 	return d.reader.Error
 }
 
+// Close releases codec resources.
+func (d *Decoder) Close() error {
+	if c, ok := d.codec.(io.Closer); ok {
+		return c.Close()
+	}
+	return nil
+}
+
 func (d *Decoder) readBlock() int64 {
 	_ = d.reader.Peek()
 	if errors.Is(d.reader.Error, io.EOF) {
@@ -505,9 +513,15 @@ func (e *Encoder) Flush() error {
 	return e.writer.Error
 }
 
-// Close closes the encoder, flushing the writer.
+// Close closes the encoder, flushing the writer and releasing codec resources.
 func (e *Encoder) Close() error {
-	return e.Flush()
+	err := e.Flush()
+	if c, ok := e.codec.(io.Closer); ok {
+		if cerr := c.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}
+	return err
 }
 
 // Reset flushes any pending data, resets the encoder to write to a new io.Writer,
