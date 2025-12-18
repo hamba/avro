@@ -1707,3 +1707,58 @@ func TestEncoder_ResetPreservesCodec(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []byte("deflate"), dec2.Metadata()["avro.codec"])
 }
+
+type CustomTagTestObject struct {
+	StringField string `json:"string_field"`
+	IntField    int    `json:"int_field"`
+}
+
+func TestCustomTagKey(t *testing.T) {
+	// Define schema matching the json tags
+	schemaStr := `{
+		"type": "record",
+		"name": "CustomTagTestObject",
+		"fields": [
+			{"name": "string_field", "type": "string"},
+			{"name": "int_field", "type": "int"}
+		]
+	}`
+
+	// Create a Config with TagKey set to "json"
+	config := avro.Config{
+		TagKey: "json",
+	}.Freeze()
+
+	// Create a buffer to write the OCF file to
+	var buf bytes.Buffer
+
+	// Create OCF encoder with custom encoding config
+	enc, err := ocf.NewEncoder(schemaStr, &buf, ocf.WithEncodingConfig(config))
+	require.NoError(t, err)
+
+	// Data to encode
+	data := CustomTagTestObject{
+		StringField: "hello",
+		IntField:    42,
+	}
+
+	// Encode using the OCF encoder
+	err = enc.Encode(data)
+	require.NoError(t, err)
+
+	// Close the encoder to flush data
+	err = enc.Close()
+	require.NoError(t, err)
+
+	// Verify the output by decoding
+	dec, err := ocf.NewDecoder(&buf, ocf.WithDecoderConfig(config))
+	require.NoError(t, err)
+
+	var result CustomTagTestObject
+	require.True(t, dec.HasNext())
+	err = dec.Decode(&result)
+	require.NoError(t, err)
+
+	assert.Equal(t, data.StringField, result.StringField)
+	assert.Equal(t, data.IntField, result.IntField)
+}

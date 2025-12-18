@@ -429,7 +429,7 @@ func newEncoder(schema avro.Schema, w io.Writer, cfg encoderConfig) (*Encoder, e
 				return nil, err
 			}
 
-			writer := avro.NewWriter(w, 512, avro.WithWriterConfig(cfg.EncodingConfig))
+			writer := avro.NewWriter(w, 512, avro.WithWriterConfig(avro.DefaultConfig))
 			buf := &bytes.Buffer{}
 			e := &Encoder{
 				writer:      writer,
@@ -470,7 +470,7 @@ func newEncoder(schema avro.Schema, w io.Writer, cfg encoderConfig) (*Encoder, e
 		return nil, err
 	}
 
-	writer := avro.NewWriter(w, 512, avro.WithWriterConfig(cfg.EncodingConfig))
+	writer := avro.NewWriter(w, 512, avro.WithWriterConfig(avro.DefaultConfig))
 	writer.WriteVal(HeaderSchema, header)
 	if err = writer.Flush(); err != nil {
 		return nil, err
