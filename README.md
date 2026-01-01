@@ -13,6 +13,17 @@
 
 A fast Go avro codec
 
+> [!WARNING]
+> This project is no longer maintained.
+>
+> If you wish to update or extend `avro`, please do so in a fork.
+
+I am grateful for the contributions and support from the community over the years.
+
+This project was born out of necessity for a fast and reliable Avro codec for Go.
+It has been a labor of love, and I hope has served you well in your projects, but
+I no longer have the time to maintain it.
+
 ## Overview
 
 Install with:
