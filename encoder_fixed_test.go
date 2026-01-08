@@ -53,6 +53,18 @@ func TestEncoder_FixedRat_Positive(t *testing.T) {
 	assert.Equal(t, []byte{0x00, 0x00, 0x00, 0x00, 0x87, 0x78}, buf.Bytes())
 }
 
+func TestEncoder_FixedRat_Boundary(t *testing.T) {
+	defer ConfigTeardown()
+	schema := `{"type":"fixed","name":"test","size":6,"logicalType":"decimal","precision":5,"scale":2}`
+	buf := &bytes.Buffer{}
+	enc, _ := avro.NewEncoder(schema, buf)
+
+	err := enc.Encode(big.NewRat(99999, 100))
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x00, 0x00, 0x00, 0x01, 0x86, 0x9f}, buf.Bytes())
+}
+
 func TestEncoder_FixedRat_Negative(t *testing.T) {
 	defer ConfigTeardown()
 
@@ -163,4 +175,52 @@ func TestEncoder_FixedUint64_Small(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00}, buf.Bytes())
+}
+
+func TestEncoder_FixedUint64_Zero(t *testing.T) {
+	defer ConfigTeardown()
+	schema := `{"type":"fixed", "name":"test","size":8}`
+	buf := &bytes.Buffer{}
+	enc, _ := avro.NewEncoder(schema, buf)
+
+	err := enc.Encode(uint64(0))
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0, 0, 0, 0, 0, 0, 0, 0}, buf.Bytes())
+}
+
+func TestEncoder_FixedUint64_TooLarge(t *testing.T) {
+	defer ConfigTeardown()
+	schema := `{"type":"fixed", "name":"test","size":4}`
+	buf := &bytes.Buffer{}
+	enc, _ := avro.NewEncoder(schema, buf)
+
+	err := enc.Encode(uint64(65535))
+
+	assert.Error(t, err)
+}
+
+func TestEncoder_FixedWrongSizeInput(t *testing.T) {
+	defer ConfigTeardown()
+	schema := `{"type":"fixed", "name":"test", "size":6}`
+	buf := &bytes.Buffer{}
+	enc, _ := avro.NewEncoder(schema, buf)
+
+	err := enc.Encode([3]byte{'f', 'o', 'o'})
+	assert.Error(t, err)
+
+	err = enc.Encode([9]byte{'f', 'o', 'o', 'b', 'a', 'r', 'x', 'y', 'z'})
+	assert.Error(t, err)
+}
+
+func TestEncoder_FixedNilInput(t *testing.T) {
+	defer ConfigTeardown()
+	schema := `{"type":"fixed", "name":"test", "size":6}`
+	buf := &bytes.Buffer{}
+	enc, _ := avro.NewEncoder(schema, buf)
+
+	var b []byte = nil
+	err := enc.Encode(b)
+
+	assert.Error(t, err)
 }

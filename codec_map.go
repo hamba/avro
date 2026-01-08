@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"unicode/utf8"
 	"unsafe"
 
 	"github.com/modern-go/reflect2"
@@ -170,7 +171,14 @@ func (e *mapEncoder) Encode(ptr unsafe.Pointer, w *Writer) {
 			var i int
 			for i = 0; iter.HasNext() && i < blockLength; i++ {
 				keyPtr, elemPtr := iter.UnsafeNext()
-				w.WriteString(*((*string)(keyPtr)))
+				key := *((*string)(keyPtr))
+
+				if !utf8.ValidString(key) {
+					w.Error = fmt.Errorf("avro: mapEncoder: invalid UTF-8 key: %q", key)
+					return 0
+				}
+
+				w.WriteString(key)
 				e.encoder.Encode(elemPtr, w)
 			}
 
@@ -228,8 +236,14 @@ func (e *mapEncoderMarshaller) Encode(ptr unsafe.Pointer, w *Writer) {
 					w.Error = err
 					return int64(0)
 				}
-				w.WriteString(string(b))
 
+				keyStr := string(b)
+				if !utf8.ValidString(keyStr) {
+					w.Error = fmt.Errorf("avro: mapEncoderMarshaller: invalid UTF-8 key: %q", keyStr)
+					return 0
+				}
+
+				w.WriteString(keyStr)
 				e.encoder.Encode(elemPtr, w)
 			}
 			return int64(i)

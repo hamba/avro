@@ -2,6 +2,7 @@ package avro_test
 
 import (
 	"bytes"
+	"math"
 	"math/big"
 	"testing"
 	"time"
@@ -63,6 +64,24 @@ func TestEncoder_Int(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, []byte{0x36}, buf.Bytes())
+}
+
+func TestEncoder_IntBoundaries(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `int`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	require.NoError(t, enc.Encode(uint8(math.MaxUint8)))
+	require.NoError(t, enc.Encode(uint16(math.MaxUint16)))
+	require.NoError(t, enc.Encode(int32(math.MaxInt32)))
+	require.NoError(t, enc.Encode(int32(math.MinInt32)))
+	require.NoError(t, enc.Encode(int(math.MaxInt32)))
+
+	assert.ErrorContains(t, enc.Encode(math.MaxInt32+1), "overflows Avro int")
+	assert.ErrorContains(t, enc.Encode(math.MinInt32-1), "overflows Avro int")
 }
 
 func TestEncoder_IntInvalidSchema(t *testing.T) {
@@ -280,6 +299,21 @@ func TestEncoder_Int64FromInt(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, []byte{0x80, 0x80, 0x80, 0x80, 0x10}, buf.Bytes())
+}
+
+func TestEncoder_LongBoundaries(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `long`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	require.NoError(t, enc.Encode(int(math.MaxInt)))
+	require.NoError(t, enc.Encode(int(math.MinInt)))
+	require.NoError(t, enc.Encode(int64(math.MaxInt64)))
+	require.NoError(t, enc.Encode(int64(math.MinInt64)))
+	require.NoError(t, enc.Encode(uint32(math.MaxUint32)))
 }
 
 func TestEncoder_Int64InvalidSchema(t *testing.T) {

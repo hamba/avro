@@ -38,6 +38,21 @@ func TestEncoder_Map(t *testing.T) {
 	assert.Equal(t, []byte{0x00}, buf.Bytes())
 }
 
+func TestEncoder_MapNil(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"map", "values": "string"}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	var m map[string]string = nil
+	err = enc.Encode(m)
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x0}, buf.Bytes())
+}
+
 func TestEncoder_MapEmpty(t *testing.T) {
 	defer ConfigTeardown()
 
@@ -100,6 +115,50 @@ func TestEncoder_MapOfRecursiveStruct(t *testing.T) {
 	assert.Equal(t, []byte{0x02, 0x01, 0x0c, 0x06, 0x66, 0x6f, 0x6f, 0x04, 0x0, 0x0}, buf.Bytes())
 }
 
+func TestEncoder_MapNestedMap(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"map","values":{"type":"map","values":"int"}}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	val := map[string]map[string]int{"outer": {"inner": 42}}
+	err = enc.Encode(val)
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x01, 0x20, 0x0a, 0x6f, 0x75, 0x74, 0x65, 0x72, 0x01, 0x0e, 0x0a, 0x69, 0x6e, 0x6e, 0x65, 0x72, 0x54, 0x00, 0x00}, buf.Bytes())
+}
+
+func TestEncoder_MapNilValueInPointer(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"map", "values":["null","string"]}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	val := map[string]*string{"foo": nil}
+	err = enc.Encode(val)
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x01, 0x0a, 0x06, 0x66, 0x6f, 0x6f, 0x00, 0x00}, buf.Bytes())
+}
+
+func TestEncoder_MapKeyInvalidUTF8(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"map","values":"int"}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	val := map[string]int{"\xff\xfe": 1}
+	err = enc.Encode(val)
+
+	assert.Error(t, err)
+}
+
 func TestEncoder_MapInvalidKeyType(t *testing.T) {
 	defer ConfigTeardown()
 
@@ -150,6 +209,25 @@ func TestEncoder_MapWithMoreThanBlockLengthKeys(t *testing.T) {
 	})
 }
 
+func TestEncoder_MapLarge(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"map","values":"int"}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	val := make(map[string]int, 1000)
+	for i := 0; i < 1000; i++ {
+		val[strconv.Itoa(i)] = i
+	}
+
+	err = enc.Encode(val)
+
+	require.NoError(t, err)
+	assert.NotEmpty(t, buf.Bytes())
+}
+
 type textMarshallerInt int
 
 func (t textMarshallerInt) MarshalText() (text []byte, err error) {
@@ -159,7 +237,7 @@ func (t textMarshallerInt) MarshalText() (text []byte, err error) {
 type textMarshallerError int
 
 func (t textMarshallerError) MarshalText() (text []byte, err error) {
-	return nil, errors.New("test")
+	return nil, errors.New("marshal failure")
 }
 
 func TestEncoder_MapMarshaller(t *testing.T) {
@@ -206,7 +284,7 @@ func TestEncoder_MapMarshallerKeyError(t *testing.T) {
 		1: 1,
 	})
 
-	require.Error(t, err)
+	assert.ErrorContains(t, err, "marshal failure")
 }
 
 func TestEncoder_MapMarshallerError(t *testing.T) {
@@ -222,4 +300,59 @@ func TestEncoder_MapMarshallerError(t *testing.T) {
 	})
 
 	require.Error(t, err)
+}
+
+type textMarshallerInvalidUTF8 struct{}
+
+func (t textMarshallerInvalidUTF8) MarshalText() ([]byte, error) {
+	// return invalid UTF-8 bytes
+	return []byte{0xff, 0xfe, 0xfd}, nil
+}
+
+func TestEncoder_MapMarshallerInvalidUTF8Key(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"map","values":"int"}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	val := map[textMarshallerInvalidUTF8]int{
+		{}: 42,
+	}
+
+	err = enc.Encode(val)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid UTF-8 key")
+}
+
+func TestEncoder_MapUnionAnyNil(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"map","values":["null","string"]}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	var m map[string]any = nil
+	err = enc.Encode(m)
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x0}, buf.Bytes())
+}
+
+func TestEncoder_MapUnionAnyValue(t *testing.T) {
+	defer ConfigTeardown()
+
+	schema := `{"type":"map","values":["null","string"]}`
+	buf := bytes.NewBuffer([]byte{})
+	enc, err := avro.NewEncoder(schema, buf)
+	require.NoError(t, err)
+
+	val := map[string]any{"foo": "bar"}
+	err = enc.Encode(val)
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte{0x01, 0x12, 0x06, 0x66, 0x6f, 0x6f, 0x02, 0x06, 0x62, 0x61, 0x72, 0x0}, buf.Bytes())
 }
